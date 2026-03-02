@@ -63,7 +63,7 @@ jobs:
       - run: pnpm build
 
   backend-test:
-    name: Backend Tests
+    name: Backend Unit Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -91,6 +91,67 @@ jobs:
           name: backend-coverage
           path: coverage/
           retention-days: 7
+
+  # ──────────────────────────────────────────────────────────────────
+  # Backend E2E tests (needs PostgreSQL + Redis)
+  # ──────────────────────────────────────────────────────────────────
+  backend-e2e:
+    name: Backend E2E Tests
+    runs-on: ubuntu-latest
+    needs: [backend-build]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: washflow_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: 'postgresql://ci:ci@localhost:5432/washflow_test'
+      REDIS_URL: 'redis://localhost:6379'
+      JWT_ACCESS_SECRET: 'ci-test-access-secret-minimum-32-chars!'
+      JWT_REFRESH_SECRET: 'ci-test-refresh-secret-minimum-32-chars!'
+      JWT_ACCESS_EXPIRATION: '15m'
+      JWT_REFRESH_EXPIRATION: '7d'
+      NODE_ENV: 'test'
+      CORS_ORIGINS: '*'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: npx prisma generate
+
+      - name: Push schema to test database
+        run: npx prisma db push --skip-generate --accept-data-loss
+
+      - name: Run E2E tests
+        run: pnpm test:e2e --forceExit
 
   # ──────────────────────────────────────────────────────────────────
   # Frontend: lint, build, unit tests
@@ -144,7 +205,7 @@ jobs:
       - run: pnpm build
 
   frontend-test:
-    name: Frontend Tests
+    name: Frontend Unit Tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -167,12 +228,117 @@ jobs:
       - run: pnpm test
 
   # ──────────────────────────────────────────────────────────────────
+  # Frontend E2E tests (Playwright, needs full stack)
+  # ──────────────────────────────────────────────────────────────────
+  frontend-e2e:
+    name: Frontend E2E Tests
+    runs-on: ubuntu-latest
+    needs: [backend-build, frontend-build]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: washflow_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: 'postgresql://ci:ci@localhost:5432/washflow_e2e'
+      REDIS_URL: 'redis://localhost:6379'
+      JWT_ACCESS_SECRET: 'ci-test-access-secret-minimum-32-chars!'
+      JWT_REFRESH_SECRET: 'ci-test-refresh-secret-minimum-32-chars!'
+      JWT_ACCESS_EXPIRATION: '15m'
+      JWT_REFRESH_EXPIRATION: '7d'
+      NODE_ENV: 'test'
+      CORS_ORIGINS: 'http://localhost:5173'
+      PORT: '3000'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      # Install both backend and frontend deps
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm install --frozen-lockfile
+        working-directory: frontend
+
+      - run: npx prisma generate
+
+      - name: Push schema to E2E database
+        run: npx prisma db push --skip-generate --accept-data-loss
+
+      - name: Seed database
+        run: npx prisma db seed
+        continue-on-error: true
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend
+
+      - name: Start backend
+        run: pnpm start:dev &
+        env:
+          PORT: '3000'
+
+      - name: Wait for backend to be ready
+        run: |
+          for i in $(seq 1 30); do
+            curl -s http://localhost:3000/api/v1 > /dev/null 2>&1 && break
+            sleep 2
+          done
+
+      - name: Run Playwright E2E tests
+        run: npx playwright test --reporter=list
+        working-directory: frontend
+        env:
+          CI: 'true'
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
+
+      - name: Upload test screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots
+          path: frontend/test-results/
+          retention-days: 7
+
+  # ──────────────────────────────────────────────────────────────────
   # Docker build (verify image builds successfully)
   # ──────────────────────────────────────────────────────────────────
   docker-build:
     name: Docker Build
     runs-on: ubuntu-latest
-    needs: [backend-build, backend-test, frontend-build]
+    needs: [backend-build, backend-test, backend-e2e, frontend-build, frontend-test]
     steps:
       - uses: actions/checkout@v4
 
