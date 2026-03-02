@@ -148,7 +148,7 @@ jobs:
       - run: npx prisma generate
 
       - name: Push schema to test database
-        run: npx prisma db push --skip-generate --accept-data-loss
+        run: npx prisma db push --accept-data-loss
 
       - name: Run E2E tests
         run: pnpm test:e2e --forceExit
@@ -288,7 +288,7 @@ jobs:
       - run: npx prisma generate
 
       - name: Push schema to E2E database
-        run: npx prisma db push --skip-generate --accept-data-loss
+        run: npx prisma db push --accept-data-loss
 
       - name: Seed database
         run: npx prisma db seed
