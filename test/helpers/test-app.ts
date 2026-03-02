@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import * as argon2 from 'argon2';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -166,7 +167,10 @@ export function nextWorkday(hour = 10, daysAhead = 1): Date {
 export async function createTestApp(slug: string): Promise<TestSetup> {
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [AppModule],
-  }).compile();
+  })
+    .overrideGuard(ThrottlerGuard)
+    .useValue({ canActivate: () => true })
+    .compile();
 
   const app = moduleFixture.createNestApplication();
   app.setGlobalPrefix('api/v1');

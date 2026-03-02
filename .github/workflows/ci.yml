@@ -150,8 +150,12 @@ jobs:
       - name: Push schema to test database
         run: npx prisma db push --accept-data-loss
 
+      - name: Seed database
+        run: npx prisma db seed
+        continue-on-error: true
+
       - name: Run E2E tests
-        run: pnpm test:e2e --forceExit
+        run: pnpm test:e2e --runInBand --forceExit
 
   # ──────────────────────────────────────────────────────────────────
   # Frontend: lint, build, unit tests
@@ -294,18 +298,21 @@ jobs:
         run: npx prisma db seed
         continue-on-error: true
 
+      - name: Build backend
+        run: pnpm build
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
         working-directory: frontend
 
       - name: Start backend
-        run: pnpm start:dev &
+        run: node dist/main &
         env:
           PORT: '3000'
 
       - name: Wait for backend to be ready
         run: |
-          for i in $(seq 1 30); do
+          for i in $(seq 1 45); do
             curl -s http://localhost:3000/api/v1 > /dev/null 2>&1 && break
             sleep 2
           done

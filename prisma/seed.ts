@@ -1029,6 +1029,7 @@ async function seedRealisticData(tenantId: string, adminUserId: string) {
         for (const svc of chosenServices) {
           orderServiceRecords.push({
             id: randomUUID(),
+            tenantId,
             orderId,
             serviceId: svc.id,
             price: svc.price,

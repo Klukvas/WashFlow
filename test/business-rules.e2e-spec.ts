@@ -88,6 +88,7 @@ describe('Business Rules (e2e)', () => {
     });
     await prisma.orderService.create({
       data: {
+        tenantId: tenant.id,
         orderId: order.id,
         serviceId: overrides.serviceId ?? svc30Id,
         price: 50,
@@ -792,6 +793,7 @@ describe('Business Rules (e2e)', () => {
         });
         await prisma.orderService.create({
           data: {
+            tenantId: tenant.id,
             orderId: order.id,
             serviceId: i === 4 ? svc60Id : svc30Id,
             price: prices[i],
@@ -996,7 +998,12 @@ describe('Business Rules (e2e)', () => {
         },
       });
       await prisma.orderService.create({
-        data: { orderId: o.id, serviceId: svc30Id, price: 50 },
+        data: {
+          tenantId: tenant.id,
+          orderId: o.id,
+          serviceId: svc30Id,
+          price: 50,
+        },
       });
 
       const cleanupService = app.get(CleanupService);

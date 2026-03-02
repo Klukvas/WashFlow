@@ -45,7 +45,7 @@ describe('Users (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .send({
           email: 'newuser@users-e2e.com',
-          password: 'securepass1',
+          password: 'SecurePass1',
           firstName: 'New',
           lastName: 'User',
         })
@@ -89,7 +89,7 @@ describe('Users (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .send({
           email: 'getme@users-e2e.com',
-          password: 'securepass1',
+          password: 'SecurePass1',
           firstName: 'Fetch',
           lastName: 'Me',
         })
@@ -123,7 +123,7 @@ describe('Users (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .send({
           email: 'patchme@users-e2e.com',
-          password: 'securepass1',
+          password: 'SecurePass1',
           firstName: 'Patch',
           lastName: 'Me',
         })
@@ -154,7 +154,7 @@ describe('Users (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .send({
           email: 'deleteme@users-e2e.com',
-          password: 'securepass1',
+          password: 'SecurePass1',
           firstName: 'Delete',
           lastName: 'Me',
         })

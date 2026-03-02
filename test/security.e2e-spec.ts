@@ -117,7 +117,12 @@ describe('Security (e2e)', () => {
     });
     orderA1Id = oA1.id;
     await prisma.orderService.create({
-      data: { orderId: oA1.id, serviceId: serviceA.id, price: 50 },
+      data: {
+        tenantId: tenantA.id,
+        orderId: oA1.id,
+        serviceId: serviceA.id,
+        price: 50,
+      },
     });
 
     // Second branch A2 with order
@@ -147,7 +152,12 @@ describe('Security (e2e)', () => {
     });
     orderA2Id = oA2.id;
     await prisma.orderService.create({
-      data: { orderId: oA2.id, serviceId: serviceA.id, price: 50 },
+      data: {
+        tenantId: tenantA.id,
+        orderId: oA2.id,
+        serviceId: serviceA.id,
+        price: 50,
+      },
     });
 
     // --- Tenant B (created via direct Prisma in the same app) ---
@@ -240,7 +250,12 @@ describe('Security (e2e)', () => {
     });
     orderBId = oB.id;
     await prisma.orderService.create({
-      data: { orderId: oB.id, serviceId: serviceB.id, price: 60 },
+      data: {
+        tenantId: tenantB.id,
+        orderId: oB.id,
+        serviceId: serviceB.id,
+        price: 60,
+      },
     });
 
     // --- Limited users on Tenant A ---
