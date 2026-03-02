@@ -308,20 +308,26 @@ jobs:
       - name: Start backend
         run: |
           nohup node dist/src/main.js > backend.log 2>&1 &
-          echo "Backend PID: $!"
+          echo $! > backend.pid
+          echo "Backend PID: $(cat backend.pid)"
 
       - name: Wait for backend to be ready
         run: |
+          PID=$(cat backend.pid)
           for i in $(seq 1 30); do
             if curl -s http://localhost:3000/api/v1 > /dev/null 2>&1; then
               echo "Backend is ready"
               break
             fi
+            if ! kill -0 "$PID" 2>/dev/null; then
+              echo "Backend process died!"
+              echo "--- Backend log ---"
+              cat backend.log || true
+              exit 1
+            fi
             echo "Waiting... attempt $i"
             sleep 2
           done
-          echo "--- Backend log ---"
-          cat backend.log || true
 
       - name: Run Playwright E2E tests
         run: npx playwright test --reporter=list

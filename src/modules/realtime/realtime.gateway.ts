@@ -29,7 +29,7 @@ export class RealtimeGateway
 
   afterInit() {
     const corsOrigins = this.config.get<string>('corsOrigins', '');
-    if (corsOrigins && corsOrigins !== '*') {
+    if (corsOrigins && corsOrigins !== '*' && this.server?.engine?.opts) {
       const origins = corsOrigins.split(',').map((o) => o.trim());
       this.server.engine.opts.cors = { origin: origins, credentials: true };
     }
