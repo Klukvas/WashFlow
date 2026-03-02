@@ -130,7 +130,15 @@ describe('PermissionGate', () => {
   });
 
   it('super admin bypasses all permission checks', () => {
-    setAuthState(superAdmin, []);
+    // Include isSuperAdmin in the JWT payload so usePermissions reads it from the token
+    const token = makeJwt({ permissions: [], isSuperAdmin: true });
+    useAuthStore.setState({
+      accessToken: token,
+      refreshToken: 'rt',
+      user: superAdmin,
+      permissions: [],
+      isAuthenticated: true,
+    });
 
     render(
       <PermissionGate permission="anything.at.all">
