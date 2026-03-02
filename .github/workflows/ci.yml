@@ -306,16 +306,22 @@ jobs:
         working-directory: frontend
 
       - name: Start backend
-        run: nohup node dist/src/main.js > backend.log 2>&1 &
-        env:
-          PORT: '3000'
+        run: |
+          nohup node dist/src/main.js > backend.log 2>&1 &
+          echo "Backend PID: $!"
 
       - name: Wait for backend to be ready
         run: |
-          for i in $(seq 1 45); do
-            curl -s http://localhost:3000/api/v1 > /dev/null 2>&1 && break
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:3000/api/v1 > /dev/null 2>&1; then
+              echo "Backend is ready"
+              break
+            fi
+            echo "Waiting... attempt $i"
             sleep 2
           done
+          echo "--- Backend log ---"
+          cat backend.log || true
 
       - name: Run Playwright E2E tests
         run: npx playwright test --reporter=list
