@@ -1,0 +1,66 @@
+{
+  "title": "Замовлення",
+  "createOrder": "Створити замовлення",
+  "orderDetail": "Деталі замовлення",
+  "status": {
+    "BOOKED": "Заброньовано",
+    "BOOKED_PENDING_CONFIRMATION": "Очікує підтвердження",
+    "IN_PROGRESS": "В процесі",
+    "COMPLETED": "Завершено",
+    "CANCELLED": "Скасовано",
+    "NO_SHOW": "Не з'явився"
+  },
+  "source": {
+    "INTERNAL": "Внутрішній",
+    "WEB": "Веб",
+    "WIDGET": "Віджет",
+    "API": "API"
+  },
+  "fields": {
+    "client": "Клієнт",
+    "vehicle": "Транспорт",
+    "branch": "Філіал",
+    "workPost": "Пост",
+    "assignedWorker": "Виконавець",
+    "services": "Послуги",
+    "scheduledStart": "Початок",
+    "scheduledEnd": "Кінець",
+    "totalPrice": "Загальна вартість",
+    "notes": "Примітки",
+    "status": "Статус",
+    "source": "Джерело",
+    "createdAt": "Створено"
+  },
+  "filters": {
+    "status": "Статус",
+    "branch": "Філіал",
+    "dateFrom": "Дата від",
+    "dateTo": "Дата до"
+  },
+  "creation": {
+    "selectClient": "Оберіть клієнта",
+    "selectVehicle": "Оберіть транспорт",
+    "selectServices": "Оберіть послуги",
+    "selectWorker": "Обрати виконавця",
+    "selectSlot": "Оберіть час",
+    "review": "Перегляд та підтвердження",
+    "searchClient": "Шукати клієнта за ім'ям або телефоном...",
+    "searchVehicle": "Шукати транспорт за номером...",
+    "totalDuration": "Загальна тривалість",
+    "totalAmount": "Загальна сума",
+    "availableSlots": "Доступні слоти",
+    "noSlots": "Немає доступних слотів на цю дату",
+    "anyWorkPost": "Будь-який",
+    "anyWorker": "Будь-який (авто)",
+    "confirmBooking": "Підтвердити бронювання",
+    "success": "Замовлення успішно створено"
+  },
+  "statusChange": {
+    "confirm": "Підтвердити",
+    "start": "Розпочати",
+    "complete": "Завершити",
+    "cancelOrder": "Скасувати",
+    "noShow": "Не з'явився",
+    "cancellationReason": "Причина скасування"
+  }
+}

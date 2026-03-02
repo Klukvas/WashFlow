@@ -1,0 +1,22 @@
+{
+  "dashboard": "Dashboard",
+  "orders": "Orders",
+  "clients": "Clients",
+  "vehicles": "Vehicles",
+  "services": "Services",
+  "branches": "Branches",
+  "workPosts": "Work Posts",
+  "users": "Users",
+  "roles": "Roles",
+  "workforce": "Workforce",
+  "analytics": "Analytics",
+  "audit": "Audit Log",
+  "howTo": "How To",
+  "settings": "Settings",
+  "sections": {
+    "main": "Main",
+    "management": "Management",
+    "system": "System",
+    "help": "Help"
+  }
+}

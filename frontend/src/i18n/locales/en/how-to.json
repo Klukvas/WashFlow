@@ -1,0 +1,518 @@
+{
+  "meta": {
+    "title": "How To",
+    "description": "Learn how to use WashFlow effectively",
+    "topics": "Topics",
+    "flows": "Flows"
+  },
+  "topics": {
+    "getting-started": {
+      "title": "Getting Started",
+      "description": "Everything you need to know to begin using WashFlow",
+      "sections": [
+        {
+          "heading": "Welcome to WashFlow",
+          "body": "WashFlow is a comprehensive car wash management system. It helps you manage orders, clients, vehicles, employees, branches, services, and more — all from a single dashboard."
+        },
+        {
+          "heading": "Logging In",
+          "body": "To log in, you need three things: your Tenant ID (provided by the system administrator), your email address, and your password. Enter them on the login page and click Sign In.",
+          "tip": "If you forget your password, ask your administrator to reset it from the Users page."
+        },
+        {
+          "heading": "Navigating the Interface",
+          "body": "The sidebar on the left gives you access to all features. It is divided into sections: Main (day-to-day operations), Management (configuration), and System (analytics and audit). The items you see depend on your role and permissions."
+        },
+        {
+          "heading": "Quick Search",
+          "body": "Press Cmd+K (Mac) or Ctrl+K (Windows/Linux) to open the global search. You can search for clients, orders, and services without navigating away from your current page."
+        },
+        {
+          "heading": "Language & Theme",
+          "body": "Use the language switcher in the header to toggle between English and Ukrainian. The theme toggle switches between light and dark mode. Both preferences are saved automatically."
+        }
+      ]
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "description": "Understanding your KPIs, live operations panel, and charts",
+      "sections": [
+        {
+          "heading": "KPI Cards",
+          "body": "The top row shows today's key metrics: revenue, number of orders, average service duration, cancellation rate, active clients, and work post occupancy. Each card compares today's value to the previous period."
+        },
+        {
+          "heading": "Live Operations Panel",
+          "body": "The live panel shows real-time data: orders currently in progress, orders waiting, free work posts, and any overdue orders. This updates automatically via WebSocket."
+        },
+        {
+          "heading": "Revenue Chart",
+          "body": "The revenue chart displays income over a selected date range. You can filter by branch to compare performance across locations."
+        },
+        {
+          "heading": "Branch & Employee Performance",
+          "body": "The branch performance table shows revenue, order count, average check, and load rate per branch. The employee table shows individual performance metrics including orders handled, revenue generated, and cancellation rate."
+        },
+        {
+          "heading": "Alerts",
+          "body": "The alerts section highlights business anomalies: high cancellation rates, revenue drops, or booking declines. Check these regularly to catch issues early."
+        },
+        {
+          "heading": "Online Booking Stats",
+          "body": "See the breakdown of order sources: internal (created by staff), web, widget, and API. This helps you understand how customers are finding you."
+        }
+      ]
+    },
+    "orders": {
+      "title": "Orders",
+      "description": "Creating orders, understanding the status workflow, and using filters",
+      "sections": [
+        {
+          "heading": "Creating an Order",
+          "body": "Click 'Create Order' to start the 5-step wizard: 1) Select or create a client, 2) Select or add a vehicle, 3) Choose services, 4) Pick an available time slot, 5) Review and confirm. The system automatically finds available work posts and assigns an employee."
+        },
+        {
+          "heading": "Order Status Workflow",
+          "body": "Orders follow a strict status flow: Booked (Pending Confirmation) → Booked → In Progress → Completed. An order can also be Cancelled or marked as No Show. Each transition is recorded in the audit log.",
+          "tip": "Only valid transitions are shown. For example, you cannot go from Completed back to In Progress."
+        },
+        {
+          "heading": "Filtering & Sorting",
+          "body": "Use the filters panel to narrow orders by status, branch, date range, or search text. Click column headers to sort. Use the page size selector at the bottom to show 10, 20, 50, or 100 orders per page."
+        },
+        {
+          "heading": "Table vs Card View",
+          "body": "Toggle between table and card view using the icons next to the Create Order button. Card view is useful on smaller screens or when you prefer a visual overview."
+        },
+        {
+          "heading": "Order Details",
+          "body": "Click any order row to see its full details: client and vehicle info, selected services with prices, status history, and payment records. You can change the order status or delete/restore it from this page."
+        },
+        {
+          "heading": "Payments",
+          "body": "Record payments from the order detail page. Supported methods: Cash, Card, Online, Other. Each payment includes the amount and method. The system tracks payment status (Pending, Paid, Partially Paid, Refunded, Failed)."
+        }
+      ]
+    },
+    "clients": {
+      "title": "Clients",
+      "description": "Managing clients, search, and the merge feature",
+      "sections": [
+        {
+          "heading": "Client List",
+          "body": "The clients page shows all your customers with their name, phone, email, and the number of vehicles and orders. Use the search bar to filter by name or phone number."
+        },
+        {
+          "heading": "Creating a Client",
+          "body": "Click 'Add Client' to create a new customer record. First name, last name, and phone are required. Email is optional. Phone numbers must be unique within your tenant."
+        },
+        {
+          "heading": "Client Details",
+          "body": "Click a client row to view their full profile. You can edit their information inline, see all their vehicles, and view a quick info sidebar with stats like total orders and last visit."
+        },
+        {
+          "heading": "Merging Clients",
+          "body": "If duplicate client records exist, use the merge feature to combine them. Select the primary record (the one to keep) and the secondary (the one to merge into it). All orders, vehicles, and history from the secondary are transferred to the primary.",
+          "tip": "Merging is irreversible. Double-check before confirming."
+        },
+        {
+          "heading": "Deleting & Restoring",
+          "body": "Deleting a client is a soft delete — the record is hidden but not permanently removed. Deleted records can be restored within 30 days. Toggle 'Include deleted' to see soft-deleted clients."
+        }
+      ]
+    },
+    "vehicles": {
+      "title": "Vehicles",
+      "description": "Adding and managing customer vehicles",
+      "sections": [
+        {
+          "heading": "Vehicle List",
+          "body": "The vehicles page shows all registered vehicles with make, model, license plate, year, and the linked client. Each vehicle belongs to exactly one client."
+        },
+        {
+          "heading": "Adding a Vehicle",
+          "body": "Click 'Add Vehicle' and fill in the form. The 'Make' field is required. Model, license plate, color, and year are optional. Use the client dropdown to link the vehicle to an existing client.",
+          "tip": "You can also add vehicles directly from the client detail page."
+        },
+        {
+          "heading": "Deleting & Restoring",
+          "body": "Vehicles support soft delete. Click the trash icon to delete, or the restore icon to bring back a deleted vehicle. Use the 'Include deleted' toggle to see all records."
+        }
+      ]
+    },
+    "services": {
+      "title": "Services",
+      "description": "Configuring the services you offer",
+      "sections": [
+        {
+          "heading": "Service List",
+          "body": "The services page lists all car wash services with name, duration (minutes), price, sort order, and active/inactive status. Services are shown to customers during booking."
+        },
+        {
+          "heading": "Creating a Service",
+          "body": "Click 'Add Service' and provide a name, duration in minutes, and price. The sort order determines the display position — lower numbers appear first."
+        },
+        {
+          "heading": "Editing & Deactivating",
+          "body": "Click any service to edit its details inline. To temporarily hide a service from bookings without deleting it, mark it as inactive. Inactive services are not available in the order creation wizard or public booking."
+        },
+        {
+          "heading": "Price Snapshots",
+          "body": "When a service is added to an order, its current price is captured as a snapshot. Changing a service's price afterward does not affect existing orders — only future ones.",
+          "tip": "This means you can safely update prices without worrying about historical order totals."
+        }
+      ]
+    },
+    "branches": {
+      "title": "Branches",
+      "description": "Setting up branches, work posts, and booking settings",
+      "sections": [
+        {
+          "heading": "Branch List",
+          "body": "Branches represent your physical car wash locations. Each branch has a name, address, and can have multiple work posts (bays). View all branches on the Branches page."
+        },
+        {
+          "heading": "Creating a Branch",
+          "body": "Click 'Add Branch' and enter the name and address. After creation, configure its work posts and booking settings from the branch detail page."
+        },
+        {
+          "heading": "Work Posts",
+          "body": "Work posts (bays) are the physical spots where cars are washed. Each post belongs to a branch. You can create, edit, and remove posts from the Work Posts page or the branch detail page. The number of available posts directly affects scheduling capacity.",
+          "tip": "More posts = more simultaneous orders. The scheduler uses post availability to generate time slots."
+        },
+        {
+          "heading": "Booking Settings",
+          "body": "Each branch has booking settings that control: slot duration, buffer time between appointments, working hours (start/end), working days, and whether online booking is enabled. Access these from the branch detail page."
+        },
+        {
+          "heading": "Online Booking Toggle",
+          "body": "Enable or disable online booking per branch from the booking settings. When enabled, customers can book through the public booking page using the branch's tenant slug."
+        }
+      ]
+    },
+    "users-roles": {
+      "title": "Users & Roles",
+      "description": "Managing staff accounts, roles, and permissions",
+      "sections": [
+        {
+          "heading": "Users",
+          "body": "The Users page lists all staff accounts. Each user has a first name, last name, email, assigned role, and optional branch assignment. Admins can create new users, edit existing ones, and reset passwords."
+        },
+        {
+          "heading": "Creating a User",
+          "body": "Click 'Add User' and fill in the required fields: first name, last name, email, password, role, and optionally a branch. The email must be unique within your tenant."
+        },
+        {
+          "heading": "Password Management",
+          "body": "Administrators can reset any user's password from the Users page by clicking the key icon. Users can change their own password using the key icon in the header (top right). Changing your own password requires entering your current password first."
+        },
+        {
+          "heading": "Roles",
+          "body": "Roles define what a user can do. Each role has a name and a set of permissions. The system comes with 4 default roles: Admin, Manager, Operator, and Receptionist. You can create custom roles from the Roles page."
+        },
+        {
+          "heading": "Permissions",
+          "body": "There are 47 permissions across 14 modules (branches, clients, orders, services, etc.). Each permission follows the pattern 'module.action' (e.g., orders.create, clients.read). Assign permissions to roles from the Role Detail page.",
+          "tip": "Super admins bypass all permission checks. Use this sparingly."
+        },
+        {
+          "heading": "Role Detail Page",
+          "body": "Click a role to view and manage its permissions. The permission assignment UI shows all available permissions grouped by module. Toggle individual permissions on or off."
+        }
+      ]
+    },
+    "workforce": {
+      "title": "Workforce",
+      "description": "Employee profiles, working hours, and capacity management",
+      "sections": [
+        {
+          "heading": "What is Workforce?",
+          "body": "The Workforce module tracks operational employees — who is available to wash cars and when. This is separate from Users & Roles (which control login access). An employee profile links a user to a branch with a working schedule."
+        },
+        {
+          "heading": "Creating a Profile",
+          "body": "Click 'Add Worker' and select a user and branch. Set their working hours (start and end time) and mark them as a worker. Each user can have only one employee profile.",
+          "tip": "Working hours default to the branch's booking settings hours when you select a branch."
+        },
+        {
+          "heading": "Capacity & Scheduling",
+          "body": "The scheduling engine uses employee profiles to calculate capacity. Available slots are limited by the minimum of: free work posts and available workers. If no profiles exist for a branch, it falls back to post-only capacity."
+        },
+        {
+          "heading": "Auto-Assignment",
+          "body": "When creating an order, the system automatically picks the first available employee whose working hours cover the order window and who has no conflicting orders. The assignment happens inside the same database transaction that reserves the time slot."
+        },
+        {
+          "heading": "Activating & Deactivating",
+          "body": "Deactivate an employee profile to temporarily remove them from scheduling without deleting the record. Reactivate later when they return. Deactivated profiles do not count toward capacity."
+        }
+      ]
+    },
+    "analytics": {
+      "title": "Analytics",
+      "description": "Reports, charts, and filtering data",
+      "sections": [
+        {
+          "heading": "Overview",
+          "body": "The Analytics page provides visual reports on your business performance. All charts can be filtered by date range and branch."
+        },
+        {
+          "heading": "Revenue Report",
+          "body": "See revenue trends over time with a line chart. Filter by specific branches or view all locations combined. Use the date picker to adjust the reporting period."
+        },
+        {
+          "heading": "Service Popularity",
+          "body": "A bar chart showing the most popular services by order count. This helps you understand which services drive the most bookings and adjust your offering."
+        },
+        {
+          "heading": "Branch Comparison",
+          "body": "Compare branches side by side: revenue, order count, average check, and load rate. Identify top-performing and underperforming locations."
+        },
+        {
+          "heading": "Date Filters",
+          "body": "Use the date range picker to analyze specific periods. You can compare months, quarters, or custom date ranges. All charts update in real time when you change the filter.",
+          "tip": "The analytics permission (analytics.view) is required to access this page."
+        }
+      ]
+    },
+    "public-booking": {
+      "title": "Public Booking",
+      "description": "How customers book online and how to set it up",
+      "sections": [
+        {
+          "heading": "What is Public Booking?",
+          "body": "Public Booking allows your customers to book car wash appointments online without needing an account. They access a booking page via a unique URL based on your tenant slug."
+        },
+        {
+          "heading": "Setting Up",
+          "body": "To enable public booking: 1) Go to a branch's detail page, 2) Open Booking Settings, 3) Enable 'Allow Online Booking', 4) Configure working hours and slot durations. The public booking URL is: /public/your-tenant-slug.",
+          "tip": "Share the public booking link on your website, social media, or Google Maps listing."
+        },
+        {
+          "heading": "Customer Flow",
+          "body": "Customers go through a 4-step wizard: 1) Select a branch, 2) Choose services, 3) Pick an available time slot, 4) Enter their name and phone number. The booking is created with 'Booked (Pending Confirmation)' status."
+        },
+        {
+          "heading": "Managing Bookings",
+          "body": "Online bookings appear in your Orders list with the source marked as 'WEB'. Staff should confirm or reject pending bookings promptly. The order detail page shows the booking source."
+        },
+        {
+          "heading": "Rate Limiting",
+          "body": "Public booking endpoints are rate-limited to prevent abuse: 10 requests per minute for viewing availability and services, 3 bookings per minute per IP. This is handled automatically by the system."
+        }
+      ]
+    },
+    "flow-client-via-order": {
+      "title": "New Client via Order Wizard",
+      "description": "A customer calls for the first time — register them and book an appointment without leaving the order wizard",
+      "steps": [
+        {
+          "title": "Start a New Order",
+          "where": "Orders → Create Order",
+          "body": "Click 'Create Order' to open the wizard. Select the branch where the client wants to come.",
+          "tip": "This is the fastest way to register a new client — you don't need to go to the Clients or Vehicles pages first."
+        },
+        {
+          "title": "Create the Client Inline",
+          "where": "Create Order → Step 1",
+          "body": "Search by name or phone to make sure the client doesn't already exist. If they're new, click 'Create Client' right inside the wizard. Fill in first name, last name, and phone. The new client is automatically selected.",
+          "tip": "Always search by phone first — a returning client may already be in the system under a different name."
+        },
+        {
+          "title": "Create the Vehicle Inline",
+          "where": "Create Order → Step 2",
+          "body": "Since this is a new client, they have no vehicles yet. Click 'Create Vehicle' to add one inline. Enter the make (required), model, license plate, color, and year. The vehicle is linked to the client and auto-selected."
+        },
+        {
+          "title": "Choose Services",
+          "where": "Create Order → Step 3",
+          "body": "Select the services the client wants. Total price and estimated duration update in real time. You can pick multiple services for the same appointment.",
+          "tip": "If the client is unsure, suggest your most popular service — check Analytics → Service Popularity."
+        },
+        {
+          "title": "Pick a Worker (Optional)",
+          "where": "Create Order → Step 4",
+          "body": "Choose a specific worker or leave 'Any Worker' for automatic assignment. The system will pick the first available employee whose schedule covers the time slot."
+        },
+        {
+          "title": "Pick a Time Slot",
+          "where": "Create Order → Step 5",
+          "body": "Available slots are calculated from work post availability, employee schedules, and total service duration. Select a slot that suits the caller. Taken slots are grayed out."
+        },
+        {
+          "title": "Review & Confirm",
+          "where": "Create Order → Step 6",
+          "body": "Review everything: client, vehicle, services, worker, time, and total price. Click 'Confirm' to create the order. A work post is assigned automatically.",
+          "tip": "After confirmation, the client and vehicle are saved permanently — they'll appear in Clients and Vehicles pages too."
+        },
+        {
+          "title": "Process the Visit",
+          "where": "Orders → Order Detail",
+          "body": "When the client arrives, change status to 'In Progress'. After the wash, change to 'Completed' and record payment (Cash, Card, or Online).",
+          "tip": "If the client doesn't show, mark the order as 'No Show' to keep statistics accurate."
+        }
+      ]
+    },
+    "flow-client-via-tabs": {
+      "title": "New Client via Separate Pages",
+      "description": "Register a client and their vehicle first, then create an order — useful when you want to prepare everything in advance",
+      "steps": [
+        {
+          "title": "Create the Client",
+          "where": "Clients → Add Client",
+          "body": "Go to the Clients page and click 'Add Client'. Fill in first name, last name, and phone number (all required). Email is optional. The phone number must be unique within your tenant.",
+          "tip": "This approach is useful when you want to fill in extra details (email, notes) or register multiple clients at once before creating orders."
+        },
+        {
+          "title": "Open the Client Profile",
+          "where": "Clients → click the new client",
+          "body": "After creation, click on the client row to open their profile. Here you can verify the details, see the quick-info sidebar, and add a vehicle directly from this page."
+        },
+        {
+          "title": "Add a Vehicle",
+          "where": "Vehicles → Add Vehicle (or Client Detail page)",
+          "body": "Go to the Vehicles page and click 'Add Vehicle', or use the 'Add Vehicle' button on the client's detail page. Enter the make (required), model, license plate, color, and year. Link it to the client you just created.",
+          "tip": "Adding from the client detail page auto-links the vehicle to that client — no need to search for them in the dropdown."
+        },
+        {
+          "title": "Start a New Order",
+          "where": "Orders → Create Order",
+          "body": "Now go to Orders and click 'Create Order'. Select the branch. In Step 1, search for the client you created — they'll appear immediately. Select them."
+        },
+        {
+          "title": "Select the Vehicle",
+          "where": "Create Order → Step 2",
+          "body": "The wizard shows all vehicles linked to the selected client. Pick the vehicle you added earlier. No need to create anything — it's already in the system."
+        },
+        {
+          "title": "Choose Services, Worker & Time",
+          "where": "Create Order → Steps 3–5",
+          "body": "Select services, optionally pick a worker, and choose an available time slot. These steps work exactly the same as in the order wizard flow."
+        },
+        {
+          "title": "Review & Confirm",
+          "where": "Create Order → Step 6",
+          "body": "Review all details and click 'Confirm'. The order is created with all the pre-registered client and vehicle data."
+        },
+        {
+          "title": "Process the Visit",
+          "where": "Orders → Order Detail",
+          "body": "When the client arrives, change status to 'In Progress'. After the wash, change to 'Completed' and record payment.",
+          "tip": "Since the client already has a full profile, future orders will be even faster — just search and select."
+        }
+      ]
+    },
+    "flow-online-booking": {
+      "title": "Online Booking Arrives",
+      "description": "A customer books through your public booking page — what staff should do",
+      "steps": [
+        {
+          "title": "Notification Appears",
+          "where": "Dashboard → Live Operations",
+          "body": "When a customer books online, a new order appears in your system with status 'Booked (Pending Confirmation)' and source 'WEB'. You'll see it in the Live Operations panel on the Dashboard."
+        },
+        {
+          "title": "Review the Booking",
+          "where": "Orders → click the new order",
+          "body": "Open the order to review the details: client name, phone, selected services, and requested time slot. Check that the time slot is still feasible and services are available."
+        },
+        {
+          "title": "Confirm or Reject",
+          "where": "Order Detail → Status",
+          "body": "If everything looks good, change the status from 'Booked (Pending Confirmation)' to 'Booked'. If there's an issue (e.g. staff shortage), change to 'Cancelled' and contact the customer.",
+          "tip": "Respond quickly — customers expect fast confirmation. Aim for under 15 minutes during business hours."
+        },
+        {
+          "title": "Check the Client Record",
+          "where": "Order Detail → Client info",
+          "body": "Online bookings auto-create client records. Click the client name to review their profile. If this is a repeat customer who booked with different info, consider using the merge feature on the Clients page."
+        },
+        {
+          "title": "Day of the Appointment",
+          "where": "Orders → Order Detail",
+          "body": "When the customer arrives, change the status to 'In Progress'. Process the wash as usual — the assigned employee and work post are shown on the order. When done, mark 'Completed' and record payment."
+        }
+      ]
+    },
+    "flow-new-employee": {
+      "title": "Onboard a New Employee",
+      "description": "A new staff member joins — set up their account and work profile",
+      "steps": [
+        {
+          "title": "Create a User Account",
+          "where": "Users → Add User",
+          "body": "Click 'Add User' and fill in: first name, last name, email, and a temporary password. Select the appropriate role (Operator for washers, Receptionist for front desk, Manager for supervisors). Assign them to their branch.",
+          "tip": "Tell the new employee to change their password after first login using the key icon in the header."
+        },
+        {
+          "title": "Verify Role Permissions",
+          "where": "Roles → click the assigned role",
+          "body": "Open the role assigned to the new employee and verify it has the correct permissions. Operators typically need: orders.read, orders.update, clients.read. Receptionists also need: orders.create, clients.create, vehicles.create."
+        },
+        {
+          "title": "Create a Workforce Profile",
+          "where": "Workforce → Add Worker",
+          "body": "Go to the Workforce page and click 'Add Worker'. Select the new user and their branch. Set their working hours (start and end time). Toggle 'Is Worker' on if they will be performing washes.",
+          "tip": "Working hours auto-fill from the branch's booking settings. Adjust only if this employee has a different schedule."
+        },
+        {
+          "title": "Verify Scheduling",
+          "where": "Orders → Create Order → Step 4",
+          "body": "Create a test by going to the order wizard Step 4 (time slots) for the employee's branch. You should see that the available capacity has increased — the new employee adds one more concurrent slot."
+        },
+        {
+          "title": "Brief the Employee",
+          "body": "Share these key points: how to log in (Tenant ID + email + password), how to view their assigned orders, how to change order status (Booked → In Progress → Completed), and how to change their password."
+        }
+      ]
+    },
+    "flow-branch-setup": {
+      "title": "Set Up a New Branch",
+      "description": "Opening a new location — complete setup from branch to first booking",
+      "steps": [
+        {
+          "title": "Create the Branch",
+          "where": "Branches → Add Branch",
+          "body": "Click 'Add Branch' and enter the location name and address. This creates the branch record that everything else will attach to."
+        },
+        {
+          "title": "Add Work Posts",
+          "where": "Branch Detail → Work Posts OR Work Posts page",
+          "body": "Each work post is a physical bay where a car can be washed. Go to the Work Posts page, select your new branch, and create posts. Name them clearly (e.g. 'Bay 1', 'Bay 2'). The number of posts determines how many cars you can wash simultaneously.",
+          "tip": "Start with the actual number of bays. You can always add more later."
+        },
+        {
+          "title": "Configure Booking Settings",
+          "where": "Branch Detail → Booking Settings",
+          "body": "Set up: working hours (e.g. 08:00–19:00), working days (uncheck Sunday if closed), default slot duration, buffer time between appointments, and whether to allow online booking."
+        },
+        {
+          "title": "Add Services",
+          "where": "Services page",
+          "body": "If you haven't already, add the services this branch offers. Services are shared across all branches. Set the name, duration, price, and sort order for each."
+        },
+        {
+          "title": "Create Staff Accounts",
+          "where": "Users → Add User",
+          "body": "Create user accounts for all staff at this branch. Assign each to the new branch and the appropriate role (Manager, Operator, Receptionist). See the 'Onboard a New Employee' flow for details."
+        },
+        {
+          "title": "Set Up Workforce Profiles",
+          "where": "Workforce → Add Worker",
+          "body": "For each staff member who will wash cars, create a workforce profile. Link them to the new branch and set their working hours. This enables the scheduling engine to calculate capacity correctly."
+        },
+        {
+          "title": "Enable Online Booking (Optional)",
+          "where": "Branch Detail → Booking Settings",
+          "body": "If you want customers to book online, toggle 'Allow Online Booking' in the branch's booking settings. Share the public booking URL (/public/your-tenant-slug) on your website and social media.",
+          "tip": "Test the public booking page yourself before sharing it publicly. Go through the full wizard as a customer would."
+        },
+        {
+          "title": "Test with a Trial Order",
+          "where": "Orders → Create Order",
+          "body": "Create a test order to verify everything works: the branch appears in the list, services are selectable, time slots show the correct hours and capacity, and an employee is auto-assigned. Delete the test order afterward."
+        }
+      ]
+    }
+  }
+}

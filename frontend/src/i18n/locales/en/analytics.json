@@ -1,0 +1,11 @@
+{
+  "allBranches": "All branches",
+  "totalRevenue": "Total Revenue",
+  "totalOrders": "Total Orders",
+  "activeClients": "Active Clients",
+  "completionRate": "Completion Rate",
+  "revenueOverTime": "Revenue Over Time",
+  "popularServices": "Popular Services",
+  "dateFrom": "Date From",
+  "dateTo": "Date To"
+}

@@ -1,0 +1,22 @@
+{
+  "dashboard": "Панель",
+  "orders": "Замовлення",
+  "clients": "Клієнти",
+  "vehicles": "Транспорт",
+  "services": "Послуги",
+  "branches": "Філіали",
+  "workPosts": "Пости",
+  "users": "Користувачі",
+  "roles": "Ролі",
+  "workforce": "Персонал",
+  "analytics": "Аналітика",
+  "audit": "Журнал аудиту",
+  "howTo": "Як користуватися",
+  "settings": "Налаштування",
+  "sections": {
+    "main": "Головне",
+    "management": "Управління",
+    "system": "Система",
+    "help": "Довідка"
+  }
+}

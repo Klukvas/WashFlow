@@ -1,0 +1,11 @@
+{
+  "date": "Date",
+  "action": "Action",
+  "entity": "Entity",
+  "entityId": "Entity ID",
+  "performedBy": "Performed By",
+  "filterAction": "-- Action --",
+  "filterEntityType": "Entity type...",
+  "dateFrom": "Date From",
+  "dateTo": "Date To"
+}

@@ -1,0 +1,55 @@
+{
+  "title": "Branches",
+  "createBranch": "Create Branch",
+  "editBranch": "Edit Branch",
+  "emptyList": "No branches found",
+  "details": "Details",
+  "summary": "Summary",
+  "workPosts": "Work Posts",
+  "workPostCount": "Work Posts",
+  "emptyWorkPosts": "No work posts",
+  "bookingSettings": "Booking Settings",
+  "editBookingSettings": "Edit Booking Settings",
+  "usingDefaults": "Defaults",
+  "fields": {
+    "name": "Name",
+    "address": "Address",
+    "phone": "Phone",
+    "status": "Status"
+  },
+  "placeholders": {
+    "name": "Branch name",
+    "address": "Branch address",
+    "phone": "Phone number"
+  },
+  "bookingFields": {
+    "workingHoursStart": "Working Hours Start",
+    "workingHoursEnd": "Working Hours End",
+    "workingDays": "Working Days",
+    "slotDurationMinutes": "Slot Duration (min)",
+    "bufferTimeMinutes": "Buffer Time (min)",
+    "maxAdvanceBookingDays": "Max Advance Booking (days)",
+    "allowOnlineBooking": "Online Booking"
+  },
+  "days": {
+    "mon": "Mon",
+    "tue": "Tue",
+    "wed": "Wed",
+    "thu": "Thu",
+    "fri": "Fri",
+    "sat": "Sat",
+    "sun": "Sun"
+  },
+  "validation": {
+    "required": "This field is required",
+    "maxLength": "Value is too long",
+    "invalidTime": "Invalid time format (HH:MM)",
+    "min5": "Minimum 5 minutes",
+    "max480": "Maximum 480 minutes",
+    "min0": "Minimum 0 minutes",
+    "max120": "Maximum 120 minutes",
+    "min1": "Minimum 1 day",
+    "max365": "Maximum 365 days",
+    "atLeastOneDay": "Select at least one day"
+  }
+}

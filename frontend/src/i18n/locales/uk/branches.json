@@ -1,0 +1,55 @@
+{
+  "title": "Філіали",
+  "createBranch": "Створити філіал",
+  "editBranch": "Редагувати філіал",
+  "emptyList": "Філіали не знайдено",
+  "details": "Деталі",
+  "summary": "Підсумок",
+  "workPosts": "Пости",
+  "workPostCount": "Кількість постів",
+  "emptyWorkPosts": "Немає постів",
+  "bookingSettings": "Налаштування бронювання",
+  "editBookingSettings": "Редагувати налаштування",
+  "usingDefaults": "За замовчуванням",
+  "fields": {
+    "name": "Назва",
+    "address": "Адреса",
+    "phone": "Телефон",
+    "status": "Статус"
+  },
+  "placeholders": {
+    "name": "Назва філіалу",
+    "address": "Адреса філіалу",
+    "phone": "Номер телефону"
+  },
+  "bookingFields": {
+    "workingHoursStart": "Початок робочого дня",
+    "workingHoursEnd": "Кінець робочого дня",
+    "workingDays": "Робочі дні",
+    "slotDurationMinutes": "Тривалість слоту (хв)",
+    "bufferTimeMinutes": "Буферний час (хв)",
+    "maxAdvanceBookingDays": "Макс. днів наперед",
+    "allowOnlineBooking": "Онлайн бронювання"
+  },
+  "days": {
+    "mon": "Пн",
+    "tue": "Вт",
+    "wed": "Ср",
+    "thu": "Чт",
+    "fri": "Пт",
+    "sat": "Сб",
+    "sun": "Нд"
+  },
+  "validation": {
+    "required": "Це поле обов'язкове",
+    "maxLength": "Значення занадто довге",
+    "invalidTime": "Невірний формат часу (ГГ:ХХ)",
+    "min5": "Мінімум 5 хвилин",
+    "max480": "Максимум 480 хвилин",
+    "min0": "Мінімум 0 хвилин",
+    "max120": "Максимум 120 хвилин",
+    "min1": "Мінімум 1 день",
+    "max365": "Максимум 365 днів",
+    "atLeastOneDay": "Оберіть хоча б один день"
+  }
+}

@@ -1,0 +1,203 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { WorkPostsService } from './work-posts.service';
+import { WorkPostsRepository } from './work-posts.repository';
+
+describe('WorkPostsService', () => {
+  let service: WorkPostsService;
+  let repo: Record<string, jest.Mock>;
+
+  const tenantId = 'tenant-1';
+  const branchId = 'branch-1';
+  const otherBranchId = 'branch-2';
+  const workPostId = 'work-post-1';
+
+  const mockWorkPost = {
+    id: workPostId,
+    tenantId,
+    branchId,
+    name: 'Post A',
+  };
+
+  beforeEach(async () => {
+    repo = {
+      findByBranch: jest.fn().mockResolvedValue([mockWorkPost]),
+      findById: jest.fn().mockResolvedValue(mockWorkPost),
+      create: jest.fn().mockResolvedValue(mockWorkPost),
+      update: jest.fn().mockResolvedValue(mockWorkPost),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        WorkPostsService,
+        { provide: WorkPostsRepository, useValue: repo },
+      ],
+    }).compile();
+
+    service = module.get<WorkPostsService>(WorkPostsService);
+  });
+
+  describe('findByBranch', () => {
+    it('should return work posts for a branch', async () => {
+      const result = await service.findByBranch(tenantId, branchId);
+      expect(result).toEqual([mockWorkPost]);
+    });
+
+    it('should pass tenantId and branchId to the repository', async () => {
+      await service.findByBranch(tenantId, branchId);
+      expect(repo.findByBranch).toHaveBeenCalledWith(tenantId, branchId, null);
+    });
+
+    it('should pass userBranchId to the repository when provided', async () => {
+      await service.findByBranch(tenantId, branchId, branchId);
+      expect(repo.findByBranch).toHaveBeenCalledWith(
+        tenantId,
+        branchId,
+        branchId,
+      );
+    });
+
+    it('should default userBranchId to null when not provided', async () => {
+      await service.findByBranch(tenantId, branchId);
+      expect(repo.findByBranch).toHaveBeenCalledWith(tenantId, branchId, null);
+    });
+
+    it('should return an empty array when repository returns none', async () => {
+      repo.findByBranch.mockResolvedValue([]);
+      const result = await service.findByBranch(tenantId, branchId);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('findById', () => {
+    it('should return the work post when found', async () => {
+      const result = await service.findById(tenantId, workPostId);
+      expect(result).toEqual(mockWorkPost);
+    });
+
+    it('should pass tenantId, id, and userBranchId to the repository', async () => {
+      await service.findById(tenantId, workPostId, branchId);
+      expect(repo.findById).toHaveBeenCalledWith(tenantId, workPostId, branchId);
+    });
+
+    it('should default userBranchId to null when not provided', async () => {
+      await service.findById(tenantId, workPostId);
+      expect(repo.findById).toHaveBeenCalledWith(tenantId, workPostId, null);
+    });
+
+    it('should throw NotFoundException when work post is not found', async () => {
+      repo.findById.mockResolvedValue(null);
+      await expect(service.findById(tenantId, workPostId)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw NotFoundException with correct message', async () => {
+      repo.findById.mockResolvedValue(null);
+      await expect(service.findById(tenantId, workPostId)).rejects.toThrow(
+        'Work post not found',
+      );
+    });
+  });
+
+  describe('create', () => {
+    const createDto = { name: 'Post A', branchId };
+
+    it('should create and return a work post when userBranchId is null', async () => {
+      const result = await service.create(tenantId, createDto, null);
+      expect(repo.create).toHaveBeenCalledWith(tenantId, {
+        name: createDto.name,
+        branchId: createDto.branchId,
+      });
+      expect(result).toEqual(mockWorkPost);
+    });
+
+    it('should create work post when userBranchId matches dto.branchId', async () => {
+      const result = await service.create(tenantId, createDto, branchId);
+      expect(repo.create).toHaveBeenCalledWith(tenantId, {
+        name: createDto.name,
+        branchId: createDto.branchId,
+      });
+      expect(result).toEqual(mockWorkPost);
+    });
+
+    it('should default userBranchId to null and allow creation', async () => {
+      await service.create(tenantId, createDto);
+      expect(repo.create).toHaveBeenCalledWith(tenantId, {
+        name: createDto.name,
+        branchId: createDto.branchId,
+      });
+    });
+
+    it('should throw BadRequestException when userBranchId does not match dto.branchId', async () => {
+      await expect(
+        service.create(tenantId, createDto, otherBranchId),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException with correct message when branch mismatch', async () => {
+      await expect(
+        service.create(tenantId, createDto, otherBranchId),
+      ).rejects.toThrow('Cannot create work posts for a different branch');
+    });
+
+    it('should not call repository when branch validation fails', async () => {
+      await service
+        .create(tenantId, createDto, otherBranchId)
+        .catch(() => undefined);
+      expect(repo.create).not.toHaveBeenCalled();
+    });
+
+    it('should pass only name and branchId to the repository', async () => {
+      await service.create(tenantId, { ...createDto, extra: 'field' } as any);
+      expect(repo.create).toHaveBeenCalledWith(tenantId, {
+        name: createDto.name,
+        branchId: createDto.branchId,
+      });
+    });
+  });
+
+  describe('update', () => {
+    const updateDto = { name: 'Post B' };
+
+    it('should find then update the work post', async () => {
+      const result = await service.update(tenantId, workPostId, updateDto);
+      expect(repo.findById).toHaveBeenCalledWith(tenantId, workPostId, null);
+      expect(repo.update).toHaveBeenCalledWith(tenantId, workPostId, {
+        ...updateDto,
+      });
+      expect(result).toEqual(mockWorkPost);
+    });
+
+    it('should pass userBranchId to findById when provided', async () => {
+      await service.update(tenantId, workPostId, updateDto, branchId);
+      expect(repo.findById).toHaveBeenCalledWith(tenantId, workPostId, branchId);
+    });
+
+    it('should default userBranchId to null in findById', async () => {
+      await service.update(tenantId, workPostId, updateDto);
+      expect(repo.findById).toHaveBeenCalledWith(tenantId, workPostId, null);
+    });
+
+    it('should throw NotFoundException when work post does not exist', async () => {
+      repo.findById.mockResolvedValue(null);
+      await expect(
+        service.update(tenantId, workPostId, updateDto),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should not call repository update when work post is not found', async () => {
+      repo.findById.mockResolvedValue(null);
+      await service
+        .update(tenantId, workPostId, updateDto)
+        .catch(() => undefined);
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it('should spread dto fields into the repository update call', async () => {
+      const dto = { name: 'Post C' };
+      await service.update(tenantId, workPostId, dto);
+      expect(repo.update).toHaveBeenCalledWith(tenantId, workPostId, { ...dto });
+    });
+  });
+});

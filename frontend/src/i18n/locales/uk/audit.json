@@ -1,0 +1,11 @@
+{
+  "date": "Дата",
+  "action": "Дія",
+  "entity": "Сутність",
+  "entityId": "ID сутності",
+  "performedBy": "Виконавець",
+  "filterAction": "-- Дія --",
+  "filterEntityType": "Тип сутності...",
+  "dateFrom": "Дата від",
+  "dateTo": "Дата до"
+}

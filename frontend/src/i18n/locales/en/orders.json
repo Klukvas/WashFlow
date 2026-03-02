@@ -1,0 +1,66 @@
+{
+  "title": "Orders",
+  "createOrder": "Create Order",
+  "orderDetail": "Order Details",
+  "status": {
+    "BOOKED": "Booked",
+    "BOOKED_PENDING_CONFIRMATION": "Pending Confirmation",
+    "IN_PROGRESS": "In Progress",
+    "COMPLETED": "Completed",
+    "CANCELLED": "Cancelled",
+    "NO_SHOW": "No Show"
+  },
+  "source": {
+    "INTERNAL": "Internal",
+    "WEB": "Web",
+    "WIDGET": "Widget",
+    "API": "API"
+  },
+  "fields": {
+    "client": "Client",
+    "vehicle": "Vehicle",
+    "branch": "Branch",
+    "workPost": "Work Post",
+    "assignedWorker": "Worker",
+    "services": "Services",
+    "scheduledStart": "Scheduled Start",
+    "scheduledEnd": "Scheduled End",
+    "totalPrice": "Total Price",
+    "notes": "Notes",
+    "status": "Status",
+    "source": "Source",
+    "createdAt": "Created"
+  },
+  "filters": {
+    "status": "Status",
+    "branch": "Branch",
+    "dateFrom": "Date From",
+    "dateTo": "Date To"
+  },
+  "creation": {
+    "selectClient": "Select Client",
+    "selectVehicle": "Select Vehicle",
+    "selectServices": "Select Services",
+    "selectWorker": "Select Worker",
+    "selectSlot": "Select Time Slot",
+    "review": "Review & Confirm",
+    "searchClient": "Search client by name or phone...",
+    "searchVehicle": "Search vehicle by plate...",
+    "totalDuration": "Total Duration",
+    "totalAmount": "Total Amount",
+    "availableSlots": "Available Slots",
+    "noSlots": "No available slots for this date",
+    "anyWorkPost": "Any",
+    "anyWorker": "Any (auto-assign)",
+    "confirmBooking": "Confirm Booking",
+    "success": "Order created successfully"
+  },
+  "statusChange": {
+    "confirm": "Confirm",
+    "start": "Start",
+    "complete": "Complete",
+    "cancelOrder": "Cancel",
+    "noShow": "No Show",
+    "cancellationReason": "Cancellation reason"
+  }
+}

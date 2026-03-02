@@ -1,0 +1,13 @@
+{
+  "title": "Vehicles",
+  "addVehicle": "Add Vehicle",
+  "makeModel": "Make / Model",
+  "licensePlate": "License Plate",
+  "year": "Year",
+  "client": "Client",
+  "status": "Status",
+  "make": "Make",
+  "makeRequired": "Make *",
+  "model": "Model",
+  "color": "Color"
+}

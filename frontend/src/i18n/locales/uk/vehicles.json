@@ -1,0 +1,13 @@
+{
+  "title": "Автомобілі",
+  "addVehicle": "Додати автомобіль",
+  "makeModel": "Марка / Модель",
+  "licensePlate": "Держномер",
+  "year": "Рік",
+  "client": "Клієнт",
+  "status": "Статус",
+  "make": "Марка",
+  "makeRequired": "Марка *",
+  "model": "Модель",
+  "color": "Колір"
+}

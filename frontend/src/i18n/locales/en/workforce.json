@@ -1,0 +1,21 @@
+{
+  "title": "Workforce",
+  "description": "Manage operational employees and their working hours",
+  "addWorker": "Add Worker",
+  "editWorker": "Edit Worker",
+  "noProfiles": "No employee profiles yet.",
+  "name": "Name",
+  "email": "Email",
+  "branch": "Branch",
+  "hours": "Hours",
+  "status": "Status",
+  "user": "User",
+  "searchByNameOrEmail": "Search by name or email\u2026",
+  "selectBranch": "Select branch\u2026",
+  "startTime": "Start Time",
+  "endTime": "End Time",
+  "isWorkerLabel": "Operational worker (counts toward capacity)",
+  "deactivateTitle": "Deactivate worker",
+  "deactivateMessage": "Deactivate {{name}}? They will no longer count toward shift capacity.",
+  "deactivateConfirm": "Deactivate"
+}

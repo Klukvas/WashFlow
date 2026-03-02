@@ -1,0 +1,111 @@
+{
+  "actions": {
+    "create": "Create",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "restore": "Restore",
+    "search": "Search",
+    "filter": "Filter",
+    "reset": "Reset",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "close": "Close",
+    "refresh": "Refresh",
+    "export": "Export",
+    "quickActions": "Quick Actions",
+    "viewOrders": "View Orders"
+  },
+  "fields": {
+    "name": "Name",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "email": "Email",
+    "phone": "Phone",
+    "password": "Password",
+    "passwordOptional": "leave empty to keep current",
+    "role": "Role",
+    "branch": "Branch",
+    "selectBranch": "Select branch",
+    "selectRole": "Select role",
+    "vehicles": "Vehicles",
+    "make": "Make",
+    "model": "Model",
+    "licensePlate": "License Plate",
+    "color": "Color",
+    "year": "Year",
+    "createdAt": "Created",
+    "updatedAt": "Updated",
+    "details": "Details",
+    "notes": "Notes",
+    "quickInfo": "Quick Info"
+  },
+  "pages": {
+    "users": "Users",
+    "clients": "Clients"
+  },
+  "confirm": {
+    "deleteTitle": "Delete",
+    "deleteMessage": "Are you sure you want to delete {{name}}?",
+    "restoreTitle": "Restore",
+    "restoreMessage": "Are you sure you want to restore {{name}}?"
+  },
+  "validation": {
+    "required": "This field is required",
+    "invalidPhone": "Invalid phone number",
+    "invalidEmail": "Invalid email address",
+    "maxLength": "Value is too long"
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "deleted": "Deleted",
+    "loading": "Loading...",
+    "noResults": "No results found",
+    "error": "Something went wrong"
+  },
+  "pagination": {
+    "page": "Page",
+    "of": "of",
+    "showing": "Showing",
+    "to": "to",
+    "entries": "entries",
+    "perPage": "per page"
+  },
+  "softDelete": {
+    "showDeleted": "Show deleted",
+    "deletedBadge": "Deleted",
+    "confirmDelete": "Are you sure you want to delete this item?",
+    "confirmRestore": "Are you sure you want to restore this item?",
+    "deleteSuccess": "Item deleted successfully",
+    "restoreSuccess": "Item restored successfully"
+  },
+  "errors": {
+    "unauthorized": "You are not authorized",
+    "forbidden": "Access denied",
+    "notFound": "Not found",
+    "conflict": "This record already exists",
+    "serverError": "Server error. Please try again later.",
+    "networkError": "Network error. Check your connection.",
+    "validationError": "Please check the form for errors"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "language": {
+    "en": "English",
+    "uk": "Ukrainian",
+    "switch": "Switch language"
+  },
+  "search": {
+    "placeholder": "Search... (⌘K)",
+    "clients": "Clients",
+    "orders": "Orders",
+    "services": "Services"
+  }
+}

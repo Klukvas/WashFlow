@@ -1,0 +1,63 @@
+{
+  "title": "Дашборд",
+  "kpi": {
+    "revenueToday": "Виручка сьогодні",
+    "ordersToday": "Замовлень сьогодні",
+    "avgOrderDuration": "Сер. тривалість",
+    "avgOrderDurationUnit": "хв",
+    "cancelRateToday": "Відсоток скасувань",
+    "activeClientsToday": "Активних клієнтів",
+    "occupancyRate": "Завантаженість"
+  },
+  "live": {
+    "title": "Поточні операції",
+    "inProgress": "В роботі",
+    "waiting": "Очікують",
+    "freeWorkPosts": "Вільних постів",
+    "overdue": "Прострочено"
+  },
+  "branches": {
+    "title": "Результати філій",
+    "name": "Філія",
+    "revenue": "Виручка",
+    "orders": "Замовлення",
+    "avgCheck": "Сер. чек",
+    "loadRate": "Завантаженість"
+  },
+  "employees": {
+    "title": "Результати співробітників",
+    "name": "Співробітник",
+    "branch": "Філія",
+    "orders": "Замовлення",
+    "revenue": "Виручка",
+    "cancelRate": "Відсоток скасувань"
+  },
+  "alerts": {
+    "title": "Сповіщення",
+    "noAlerts": "Активних сповіщень немає",
+    "severity": {
+      "LOW": "Низький",
+      "MEDIUM": "Середній",
+      "HIGH": "Високий",
+      "CRITICAL": "Критичний"
+    },
+    "highCancelRate": "Високий відсоток скасувань: {{rate}}% сьогодні",
+    "revenueDrop": "Виручка впала на {{pct}}% порівняно з попереднім періодом",
+    "idleWorkPost": "{{count}} пост(ів) простоює протягом останніх 2 годин",
+    "bookingDecline": "Кількість бронювань знизилась на {{pct}}% порівняно з минулим тижнем"
+  },
+  "onlineBooking": {
+    "title": "Статистика онлайн-бронювань",
+    "onlineRate": "Частка онлайн",
+    "total": "Всього замовлень",
+    "sources": {
+      "INTERNAL": "Внутрішнє",
+      "WEB": "Веб",
+      "WIDGET": "Віджет",
+      "API": "API"
+    }
+  },
+  "revenue": {
+    "title": "Огляд виручки"
+  }
+}

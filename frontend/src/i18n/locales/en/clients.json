@@ -1,0 +1,21 @@
+{
+  "merge": {
+    "title": "Merge Clients",
+    "searchSource": "Search for duplicate client...",
+    "selectSource": "Select client to merge from",
+    "compareFields": "Compare & Pick Fields",
+    "target": "Keep (Target)",
+    "source": "Merge From (Source)",
+    "fieldPicker": "Choose which value to keep for each field",
+    "vehicles": "Vehicles",
+    "duplicateVehicle": "Duplicate — will be merged",
+    "confirmTitle": "Confirm Merge",
+    "confirmMessage": "This will merge all data from {{source}} into {{target}}. The source client will be soft-deleted. This action cannot be easily undone.",
+    "mergeButton": "Merge Clients",
+    "mergeSelected": "Merge Selected",
+    "mergeWith": "Merge with...",
+    "success": "Clients merged successfully",
+    "swap": "Swap",
+    "step": "Step {{current}} of {{total}}"
+  }
+}

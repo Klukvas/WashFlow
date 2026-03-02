@@ -1,0 +1,126 @@
+import axios, {
+  type AxiosError,
+  type AxiosRequestConfig,
+  type InternalAxiosRequestConfig,
+} from 'axios';
+import { useAuthStore } from '@/shared/stores/auth.store';
+import type { ApiError, PaginatedApiResponse, PaginatedResponse } from '@/shared/types/api';
+
+export const apiClient = axios.create({
+  baseURL: '/api/v1',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
+}> = [];
+
+function processQueue(error: unknown, token: string | null) {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error);
+    } else {
+      resolve(token!);
+    }
+  });
+  failedQueue = [];
+}
+
+apiClient.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    const { accessToken } = useAuthStore.getState();
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError<ApiError>) => {
+    const originalRequest = error.config as AxiosRequestConfig & {
+      _retry?: boolean;
+    };
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({
+            resolve: (token: string) => {
+              originalRequest.headers = {
+                ...originalRequest.headers,
+                Authorization: `Bearer ${token}`,
+              };
+              resolve(apiClient(originalRequest));
+            },
+            reject,
+          });
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const { refreshToken } = useAuthStore.getState();
+        if (!refreshToken) {
+          throw new Error('No refresh token');
+        }
+
+        const { data } = await axios.post('/api/v1/auth/refresh', {
+          refreshToken,
+        });
+
+        const { accessToken: newAccessToken, refreshToken: newRefreshToken, user } =
+          data.data;
+        useAuthStore.getState().setAuth(newAccessToken, newRefreshToken, user);
+
+        processQueue(null, newAccessToken);
+
+        originalRequest.headers = {
+          ...originalRequest.headers,
+          Authorization: `Bearer ${newAccessToken}`,
+        };
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        useAuthStore.getState().logout();
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    return Promise.reject(error);
+  },
+);
+
+export function withIdempotencyKey(config?: AxiosRequestConfig): AxiosRequestConfig {
+  return {
+    ...config,
+    headers: {
+      ...config?.headers,
+      'idempotency-key': crypto.randomUUID(),
+    },
+  };
+}
+
+/** Convert the flat backend paginated response into the frontend PaginatedResponse shape. */
+export function toPaginated<T>(resp: PaginatedApiResponse<T>): PaginatedResponse<T> {
+  return {
+    items: resp.data,
+    meta: {
+      total: resp.meta.total,
+      page: resp.meta.page,
+      limit: resp.meta.limit,
+      totalPages: resp.meta.totalPages,
+    },
+  };
+}

@@ -1,0 +1,24 @@
+{
+  "title": "Services",
+  "description": "Manage carwash services, pricing, and durations",
+  "createService": "Add Service",
+  "editService": "Edit Service",
+  "deleteTitle": "Delete Service",
+  "deleteMessage": "Are you sure you want to delete \"{{name}}\"? This action can be undone later.",
+  "emptyState": "No services found. Create your first service to get started.",
+  "fields": {
+    "name": "Name",
+    "description": "Description",
+    "duration": "Duration",
+    "price": "Price",
+    "isActive": "Active",
+    "sortOrder": "Sort Order",
+    "status": "Status"
+  },
+  "placeholders": {
+    "name": "e.g. Full Wash",
+    "description": "Optional description",
+    "duration": "Minutes",
+    "price": "0.00"
+  }
+}

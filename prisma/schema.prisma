@@ -1,0 +1,397 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── ENUMS ──────────────────────────────────────────────
+
+enum OrderStatus {
+  BOOKED
+  BOOKED_PENDING_CONFIRMATION
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum OrderSource {
+  INTERNAL
+  WEB
+  WIDGET
+  API
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  PARTIALLY_PAID
+  REFUNDED
+  FAILED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  ONLINE
+  OTHER
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  STATUS_CHANGE
+  MERGE
+}
+
+// ─── MODELS ─────────────────────────────────────────────
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  settings  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branches         Branch[]
+  users            User[]
+  roles            Role[]
+  clients          Client[]
+  vehicles         Vehicle[]
+  services         Service[]
+  workPosts        WorkPost[]
+  orders           Order[]
+  payments         Payment[]
+  auditLogs        AuditLog[]
+  bookingSettings  BookingSettings[]
+  employeeProfiles EmployeeProfile[]
+
+  @@map("tenants")
+}
+
+model BookingSettings {
+  id                    String  @id @default(uuid())
+  tenantId              String
+  tenant                Tenant  @relation(fields: [tenantId], references: [id])
+  branchId              String?
+  branch                Branch? @relation(fields: [branchId], references: [id])
+  slotDurationMinutes   Int     @default(30)
+  bufferTimeMinutes     Int     @default(10)
+  maxAdvanceBookingDays Int     @default(30)
+  allowOnlineBooking    Boolean @default(true)
+  workingHoursStart     String  @default("08:00")
+  workingHoursEnd       String  @default("20:00")
+  workingDays           Int[]   @default([1, 2, 3, 4, 5, 6])
+
+  @@unique([tenantId, branchId])
+  @@map("booking_settings")
+}
+
+model Branch {
+  id        String    @id @default(uuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  name      String
+  address   String?
+  phone     String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  workPosts        WorkPost[]
+  orders           Order[]
+  users            User[]
+  bookingSettings  BookingSettings[]
+  employeeProfiles EmployeeProfile[]
+
+  @@index([tenantId])
+  @@map("branches")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  tenantId     String
+  tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  branchId     String?
+  branch       Branch?   @relation(fields: [branchId], references: [id])
+  email        String
+  passwordHash String
+  firstName    String
+  lastName     String
+  phone        String?
+  isActive     Boolean   @default(true)
+  isSuperAdmin Boolean   @default(false)
+  roleId       String?
+  role         Role?     @relation(fields: [roleId], references: [id])
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  auditLogs       AuditLog[]
+  orders          Order[]    @relation("OrderCreatedBy")
+  employeeProfile EmployeeProfile?
+
+  @@index([tenantId, email])
+  @@index([tenantId])
+  @@index([tenantId, branchId])
+  @@map("users")
+}
+
+model Role {
+  id          String    @id @default(uuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  permissions RolePermission[]
+  users       User[]
+
+  @@index([tenantId, name])
+  @@index([tenantId])
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  module      String
+  action      String
+  description String?
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+
+  @@unique([module, action])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  roleId       String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model Client {
+  id        String    @id @default(uuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  firstName String
+  lastName  String?
+  phone     String?
+  email     String?
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  vehicles Vehicle[]
+  orders   Order[]
+
+  @@index([tenantId, phone])
+  @@index([tenantId])
+  @@map("clients")
+}
+
+model Vehicle {
+  id           String    @id @default(uuid())
+  tenantId     String
+  tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  clientId     String
+  client       Client    @relation(fields: [clientId], references: [id])
+  licensePlate String?
+  make         String
+  model        String?
+  color        String?
+  year         Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  orders Order[]
+
+  @@index([tenantId, licensePlate])
+  @@index([tenantId])
+  @@index([tenantId, clientId])
+  @@map("vehicles")
+}
+
+model Service {
+  id          String    @id @default(uuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  name        String
+  description String?
+  durationMin Int
+  price       Decimal   @db.Decimal(10, 2)
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  orderServices OrderService[]
+
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@map("services")
+}
+
+model WorkPost {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  branchId  String
+  branch    Branch   @relation(fields: [branchId], references: [id])
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+
+  @@index([tenantId])
+  @@index([tenantId, branchId])
+  @@map("work_posts")
+}
+
+model Order {
+  id                 String      @id @default(uuid())
+  tenantId           String
+  tenant             Tenant      @relation(fields: [tenantId], references: [id])
+  branchId           String
+  branch             Branch      @relation(fields: [branchId], references: [id])
+  clientId           String
+  client             Client      @relation(fields: [clientId], references: [id])
+  vehicleId          String
+  vehicle            Vehicle     @relation(fields: [vehicleId], references: [id])
+  workPostId         String?
+  workPost           WorkPost?        @relation(fields: [workPostId], references: [id])
+  assignedEmployeeId String?
+  assignedEmployee   EmployeeProfile? @relation(fields: [assignedEmployeeId], references: [id])
+  createdById        String?
+  createdBy          User?            @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  status             OrderStatus @default(BOOKED)
+  source             OrderSource @default(INTERNAL)
+  scheduledStart     DateTime
+  scheduledEnd       DateTime
+  totalPrice         Decimal     @default(0) @db.Decimal(10, 2)
+  notes              String?
+  cancellationReason String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  deletedAt          DateTime?
+
+  services OrderService[]
+  payments Payment[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, branchId, status])
+  @@index([tenantId, scheduledStart, scheduledEnd])
+  @@index([tenantId, workPostId, scheduledStart, scheduledEnd])
+  @@map("orders")
+}
+
+model OrderService {
+  id        String  @id @default(uuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id])
+  price     Decimal @db.Decimal(10, 2)
+  quantity  Int     @default(1)
+
+  @@map("order_services")
+}
+
+model Payment {
+  id        String        @id @default(uuid())
+  tenantId  String
+  tenant    Tenant        @relation(fields: [tenantId], references: [id])
+  orderId   String
+  order     Order         @relation(fields: [orderId], references: [id])
+  amount    Decimal       @db.Decimal(10, 2)
+  method    PaymentMethod
+  status    PaymentStatus @default(PENDING)
+  reference String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, orderId])
+  @@map("payments")
+}
+
+model AuditLog {
+  id            String      @id @default(uuid())
+  tenantId      String
+  tenant        Tenant      @relation(fields: [tenantId], references: [id])
+  entityType    String
+  entityId      String
+  action        AuditAction
+  oldValue      Json?
+  newValue      Json?
+  performedById String?
+  performedBy   User?       @relation(fields: [performedById], references: [id])
+  metadata      Json?
+  createdAt     DateTime    @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, entityType, entityId])
+  @@index([tenantId, createdAt])
+  @@map("audit_logs")
+}
+
+model IdempotencyKey {
+  id           String   @id @default(uuid())
+  key          String
+  tenantId     String
+  method       String
+  path         String
+  statusCode   Int      @default(0)
+  responseBody Json     @default("{}")
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  @@unique([tenantId, key])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
+model EmployeeProfile {
+  id                    String   @id @default(uuid())
+  tenantId              String
+  userId                String   @unique
+  branchId              String
+  isWorker              Boolean  @default(true)
+  efficiencyCoefficient Float    @default(1)
+  active                Boolean  @default(true)
+  workStartTime         String?
+  workEndTime           String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  orders  Order[]
+
+  @@index([tenantId])
+  @@index([tenantId, branchId])
+  @@map("employee_profiles")
+}

@@ -1,0 +1,63 @@
+{
+  "title": "Dashboard",
+  "kpi": {
+    "revenueToday": "Revenue Today",
+    "ordersToday": "Orders Today",
+    "avgOrderDuration": "Avg Duration",
+    "avgOrderDurationUnit": "min",
+    "cancelRateToday": "Cancel Rate",
+    "activeClientsToday": "Active Clients",
+    "occupancyRate": "Occupancy"
+  },
+  "live": {
+    "title": "Live Operations",
+    "inProgress": "In Progress",
+    "waiting": "Waiting",
+    "freeWorkPosts": "Free Posts",
+    "overdue": "Overdue"
+  },
+  "branches": {
+    "title": "Branch Performance",
+    "name": "Branch",
+    "revenue": "Revenue",
+    "orders": "Orders",
+    "avgCheck": "Avg Check",
+    "loadRate": "Load Rate"
+  },
+  "employees": {
+    "title": "Employee Performance",
+    "name": "Employee",
+    "branch": "Branch",
+    "orders": "Orders",
+    "revenue": "Revenue",
+    "cancelRate": "Cancel Rate"
+  },
+  "alerts": {
+    "title": "Alerts",
+    "noAlerts": "No active alerts",
+    "severity": {
+      "LOW": "Low",
+      "MEDIUM": "Medium",
+      "HIGH": "High",
+      "CRITICAL": "Critical"
+    },
+    "highCancelRate": "High cancellation rate: {{rate}}% today",
+    "revenueDrop": "Revenue dropped {{pct}}% vs previous period",
+    "idleWorkPost": "{{count}} work post(s) idle in the last 2 hours",
+    "bookingDecline": "Booking volume dropped {{pct}}% vs last week"
+  },
+  "onlineBooking": {
+    "title": "Online Booking Stats",
+    "onlineRate": "Online Rate",
+    "total": "Total Orders",
+    "sources": {
+      "INTERNAL": "Internal",
+      "WEB": "Web",
+      "WIDGET": "Widget",
+      "API": "API"
+    }
+  },
+  "revenue": {
+    "title": "Revenue Overview"
+  }
+}

@@ -1,0 +1,44 @@
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
+import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
+import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  const config = app.get(ConfigService);
+  const logger = new Logger('Bootstrap');
+
+  app.setGlobalPrefix('api/v1');
+
+  app.use(helmet());
+  app.use(cookieParser());
+
+  const corsOrigins = config.get<string>('corsOrigins', '*');
+  app.enableCors({
+    origin: corsOrigins === '*' ? '*' : corsOrigins.split(','),
+    credentials: true,
+  });
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+    }),
+  );
+
+  app.useGlobalFilters(new AllExceptionsFilter(), new PrismaExceptionFilter());
+  app.useGlobalInterceptors(new TransformInterceptor());
+
+  const port = config.get<number>('port', 3000);
+  await app.listen(port);
+  logger.log(`Application running on port ${port}`);
+}
+
+bootstrap();

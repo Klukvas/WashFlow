@@ -1,0 +1,91 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { PrismaService } from '../../prisma/prisma.service';
+
+@Injectable()
+export class CleanupService {
+  private readonly logger = new Logger(CleanupService.name);
+  private readonly RETENTION_DAYS = 30;
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  async handleHardDeleteCleanup() {
+    const cutoff = new Date(
+      Date.now() - this.RETENTION_DAYS * 24 * 60 * 60 * 1000,
+    );
+    this.logger.log(
+      `Hard-deleting records soft-deleted before ${cutoff.toISOString()}`,
+    );
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // Delete in FK-respecting order (children first)
+
+        // 1. OrderServices for deleted orders
+        await tx.$queryRaw`
+          DELETE FROM order_services WHERE "orderId" IN (
+            SELECT id FROM orders WHERE "deletedAt" IS NOT NULL AND "deletedAt" < ${cutoff}
+          )
+        `;
+
+        // 2. Payments for deleted orders
+        await tx.$queryRaw`
+          DELETE FROM payments WHERE "orderId" IN (
+            SELECT id FROM orders WHERE "deletedAt" IS NOT NULL AND "deletedAt" < ${cutoff}
+          )
+        `;
+
+        // 3. Orders
+        const orders = await tx.order.deleteMany({
+          where: { deletedAt: { not: null, lt: cutoff } },
+        });
+
+        // 4. Vehicles
+        const vehicles = await tx.vehicle.deleteMany({
+          where: { deletedAt: { not: null, lt: cutoff } },
+        });
+
+        // 5. Users (must be after orders which reference createdById)
+        const users = await tx.user.deleteMany({
+          where: { deletedAt: { not: null, lt: cutoff } },
+        });
+
+        // 6. Clients (must be after vehicles and orders)
+        const clients = await tx.client.deleteMany({
+          where: { deletedAt: { not: null, lt: cutoff } },
+        });
+
+        // 7. RolePermissions for deleted roles
+        await tx.$queryRaw`
+          DELETE FROM role_permissions WHERE "roleId" IN (
+            SELECT id FROM roles WHERE "deletedAt" IS NOT NULL AND "deletedAt" < ${cutoff}
+          )
+        `;
+
+        // 8. Roles
+        const roles = await tx.role.deleteMany({
+          where: { deletedAt: { not: null, lt: cutoff } },
+        });
+
+        // 9. Services
+        const services = await tx.service.deleteMany({
+          where: { deletedAt: { not: null, lt: cutoff } },
+        });
+
+        // 10. Branches (must be after orders, users, work_posts)
+        const branches = await tx.branch.deleteMany({
+          where: { deletedAt: { not: null, lt: cutoff } },
+        });
+
+        this.logger.log(
+          `Hard-delete cleanup completed: ${orders.count} orders, ${vehicles.count} vehicles, ` +
+            `${users.count} users, ${clients.count} clients, ${roles.count} roles, ` +
+            `${services.count} services, ${branches.count} branches`,
+        );
+      });
+    } catch (error) {
+      this.logger.error('Hard-delete cleanup failed', (error as Error).stack);
+    }
+  }
+}

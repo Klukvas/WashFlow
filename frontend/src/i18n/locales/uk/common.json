@@ -1,0 +1,111 @@
+{
+  "actions": {
+    "create": "Створити",
+    "edit": "Редагувати",
+    "delete": "Видалити",
+    "save": "Зберегти",
+    "cancel": "Скасувати",
+    "confirm": "Підтвердити",
+    "restore": "Відновити",
+    "search": "Пошук",
+    "filter": "Фільтр",
+    "reset": "Скинути",
+    "back": "Назад",
+    "next": "Далі",
+    "submit": "Надіслати",
+    "close": "Закрити",
+    "refresh": "Оновити",
+    "export": "Експорт",
+    "quickActions": "Швидкі дії",
+    "viewOrders": "Переглянути замовлення"
+  },
+  "fields": {
+    "name": "Назва",
+    "firstName": "Ім'я",
+    "lastName": "Прізвище",
+    "email": "Ел. пошта",
+    "phone": "Телефон",
+    "password": "Пароль",
+    "passwordOptional": "залиште порожнім для збереження поточного",
+    "role": "Роль",
+    "branch": "Філіал",
+    "selectBranch": "Обрати філіал",
+    "selectRole": "Обрати роль",
+    "vehicles": "Транспорт",
+    "make": "Марка",
+    "model": "Модель",
+    "licensePlate": "Держномер",
+    "color": "Колір",
+    "year": "Рік",
+    "createdAt": "Створено",
+    "updatedAt": "Оновлено",
+    "details": "Деталі",
+    "notes": "Нотатки",
+    "quickInfo": "Швидка інформація"
+  },
+  "pages": {
+    "users": "Користувачі",
+    "clients": "Клієнти"
+  },
+  "confirm": {
+    "deleteTitle": "Видалити",
+    "deleteMessage": "Ви впевнені, що хочете видалити {{name}}?",
+    "restoreTitle": "Відновити",
+    "restoreMessage": "Ви впевнені, що хочете відновити {{name}}?"
+  },
+  "validation": {
+    "required": "Це поле обов'язкове",
+    "invalidPhone": "Невірний номер телефону",
+    "invalidEmail": "Невірна адреса ел. пошти",
+    "maxLength": "Значення занадто довге"
+  },
+  "status": {
+    "active": "Активний",
+    "inactive": "Неактивний",
+    "deleted": "Видалено",
+    "loading": "Завантаження...",
+    "noResults": "Результатів не знайдено",
+    "error": "Щось пішло не так"
+  },
+  "pagination": {
+    "page": "Сторінка",
+    "of": "з",
+    "showing": "Показано",
+    "to": "до",
+    "entries": "записів",
+    "perPage": "на сторінку"
+  },
+  "softDelete": {
+    "showDeleted": "Показати видалені",
+    "deletedBadge": "Видалено",
+    "confirmDelete": "Ви впевнені, що хочете видалити цей елемент?",
+    "confirmRestore": "Ви впевнені, що хочете відновити цей елемент?",
+    "deleteSuccess": "Елемент успішно видалено",
+    "restoreSuccess": "Елемент успішно відновлено"
+  },
+  "errors": {
+    "unauthorized": "Ви не авторизовані",
+    "forbidden": "Доступ заборонено",
+    "notFound": "Не знайдено",
+    "conflict": "Цей запис вже існує",
+    "serverError": "Помилка сервера. Спробуйте пізніше.",
+    "networkError": "Помилка мережі. Перевірте з'єднання.",
+    "validationError": "Перевірте форму на наявність помилок"
+  },
+  "theme": {
+    "light": "Світла",
+    "dark": "Темна",
+    "system": "Системна"
+  },
+  "language": {
+    "en": "Англійська",
+    "uk": "Українська",
+    "switch": "Змінити мову"
+  },
+  "search": {
+    "placeholder": "Пошук... (⌘K)",
+    "clients": "Клієнти",
+    "orders": "Замовлення",
+    "services": "Послуги"
+  }
+}
