@@ -306,7 +306,7 @@ jobs:
         working-directory: frontend
 
       - name: Start backend
-        run: node dist/src/main.js &
+        run: nohup node dist/src/main.js > backend.log 2>&1 &
         env:
           PORT: '3000'
 
