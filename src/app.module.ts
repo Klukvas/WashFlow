@@ -55,10 +55,18 @@ import { HealthModule } from './modules/health/health.module';
     }),
 
     // Rate limiting
-    ThrottlerModule.forRoot([
-      { name: 'short', ttl: 1000, limit: 10 },
-      { name: 'long', ttl: 60000, limit: 100 },
-    ]),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const isTest = config.get<string>('nodeEnv') === 'test';
+        return {
+          throttlers: [
+            { name: 'short', ttl: 1000, limit: isTest ? 10_000 : 10 },
+            { name: 'long', ttl: 60000, limit: isTest ? 100_000 : 100 },
+          ],
+        };
+      },
+    }),
 
     // Event system
     EventEmitterModule.forRoot(),
