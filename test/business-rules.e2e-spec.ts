@@ -711,7 +711,9 @@ describe('Business Rules (e2e)', () => {
         orderBy: { createdAt: 'desc' },
       });
       const cancelLog = logs.find(
-        (l) => (l.newValue as any)?.status === 'CANCELLED',
+        (l) =>
+          (l.newValue as any)?.status === 'CANCELLED' &&
+          (l.newValue as any)?.reason != null,
       );
       expect(cancelLog).toBeDefined();
       expect((cancelLog!.newValue as any).reason).toBe('Audit test reason');
