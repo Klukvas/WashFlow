@@ -6,11 +6,10 @@ import {
   HttpCode,
   HttpStatus,
   UnauthorizedException,
-  UseGuards,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { ThrottlerGuard, Throttle } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthService } from './auth.service';
@@ -19,7 +18,6 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import type { JwtPayload } from '../../common/types/jwt-payload.type';
 
-@UseGuards(ThrottlerGuard)
 @Controller('auth')
 export class AuthController {
   constructor(

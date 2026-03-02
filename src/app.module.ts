@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { LoggerModule } from 'nestjs-pino';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { BullModule } from '@nestjs/bullmq';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -29,6 +30,7 @@ import { PublicBookingModule } from './modules/public-booking/public-booking.mod
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { CleanupModule } from './modules/cleanup/cleanup.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -36,6 +38,20 @@ import { CleanupModule } from './modules/cleanup/cleanup.module';
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
+    }),
+
+    // Structured logging (JSON in production, pretty in dev)
+    LoggerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const isDev = config.get<string>('nodeEnv') !== 'production';
+        return {
+          pinoHttp: {
+            level: isDev ? 'debug' : 'info',
+            ...(isDev ? { transport: { target: 'pino-pretty' } } : {}),
+          },
+        };
+      },
     }),
 
     // Rate limiting
@@ -99,12 +115,18 @@ import { CleanupModule } from './modules/cleanup/cleanup.module';
     RealtimeModule,
     JobsModule,
     CleanupModule,
+    HealthModule,
   ],
   providers: [
     // Apply JwtAuthGuard globally — use @Public() to skip
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    // Apply ThrottlerGuard globally — use @SkipThrottle() to skip
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
   ],
 })

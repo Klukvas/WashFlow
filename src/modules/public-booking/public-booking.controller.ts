@@ -6,10 +6,9 @@ import {
   Body,
   Query,
   Headers,
-  UseGuards,
   BadRequestException,
 } from '@nestjs/common';
-import { ThrottlerGuard, Throttle } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../common/decorators/public.decorator';
 import { PublicBookingService } from './public-booking.service';
 import { CheckAvailabilityDto } from './dto/check-availability.dto';
@@ -26,7 +25,6 @@ function validateSlug(slug: string): string {
 
 @Controller('public/booking')
 @Public()
-@UseGuards(ThrottlerGuard)
 @Throttle({ default: { limit: 10, ttl: 60000 } })
 export class PublicBookingController {
   constructor(private readonly publicBookingService: PublicBookingService) {}

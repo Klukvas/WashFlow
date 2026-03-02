@@ -15,6 +15,8 @@ RUN npx tsc prisma/seed.ts --outDir dist --rootDir . --module nodenext --moduleR
 
 # Stage 2: Production
 FROM node:20-alpine AS production
+
+RUN addgroup -S app && adduser -S app -G app
 WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
@@ -27,6 +29,9 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 # Generate Prisma client against production node_modules
 RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate
+
+RUN chown -R app:app /app
+USER app
 
 EXPOSE 3000
 

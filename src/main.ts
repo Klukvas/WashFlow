@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Logger as PinoLogger } from 'nestjs-pino';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
@@ -9,7 +10,8 @@ import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter'
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(PinoLogger));
   const config = app.get(ConfigService);
   const logger = new Logger('Bootstrap');
 
@@ -40,6 +42,8 @@ async function bootstrap() {
 
   app.useGlobalFilters(new AllExceptionsFilter(), new PrismaExceptionFilter());
   app.useGlobalInterceptors(new TransformInterceptor());
+
+  app.enableShutdownHooks();
 
   const port = config.get<number>('port', 3000);
   await app.listen(port);
