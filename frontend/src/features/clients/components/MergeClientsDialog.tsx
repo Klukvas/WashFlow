@@ -361,9 +361,7 @@ export function MergeClientsDialog({
             <Button variant="outline" onClick={handleClose}>
               {tc('actions.cancel')}
             </Button>
-            <Button onClick={() => setStep(initialSource ? 3 : 3)}>
-              {tc('actions.next')}
-            </Button>
+            <Button onClick={() => setStep(3)}>{tc('actions.next')}</Button>
           </DialogFooter>
         </div>
       )}

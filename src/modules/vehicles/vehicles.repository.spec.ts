@@ -54,14 +54,22 @@ describe('VehiclesRepository', () => {
     });
 
     it('applies clientId filter when provided', async () => {
-      const query: VehicleQueryDto = { page: 1, limit: 10, clientId } as VehicleQueryDto;
+      const query: VehicleQueryDto = {
+        page: 1,
+        limit: 10,
+        clientId,
+      } as VehicleQueryDto;
       await repo.findAll(tenantId, query);
       const callArgs = tenantClient.vehicle.findMany.mock.calls[0][0];
       expect(callArgs.where.clientId).toBe(clientId);
     });
 
     it('applies search filter across make, model, licensePlate when provided', async () => {
-      const query: VehicleQueryDto = { page: 1, limit: 10, search: 'Toyota' } as VehicleQueryDto;
+      const query: VehicleQueryDto = {
+        page: 1,
+        limit: 10,
+        search: 'Toyota',
+      } as VehicleQueryDto;
       await repo.findAll(tenantId, query);
       const callArgs = tenantClient.vehicle.findMany.mock.calls[0][0];
       expect(callArgs.where.OR).toBeDefined();

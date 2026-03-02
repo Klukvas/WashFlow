@@ -74,7 +74,9 @@ describe('BranchesController', () => {
 
   describe('update', () => {
     it('should delegate to service.update with tenantId, id, and dto', async () => {
-      const dto: UpdateBranchDto = { name: 'Updated Branch' } as UpdateBranchDto;
+      const dto: UpdateBranchDto = {
+        name: 'Updated Branch',
+      } as UpdateBranchDto;
 
       await controller.update(tenantId, itemId, dto);
 
@@ -108,11 +110,17 @@ describe('BranchesController', () => {
 
   describe('updateBookingSettings', () => {
     it('should delegate to service.updateBookingSettings with tenantId, id, and dto', async () => {
-      const dto: UpdateBookingSettingsDto = { slotDurationMinutes: 30 } as UpdateBookingSettingsDto;
+      const dto: UpdateBookingSettingsDto = {
+        slotDurationMinutes: 30,
+      } as UpdateBookingSettingsDto;
 
       await controller.updateBookingSettings(tenantId, itemId, dto);
 
-      expect(service.updateBookingSettings).toHaveBeenCalledWith(tenantId, itemId, dto);
+      expect(service.updateBookingSettings).toHaveBeenCalledWith(
+        tenantId,
+        itemId,
+        dto,
+      );
     });
   });
 });

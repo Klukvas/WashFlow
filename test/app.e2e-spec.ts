@@ -16,7 +16,11 @@ describe('App (e2e)', () => {
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api/v1');
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     app.useGlobalInterceptors(new TransformInterceptor());
     await app.init();
@@ -34,8 +38,6 @@ describe('App (e2e)', () => {
   });
 
   it('GET /api/v1/users returns 401 when unauthenticated', () => {
-    return request(app.getHttpServer())
-      .get('/api/v1/users')
-      .expect(401);
+    return request(app.getHttpServer()).get('/api/v1/users').expect(401);
   });
 });

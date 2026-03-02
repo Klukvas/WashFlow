@@ -65,13 +65,19 @@ describe('PrismaExceptionFilter', () => {
   describe('P2002 — unique constraint violation', () => {
     it('responds with HTTP 409 CONFLICT', () => {
       const { host, mockStatus } = buildHost();
-      filter.catch(buildPrismaError('P2002', { target: ['email'] }), host as never);
+      filter.catch(
+        buildPrismaError('P2002', { target: ['email'] }),
+        host as never,
+      );
       expect(mockStatus).toHaveBeenCalledWith(HttpStatus.CONFLICT);
     });
 
     it('includes the conflicting field name in the message', () => {
       const { host, mockJson } = buildHost();
-      filter.catch(buildPrismaError('P2002', { target: ['email'] }), host as never);
+      filter.catch(
+        buildPrismaError('P2002', { target: ['email'] }),
+        host as never,
+      );
       const body = mockJson.mock.calls[0][0] as Record<string, unknown>;
       expect(body.message).toBe('A record with this email already exists');
     });
@@ -105,14 +111,20 @@ describe('PrismaExceptionFilter', () => {
 
     it('sets statusCode to 409 in the response body', () => {
       const { host, mockJson } = buildHost();
-      filter.catch(buildPrismaError('P2002', { target: ['email'] }), host as never);
+      filter.catch(
+        buildPrismaError('P2002', { target: ['email'] }),
+        host as never,
+      );
       const body = mockJson.mock.calls[0][0] as Record<string, unknown>;
       expect(body.statusCode).toBe(HttpStatus.CONFLICT);
     });
 
     it('sets error to "CONFLICT" (spaces, not underscores) in the response body', () => {
       const { host, mockJson } = buildHost();
-      filter.catch(buildPrismaError('P2002', { target: ['email'] }), host as never);
+      filter.catch(
+        buildPrismaError('P2002', { target: ['email'] }),
+        host as never,
+      );
       const body = mockJson.mock.calls[0][0] as Record<string, unknown>;
       expect(body.error).toBe('CONFLICT');
     });
@@ -194,9 +206,7 @@ describe('PrismaExceptionFilter', () => {
     it('responds with HTTP 500 INTERNAL_SERVER_ERROR', () => {
       const { host, mockStatus } = buildHost();
       filter.catch(buildPrismaError('P9999'), host as never);
-      expect(mockStatus).toHaveBeenCalledWith(
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      expect(mockStatus).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
     });
 
     it('sets message to "Database error"', () => {
@@ -247,13 +257,19 @@ describe('PrismaExceptionFilter', () => {
 
     it('calls json() exactly once per exception', () => {
       const { host, mockJson } = buildHost();
-      filter.catch(buildPrismaError('P2002', { target: ['email'] }), host as never);
+      filter.catch(
+        buildPrismaError('P2002', { target: ['email'] }),
+        host as never,
+      );
       expect(mockJson).toHaveBeenCalledTimes(1);
     });
 
     it('calls status() exactly once per exception', () => {
       const { host, mockStatus } = buildHost();
-      filter.catch(buildPrismaError('P2002', { target: ['email'] }), host as never);
+      filter.catch(
+        buildPrismaError('P2002', { target: ['email'] }),
+        host as never,
+      );
       expect(mockStatus).toHaveBeenCalledTimes(1);
     });
   });

@@ -104,6 +104,7 @@
   },
   "search": {
     "placeholder": "Пошук... (⌘K)",
+    "clear": "Очистити пошук",
     "clients": "Клієнти",
     "orders": "Замовлення",
     "services": "Послуги"

@@ -111,10 +111,7 @@ describe('EventDispatcherService', () => {
 
       service.dispatch(event);
 
-      expect(mockEmitter.emit).toHaveBeenCalledWith(
-        expect.anything(),
-        event,
-      );
+      expect(mockEmitter.emit).toHaveBeenCalledWith(expect.anything(), event);
     });
 
     it('calls eventEmitter.emit with both correct eventType and event instance together', () => {
@@ -122,7 +119,10 @@ describe('EventDispatcherService', () => {
 
       service.dispatch(event);
 
-      expect(mockEmitter.emit).toHaveBeenCalledWith(EventType.ORDER_CREATED, event);
+      expect(mockEmitter.emit).toHaveBeenCalledWith(
+        EventType.ORDER_CREATED,
+        event,
+      );
     });
 
     it('passes the exact same event object reference (not a copy)', () => {

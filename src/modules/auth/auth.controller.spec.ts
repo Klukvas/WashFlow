@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -33,15 +34,24 @@ describe('AuthController', () => {
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
       ],
-    }).compile();
+    })
+      .overrideGuard(ThrottlerGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<AuthController>(AuthController);
   });
 
   describe('login', () => {
     it('delegates to authService.login with the login dto', async () => {
-      const dto: LoginDto = { email: 'user@example.com', password: 'secret' } as LoginDto;
-      const expected = { accessToken: 'access-jwt', refreshToken: 'refresh-jwt' };
+      const dto: LoginDto = {
+        email: 'user@example.com',
+        password: 'secret',
+      } as LoginDto;
+      const expected = {
+        accessToken: 'access-jwt',
+        refreshToken: 'refresh-jwt',
+      };
 
       mockAuthService.login.mockResolvedValue(expected);
 
@@ -54,10 +64,19 @@ describe('AuthController', () => {
 
   describe('refresh', () => {
     it('delegates to authService.refreshTokens with verified payload when token is valid', async () => {
-      const dto: RefreshTokenDto = { refreshToken: 'valid-refresh-token' } as RefreshTokenDto;
+      const dto: RefreshTokenDto = {
+        refreshToken: 'valid-refresh-token',
+      } as RefreshTokenDto;
       const refreshSecret = 'refresh-secret';
-      const payload = { sub: 'user-uuid', type: 'refresh', tenantId: 'tenant-uuid' };
-      const expected = { accessToken: 'new-access-jwt', refreshToken: 'new-refresh-jwt' };
+      const payload = {
+        sub: 'user-uuid',
+        type: 'refresh',
+        tenantId: 'tenant-uuid',
+      };
+      const expected = {
+        accessToken: 'new-access-jwt',
+        refreshToken: 'new-refresh-jwt',
+      };
 
       mockConfigService.get.mockReturnValue(refreshSecret);
       mockJwtService.verify.mockReturnValue(payload);
@@ -74,24 +93,35 @@ describe('AuthController', () => {
     });
 
     it('throws UnauthorizedException when token type is not refresh', async () => {
-      const dto: RefreshTokenDto = { refreshToken: 'access-token-used-as-refresh' } as RefreshTokenDto;
+      const dto: RefreshTokenDto = {
+        refreshToken: 'access-token-used-as-refresh',
+      } as RefreshTokenDto;
 
       mockConfigService.get.mockReturnValue('refresh-secret');
-      mockJwtService.verify.mockReturnValue({ sub: 'user-uuid', type: 'access' });
+      mockJwtService.verify.mockReturnValue({
+        sub: 'user-uuid',
+        type: 'access',
+      });
 
-      await expect(controller.refresh(dto)).rejects.toThrow(UnauthorizedException);
+      await expect(controller.refresh(dto)).rejects.toThrow(
+        UnauthorizedException,
+      );
       expect(mockAuthService.refreshTokens).not.toHaveBeenCalled();
     });
 
     it('throws UnauthorizedException when jwtService.verify throws', async () => {
-      const dto: RefreshTokenDto = { refreshToken: 'malformed-token' } as RefreshTokenDto;
+      const dto: RefreshTokenDto = {
+        refreshToken: 'malformed-token',
+      } as RefreshTokenDto;
 
       mockConfigService.get.mockReturnValue('refresh-secret');
       mockJwtService.verify.mockImplementation(() => {
         throw new Error('jwt malformed');
       });
 
-      await expect(controller.refresh(dto)).rejects.toThrow(UnauthorizedException);
+      await expect(controller.refresh(dto)).rejects.toThrow(
+        UnauthorizedException,
+      );
       expect(mockAuthService.refreshTokens).not.toHaveBeenCalled();
     });
   });

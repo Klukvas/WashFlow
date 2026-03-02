@@ -68,7 +68,10 @@ describe('TenantsService', () => {
 
   describe('findAll', () => {
     it('returns all tenants from the repository', async () => {
-      const tenants = [makeTenant(), makeTenant({ id: 'tenant-2', slug: 'suds-n-bubbles' })];
+      const tenants = [
+        makeTenant(),
+        makeTenant({ id: 'tenant-2', slug: 'suds-n-bubbles' }),
+      ];
       tenantsRepo.findAll.mockResolvedValue(tenants);
 
       const result = await service.findAll();
@@ -123,19 +126,25 @@ describe('TenantsService', () => {
     it('throws NotFoundException when the tenant does not exist', async () => {
       tenantsRepo.findById.mockResolvedValue(null);
 
-      await expect(service.findById('unknown-id')).rejects.toThrow(NotFoundException);
+      await expect(service.findById('unknown-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('includes "Tenant not found" in the NotFoundException message', async () => {
       tenantsRepo.findById.mockResolvedValue(null);
 
-      await expect(service.findById('unknown-id')).rejects.toThrow('Tenant not found');
+      await expect(service.findById('unknown-id')).rejects.toThrow(
+        'Tenant not found',
+      );
     });
 
     it('propagates unexpected repository errors', async () => {
       tenantsRepo.findById.mockRejectedValue(new Error('Query failed'));
 
-      await expect(service.findById('tenant-1')).rejects.toThrow('Query failed');
+      await expect(service.findById('tenant-1')).rejects.toThrow(
+        'Query failed',
+      );
     });
   });
 
@@ -162,19 +171,25 @@ describe('TenantsService', () => {
     it('throws NotFoundException when no tenant matches the slug', async () => {
       tenantsRepo.findBySlug.mockResolvedValue(null);
 
-      await expect(service.findBySlug('no-such-slug')).rejects.toThrow(NotFoundException);
+      await expect(service.findBySlug('no-such-slug')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('includes "Tenant not found" in the NotFoundException message', async () => {
       tenantsRepo.findBySlug.mockResolvedValue(null);
 
-      await expect(service.findBySlug('no-such-slug')).rejects.toThrow('Tenant not found');
+      await expect(service.findBySlug('no-such-slug')).rejects.toThrow(
+        'Tenant not found',
+      );
     });
 
     it('propagates unexpected repository errors', async () => {
       tenantsRepo.findBySlug.mockRejectedValue(new Error('Network error'));
 
-      await expect(service.findBySlug('wash-and-go')).rejects.toThrow('Network error');
+      await expect(service.findBySlug('wash-and-go')).rejects.toThrow(
+        'Network error',
+      );
     });
   });
 
@@ -219,19 +234,25 @@ describe('TenantsService', () => {
       const dto = makeCreateDto();
       tenantsRepo.findBySlug.mockResolvedValue(makeTenant());
 
-      await expect(service.create(dto as any)).rejects.toThrow(ConflictException);
+      await expect(service.create(dto as any)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('includes "Slug already in use" in the ConflictException message', async () => {
       tenantsRepo.findBySlug.mockResolvedValue(makeTenant());
 
-      await expect(service.create(makeCreateDto() as any)).rejects.toThrow('Slug already in use');
+      await expect(service.create(makeCreateDto() as any)).rejects.toThrow(
+        'Slug already in use',
+      );
     });
 
     it('does not call repository create when the slug is already taken', async () => {
       tenantsRepo.findBySlug.mockResolvedValue(makeTenant());
 
-      await expect(service.create(makeCreateDto() as any)).rejects.toThrow(ConflictException);
+      await expect(service.create(makeCreateDto() as any)).rejects.toThrow(
+        ConflictException,
+      );
 
       expect(tenantsRepo.create).not.toHaveBeenCalled();
     });
@@ -240,7 +261,9 @@ describe('TenantsService', () => {
       tenantsRepo.findBySlug.mockResolvedValue(null);
       tenantsRepo.create.mockRejectedValue(new Error('Insert failed'));
 
-      await expect(service.create(makeCreateDto() as any)).rejects.toThrow('Insert failed');
+      await expect(service.create(makeCreateDto() as any)).rejects.toThrow(
+        'Insert failed',
+      );
     });
   });
 
@@ -334,7 +357,9 @@ describe('TenantsService', () => {
     });
 
     it('propagates repository errors', async () => {
-      tenantsRepo.getBookingSettings.mockRejectedValue(new Error('Settings query failed'));
+      tenantsRepo.getBookingSettings.mockRejectedValue(
+        new Error('Settings query failed'),
+      );
 
       await expect(service.getBookingSettings('tenant-1')).rejects.toThrow(
         'Settings query failed',

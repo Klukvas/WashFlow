@@ -12,7 +12,11 @@ import { PageHeader } from '@/shared/components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { formatDateTime, formatCurrency, formatDuration } from '@/shared/utils/format';
+import {
+  formatDateTime,
+  formatCurrency,
+  formatDuration,
+} from '@/shared/utils/format';
 import { PERMISSIONS } from '@/shared/constants/permissions';
 
 export function OrderDetailPage() {
@@ -35,7 +39,11 @@ export function OrderDetailPage() {
   }
 
   if (!order) {
-    return <div className="py-12 text-center text-muted-foreground">{tc('errors.notFound')}</div>;
+    return (
+      <div className="py-12 text-center text-muted-foreground">
+        {tc('errors.notFound')}
+      </div>
+    );
   }
 
   return (
@@ -44,7 +52,11 @@ export function OrderDetailPage() {
         title={t('orderDetail')}
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/orders')}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/orders')}
+            >
               <ArrowLeft className="mr-1 h-4 w-4" />
               {tc('actions.back')}
             </Button>
@@ -89,7 +101,10 @@ export function OrderDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <StatusTransition orderId={order.id} currentStatus={order.status} />
+              <StatusTransition
+                orderId={order.id}
+                currentStatus={order.status}
+              />
             </CardContent>
           </Card>
 
@@ -110,7 +125,9 @@ export function OrderDetailPage() {
                         {formatDuration(s.durationMin)}
                       </p>
                     </div>
-                    <span className="font-semibold">{formatCurrency(s.price)}</span>
+                    <span className="font-semibold">
+                      {formatCurrency(s.price)}
+                    </span>
                   </div>
                 ))}
                 <div className="flex items-center justify-between border-t border-border pt-3 font-semibold">
@@ -135,7 +152,9 @@ export function OrderDetailPage() {
                   </p>
                   <p className="text-muted-foreground">{order.client.phone}</p>
                   {order.client.email && (
-                    <p className="text-muted-foreground">{order.client.email}</p>
+                    <p className="text-muted-foreground">
+                      {order.client.email}
+                    </p>
                   )}
                 </>
               )}
@@ -162,30 +181,46 @@ export function OrderDetailPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Schedule</CardTitle>
+              <CardTitle className="text-lg">{t('fields.schedule')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('fields.scheduledStart')}</span>
-                <span className="font-medium">{formatDateTime(order.scheduledStart)}</span>
+                <span className="text-muted-foreground">
+                  {t('fields.scheduledStart')}
+                </span>
+                <span className="font-medium">
+                  {formatDateTime(order.scheduledStart)}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('fields.scheduledEnd')}</span>
-                <span className="font-medium">{formatDateTime(order.scheduledEnd)}</span>
+                <span className="text-muted-foreground">
+                  {t('fields.scheduledEnd')}
+                </span>
+                <span className="font-medium">
+                  {formatDateTime(order.scheduledEnd)}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('fields.branch')}</span>
+                <span className="text-muted-foreground">
+                  {t('fields.branch')}
+                </span>
                 <span className="font-medium">{order.branch?.name ?? '—'}</span>
               </div>
               {order.workPost && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t('fields.workPost')}</span>
+                  <span className="text-muted-foreground">
+                    {t('fields.workPost')}
+                  </span>
                   <span className="font-medium">{order.workPost.name}</span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('fields.source')}</span>
-                <span className="font-medium">{t(`source.${order.source}`)}</span>
+                <span className="text-muted-foreground">
+                  {t('fields.source')}
+                </span>
+                <span className="font-medium">
+                  {t(`source.${order.source}`)}
+                </span>
               </div>
             </CardContent>
           </Card>

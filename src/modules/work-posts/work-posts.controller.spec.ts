@@ -31,12 +31,20 @@ describe('WorkPostsController', () => {
   describe('findByBranch', () => {
     it('should delegate to service with tenantId, branchId, userBranchId', async () => {
       await controller.findByBranch(tenantId, branchId, branchId);
-      expect(service.findByBranch).toHaveBeenCalledWith(tenantId, branchId, branchId);
+      expect(service.findByBranch).toHaveBeenCalledWith(
+        tenantId,
+        branchId,
+        branchId,
+      );
     });
 
     it('should pass null userBranchId', async () => {
       await controller.findByBranch(tenantId, null, branchId);
-      expect(service.findByBranch).toHaveBeenCalledWith(tenantId, branchId, null);
+      expect(service.findByBranch).toHaveBeenCalledWith(
+        tenantId,
+        branchId,
+        null,
+      );
     });
   });
 
@@ -64,7 +72,12 @@ describe('WorkPostsController', () => {
     it('should delegate to service with tenantId, id, dto, userBranchId', async () => {
       const dto = { name: 'Post B' } as any;
       await controller.update(tenantId, branchId, postId, dto);
-      expect(service.update).toHaveBeenCalledWith(tenantId, postId, dto, branchId);
+      expect(service.update).toHaveBeenCalledWith(
+        tenantId,
+        postId,
+        dto,
+        branchId,
+      );
     });
   });
 });

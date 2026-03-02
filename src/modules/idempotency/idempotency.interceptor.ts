@@ -22,7 +22,11 @@ export class IdempotencyInterceptor implements NestInterceptor {
       | string
       | undefined;
 
-    if (!idempotencyKey) {
+    if (
+      !idempotencyKey ||
+      idempotencyKey.length > 128 ||
+      !/^[\w\-:.]+$/.test(idempotencyKey)
+    ) {
       return next.handle();
     }
 
@@ -33,7 +37,10 @@ export class IdempotencyInterceptor implements NestInterceptor {
       return next.handle();
     }
 
-    const cached = await this.idempotencyService.check(tenantId, idempotencyKey);
+    const cached = await this.idempotencyService.check(
+      tenantId,
+      idempotencyKey,
+    );
     if (cached.hit && cached.cachedResponse) {
       response.status(cached.cachedResponse.statusCode);
       return of(cached.cachedResponse.body);

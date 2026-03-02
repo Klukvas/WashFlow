@@ -98,8 +98,22 @@ export class ClientsService {
     if (!target) throw new NotFoundException('Target client not found');
 
     const tenantDb = this.tenantPrisma.forTenant(tenantId);
-    const merged = await tenantDb.$transaction(async (tx) => {
-      return this.clientsRepo.merge(tx as any, sourceClientId, targetClientId, {
+    const merged = await tenantDb.$transaction(async (tx: any) => {
+      // Verify both clients belong to this tenant inside the transaction
+      const [txSource, txTarget] = await Promise.all([
+        tx.client.findFirst({
+          where: { id: sourceClientId, tenantId, deletedAt: null },
+        }),
+        tx.client.findFirst({
+          where: { id: targetClientId, tenantId, deletedAt: null },
+        }),
+      ]);
+      if (!txSource)
+        throw new NotFoundException('Source client not found in tenant');
+      if (!txTarget)
+        throw new NotFoundException('Target client not found in tenant');
+
+      return this.clientsRepo.merge(tx, sourceClientId, targetClientId, {
         ...fieldOverrides,
       });
     });

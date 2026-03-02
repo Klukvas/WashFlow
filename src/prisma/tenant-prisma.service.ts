@@ -10,14 +10,14 @@ const SOFT_DELETE_MODELS = new Set([
   'Service',
   'Branch',
   'Role',
+  'WorkPost',
+  'EmployeeProfile',
 ]);
 
 // Models that bypass tenantId injection entirely
 const BYPASS_TENANT_MODELS = new Set([
   'Permission',
   'RolePermission',
-  'OrderService',
-  'BookingSettings',
   'IdempotencyKey',
 ]);
 
@@ -29,8 +29,12 @@ function shouldBypassTenant(model: string | undefined): boolean {
   return !!model && BYPASS_TENANT_MODELS.has(model);
 }
 
-function stripIncludeDeleted(where: any): { cleaned: any; includeDeleted: boolean } {
-  if (!where || typeof where !== 'object') return { cleaned: where, includeDeleted: false };
+function stripIncludeDeleted(where: any): {
+  cleaned: any;
+  includeDeleted: boolean;
+} {
+  if (!where || typeof where !== 'object')
+    return { cleaned: where, includeDeleted: false };
   const { _includeDeleted, ...rest } = where;
   return { cleaned: rest, includeDeleted: !!_includeDeleted };
 }
@@ -48,7 +52,9 @@ export class TenantPrismaService {
               args.where = { ...args.where, tenantId };
             }
             if (shouldSoftDeleteFilter(model)) {
-              const { cleaned, includeDeleted } = stripIncludeDeleted(args.where);
+              const { cleaned, includeDeleted } = stripIncludeDeleted(
+                args.where,
+              );
               args.where = cleaned;
               if (!includeDeleted) {
                 args.where = { ...args.where, deletedAt: null };
@@ -61,7 +67,9 @@ export class TenantPrismaService {
               args.where = { ...args.where, tenantId };
             }
             if (shouldSoftDeleteFilter(model)) {
-              const { cleaned, includeDeleted } = stripIncludeDeleted(args.where);
+              const { cleaned, includeDeleted } = stripIncludeDeleted(
+                args.where,
+              );
               args.where = cleaned;
               if (!includeDeleted) {
                 args.where = { ...args.where, deletedAt: null };
@@ -143,7 +151,9 @@ export class TenantPrismaService {
               args.where = { ...args.where, tenantId };
             }
             if (shouldSoftDeleteFilter(model)) {
-              const { cleaned, includeDeleted } = stripIncludeDeleted(args.where);
+              const { cleaned, includeDeleted } = stripIncludeDeleted(
+                args.where,
+              );
               args.where = cleaned;
               if (!includeDeleted) {
                 args.where = { ...args.where, deletedAt: null };
@@ -156,7 +166,9 @@ export class TenantPrismaService {
               args.where = { ...args.where, tenantId };
             }
             if (shouldSoftDeleteFilter(model)) {
-              const { cleaned, includeDeleted } = stripIncludeDeleted(args.where);
+              const { cleaned, includeDeleted } = stripIncludeDeleted(
+                args.where,
+              );
               args.where = cleaned;
               if (!includeDeleted) {
                 args.where = { ...args.where, deletedAt: null };
@@ -169,7 +181,9 @@ export class TenantPrismaService {
               args.where = { ...args.where, tenantId };
             }
             if (shouldSoftDeleteFilter(model)) {
-              const { cleaned, includeDeleted } = stripIncludeDeleted(args.where);
+              const { cleaned, includeDeleted } = stripIncludeDeleted(
+                args.where,
+              );
               args.where = cleaned;
               if (!includeDeleted) {
                 args.where = { ...args.where, deletedAt: null };
@@ -185,16 +199,6 @@ export class TenantPrismaService {
           },
         },
         rolePermission: {
-          $allOperations({ args, query }) {
-            return query(args);
-          },
-        },
-        orderService: {
-          $allOperations({ args, query }) {
-            return query(args);
-          },
-        },
-        bookingSettings: {
           $allOperations({ args, query }) {
             return query(args);
           },

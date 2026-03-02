@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { VehiclesRepository } from './vehicles.repository';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
@@ -39,9 +43,13 @@ export class VehiclesService {
   }
 
   async restore(tenantId: string, id: string) {
-    const vehicle = await this.vehiclesRepo.findByIdIncludeDeleted(tenantId, id);
+    const vehicle = await this.vehiclesRepo.findByIdIncludeDeleted(
+      tenantId,
+      id,
+    );
     if (!vehicle) throw new NotFoundException('Vehicle not found');
-    if (!vehicle.deletedAt) throw new BadRequestException('Vehicle is not deleted');
+    if (!vehicle.deletedAt)
+      throw new BadRequestException('Vehicle is not deleted');
     return this.vehiclesRepo.restore(tenantId, id);
   }
 }

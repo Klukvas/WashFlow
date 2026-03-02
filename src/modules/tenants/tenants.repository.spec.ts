@@ -50,7 +50,9 @@ describe('TenantsRepository', () => {
   describe('findById', () => {
     it('finds tenant by id', async () => {
       const result = await repo.findById('tenant-1');
-      expect(prisma.tenant.findUnique).toHaveBeenCalledWith({ where: { id: 'tenant-1' } });
+      expect(prisma.tenant.findUnique).toHaveBeenCalledWith({
+        where: { id: 'tenant-1' },
+      });
       expect(result).toEqual(mockTenant);
     });
   });
@@ -58,7 +60,9 @@ describe('TenantsRepository', () => {
   describe('findBySlug', () => {
     it('finds tenant by slug', async () => {
       const result = await repo.findBySlug('acme');
-      expect(prisma.tenant.findUnique).toHaveBeenCalledWith({ where: { slug: 'acme' } });
+      expect(prisma.tenant.findUnique).toHaveBeenCalledWith({
+        where: { slug: 'acme' },
+      });
       expect(result).toEqual(mockTenant);
     });
   });

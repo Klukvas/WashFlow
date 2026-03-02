@@ -1,18 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class CleanupService {
   private readonly logger = new Logger(CleanupService.name);
-  private readonly RETENTION_DAYS = 30;
+  private readonly retentionDays: number;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {
+    this.retentionDays = this.config.get<number>('cleanup.retentionDays', 30);
+  }
 
   @Cron(CronExpression.EVERY_DAY_AT_2AM)
   async handleHardDeleteCleanup() {
     const cutoff = new Date(
-      Date.now() - this.RETENTION_DAYS * 24 * 60 * 60 * 1000,
+      Date.now() - this.retentionDays * 24 * 60 * 60 * 1000,
     );
     this.logger.log(
       `Hard-deleting records soft-deleted before ${cutoff.toISOString()}`,

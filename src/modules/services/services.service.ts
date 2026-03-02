@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ServicesRepository } from './services.repository';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
@@ -36,9 +40,13 @@ export class ServicesService {
   }
 
   async restore(tenantId: string, id: string) {
-    const service = await this.servicesRepo.findByIdIncludeDeleted(tenantId, id);
+    const service = await this.servicesRepo.findByIdIncludeDeleted(
+      tenantId,
+      id,
+    );
     if (!service) throw new NotFoundException('Service not found');
-    if (!service.deletedAt) throw new BadRequestException('Service is not deleted');
+    if (!service.deletedAt)
+      throw new BadRequestException('Service is not deleted');
     return this.servicesRepo.restore(tenantId, id);
   }
 }

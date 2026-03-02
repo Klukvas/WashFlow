@@ -15,6 +15,12 @@ describe('AnalyticsRepository', () => {
       findMany: jest.fn(),
       groupBy: jest.fn(),
     },
+    orderService: {
+      groupBy: jest.fn(),
+    },
+    service: {
+      findMany: jest.fn(),
+    },
     workPost: {
       count: jest.fn(),
     },
@@ -34,9 +40,13 @@ describe('AnalyticsRepository', () => {
     jest.clearAllMocks();
     tenantPrisma.forTenant.mockReturnValue(tenantClient);
     tenantClient.order.count.mockResolvedValue(0);
-    tenantClient.order.aggregate.mockResolvedValue({ _sum: { totalPrice: null } });
+    tenantClient.order.aggregate.mockResolvedValue({
+      _sum: { totalPrice: null },
+    });
     tenantClient.order.findMany.mockResolvedValue([]);
     tenantClient.order.groupBy.mockResolvedValue([]);
+    tenantClient.orderService.groupBy.mockResolvedValue([]);
+    tenantClient.service.findMany.mockResolvedValue([]);
     tenantClient.workPost.count.mockResolvedValue(0);
     tenantClient.branch.findMany.mockResolvedValue([]);
     tenantClient.user.findMany.mockResolvedValue([]);
@@ -57,9 +67,11 @@ describe('AnalyticsRepository', () => {
     it('returns dashboard stats with computed completion rate', async () => {
       tenantClient.order.count
         .mockResolvedValueOnce(10) // totalOrders
-        .mockResolvedValueOnce(8)  // completedOrders
+        .mockResolvedValueOnce(8) // completedOrders
         .mockResolvedValueOnce(2); // cancelledOrders
-      tenantClient.order.aggregate.mockResolvedValue({ _sum: { totalPrice: 1000 } });
+      tenantClient.order.aggregate.mockResolvedValue({
+        _sum: { totalPrice: 1000 },
+      });
 
       const result = await repo.getDashboardStats(tenantId, query);
 
@@ -74,7 +86,9 @@ describe('AnalyticsRepository', () => {
 
     it('returns 0 completionRate and 0 totalRevenue when no orders', async () => {
       tenantClient.order.count.mockResolvedValue(0);
-      tenantClient.order.aggregate.mockResolvedValue({ _sum: { totalPrice: null } });
+      tenantClient.order.aggregate.mockResolvedValue({
+        _sum: { totalPrice: null },
+      });
 
       const result = await repo.getDashboardStats(tenantId, query);
       expect(result.completionRate).toBe(0);
@@ -83,7 +97,9 @@ describe('AnalyticsRepository', () => {
 
     it('applies JWT branchId filter when provided', async () => {
       tenantClient.order.count.mockResolvedValue(0);
-      tenantClient.order.aggregate.mockResolvedValue({ _sum: { totalPrice: null } });
+      tenantClient.order.aggregate.mockResolvedValue({
+        _sum: { totalPrice: null },
+      });
 
       await repo.getDashboardStats(tenantId, query, 'branch-1');
 
@@ -93,9 +109,14 @@ describe('AnalyticsRepository', () => {
 
     it('applies query branchId when no JWT branchId', async () => {
       tenantClient.order.count.mockResolvedValue(0);
-      tenantClient.order.aggregate.mockResolvedValue({ _sum: { totalPrice: null } });
+      tenantClient.order.aggregate.mockResolvedValue({
+        _sum: { totalPrice: null },
+      });
 
-      await repo.getDashboardStats(tenantId, { ...query, branchId: 'branch-2' });
+      await repo.getDashboardStats(tenantId, {
+        ...query,
+        branchId: 'branch-2',
+      });
 
       const countArgs = tenantClient.order.count.mock.calls[0][0];
       expect(countArgs.where.branchId).toBe('branch-2');
@@ -136,18 +157,20 @@ describe('AnalyticsRepository', () => {
     });
 
     it('aggregates services across orders and sorts by count descending', async () => {
+      // order.findMany returns order IDs (select: { id: true })
       tenantClient.order.findMany.mockResolvedValue([
-        {
-          services: [
-            { serviceId: 'svc-1', service: { name: 'Wash' }, quantity: 3, price: 50 },
-            { serviceId: 'svc-2', service: { name: 'Wax' }, quantity: 1, price: 30 },
-          ],
-        },
-        {
-          services: [
-            { serviceId: 'svc-1', service: { name: 'Wash' }, quantity: 2, price: 50 },
-          ],
-        },
+        { id: 'order-1' },
+        { id: 'order-2' },
+      ]);
+      // orderService.groupBy returns pre-aggregated data
+      tenantClient.orderService.groupBy.mockResolvedValue([
+        { serviceId: 'svc-1', _sum: { quantity: 5, price: 250 } },
+        { serviceId: 'svc-2', _sum: { quantity: 1, price: 30 } },
+      ]);
+      // service.findMany returns service names
+      tenantClient.service.findMany.mockResolvedValue([
+        { id: 'svc-1', name: 'Wash' },
+        { id: 'svc-2', name: 'Wax' },
       ]);
 
       const result = await repo.getPopularServices(tenantId, query);
@@ -165,8 +188,8 @@ describe('AnalyticsRepository', () => {
   describe('getLiveOperations', () => {
     it('returns live operations with correct freeWorkPosts computation', async () => {
       tenantClient.order.count
-        .mockResolvedValueOnce(3)  // inProgressCount
-        .mockResolvedValueOnce(2)  // waitingCount
+        .mockResolvedValueOnce(3) // inProgressCount
+        .mockResolvedValueOnce(2) // waitingCount
         .mockResolvedValueOnce(1); // overdueOrders
       tenantClient.workPost.count.mockResolvedValue(5);
       tenantClient.order.findMany.mockResolvedValue([
@@ -264,11 +287,20 @@ describe('AnalyticsRepository', () => {
     it('returns performance data mapped from orders and users', async () => {
       tenantClient.order.groupBy
         .mockResolvedValueOnce([
-          { createdById: 'user-1', _sum: { totalPrice: 500 }, _count: { id: 3 } },
+          {
+            createdById: 'user-1',
+            _sum: { totalPrice: 500 },
+            _count: { id: 3 },
+          },
         ])
         .mockResolvedValueOnce([]); // no cancellations
       tenantClient.user.findMany.mockResolvedValue([
-        { id: 'user-1', firstName: 'John', lastName: 'Doe', branch: { name: 'Branch A' } },
+        {
+          id: 'user-1',
+          firstName: 'John',
+          lastName: 'Doe',
+          branch: { name: 'Branch A' },
+        },
       ]);
 
       const result = await repo.getEmployeePerformance(tenantId, query);
@@ -285,13 +317,20 @@ describe('AnalyticsRepository', () => {
     it('computes cancel rate correctly when cancellations exist', async () => {
       tenantClient.order.groupBy
         .mockResolvedValueOnce([
-          { createdById: 'user-1', _sum: { totalPrice: 300 }, _count: { id: 3 } },
+          {
+            createdById: 'user-1',
+            _sum: { totalPrice: 300 },
+            _count: { id: 3 },
+          },
         ])
-        .mockResolvedValueOnce([
-          { createdById: 'user-1', _count: { id: 1 } },
-        ]);
+        .mockResolvedValueOnce([{ createdById: 'user-1', _count: { id: 1 } }]);
       tenantClient.user.findMany.mockResolvedValue([
-        { id: 'user-1', firstName: 'Jane', lastName: 'Smith', branch: { name: 'Branch B' } },
+        {
+          id: 'user-1',
+          firstName: 'Jane',
+          lastName: 'Smith',
+          branch: { name: 'Branch B' },
+        },
       ]);
 
       const result = await repo.getEmployeePerformance(tenantId, query);
@@ -305,7 +344,9 @@ describe('AnalyticsRepository', () => {
   describe('getAlerts', () => {
     it('returns empty alerts when there are no concerning metrics', async () => {
       tenantClient.order.count.mockResolvedValue(0);
-      tenantClient.order.aggregate.mockResolvedValue({ _sum: { totalPrice: null } });
+      tenantClient.order.aggregate.mockResolvedValue({
+        _sum: { totalPrice: null },
+      });
 
       const result = await repo.getAlerts(tenantId, query);
       expect(result).toEqual([]);
@@ -313,10 +354,10 @@ describe('AnalyticsRepository', () => {
 
     it('generates CRITICAL cancel rate alert when cancel rate exceeds 40%', async () => {
       tenantClient.order.count
-        .mockResolvedValueOnce(10)  // ordersToday
-        .mockResolvedValueOnce(5)   // cancelledToday (50%)
-        .mockResolvedValueOnce(0)   // thisWeekOrders
-        .mockResolvedValueOnce(0);  // lastWeekOrders
+        .mockResolvedValueOnce(10) // ordersToday
+        .mockResolvedValueOnce(5) // cancelledToday (50%)
+        .mockResolvedValueOnce(0) // thisWeekOrders
+        .mockResolvedValueOnce(0); // lastWeekOrders
       tenantClient.order.aggregate
         .mockResolvedValueOnce({ _sum: { totalPrice: 0 } })
         .mockResolvedValueOnce({ _sum: { totalPrice: 0 } });
@@ -329,8 +370,8 @@ describe('AnalyticsRepository', () => {
 
     it('generates HIGH cancel rate alert when cancel rate is 21-40%', async () => {
       tenantClient.order.count
-        .mockResolvedValueOnce(10)  // ordersToday
-        .mockResolvedValueOnce(3)   // cancelledToday (30%)
+        .mockResolvedValueOnce(10) // ordersToday
+        .mockResolvedValueOnce(3) // cancelledToday (30%)
         .mockResolvedValueOnce(0)
         .mockResolvedValueOnce(0);
       tenantClient.order.aggregate
@@ -346,7 +387,7 @@ describe('AnalyticsRepository', () => {
     it('generates revenue drop alert when current period revenue drops >20% vs previous', async () => {
       tenantClient.order.count.mockResolvedValue(0);
       tenantClient.order.aggregate
-        .mockResolvedValueOnce({ _sum: { totalPrice: 700 } })  // currentRevenue
+        .mockResolvedValueOnce({ _sum: { totalPrice: 700 } }) // currentRevenue
         .mockResolvedValueOnce({ _sum: { totalPrice: 1000 } }); // prevRevenue (30% drop)
 
       const result = await repo.getAlerts(tenantId, query);
@@ -399,9 +440,11 @@ describe('AnalyticsRepository', () => {
   describe('getKpi', () => {
     it('returns KPI data with all required fields', async () => {
       tenantClient.order.count
-        .mockResolvedValueOnce(5)  // ordersToday
+        .mockResolvedValueOnce(5) // ordersToday
         .mockResolvedValueOnce(1); // cancelledToday
-      tenantClient.order.aggregate.mockResolvedValue({ _sum: { totalPrice: 500 } });
+      tenantClient.order.aggregate.mockResolvedValue({
+        _sum: { totalPrice: 500 },
+      });
       tenantClient.order.findMany
         .mockResolvedValueOnce([{ clientId: 'c1' }, { clientId: 'c2' }]) // distinctClients
         .mockResolvedValueOnce([]); // completedWithTimes
@@ -425,7 +468,9 @@ describe('AnalyticsRepository', () => {
       tenantClient.order.count
         .mockResolvedValueOnce(2)
         .mockResolvedValueOnce(0);
-      tenantClient.order.aggregate.mockResolvedValue({ _sum: { totalPrice: 0 } });
+      tenantClient.order.aggregate.mockResolvedValue({
+        _sum: { totalPrice: 0 },
+      });
       tenantClient.order.findMany
         .mockResolvedValueOnce([]) // distinctClients
         .mockResolvedValueOnce([

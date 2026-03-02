@@ -30,9 +30,13 @@ interface DataTableProps<T> {
   onLimitChange?: (limit: number) => void;
   onRowClick?: (item: T) => void;
   emptyMessage?: string;
+  getRowKey?: (item: T) => string;
 }
 
-function buildPageNumbers(current: number, total: number): (number | 'ellipsis')[] {
+function buildPageNumbers(
+  current: number,
+  total: number,
+): (number | 'ellipsis')[] {
   if (total <= 7) {
     return Array.from({ length: total }, (_, i) => i + 1);
   }
@@ -70,6 +74,7 @@ export function DataTable<T>({
   onLimitChange,
   onRowClick,
   emptyMessage,
+  getRowKey = (item: any) => item.id,
 }: DataTableProps<T>) {
   const { t } = useTranslation('common');
 
@@ -117,9 +122,9 @@ export function DataTable<T>({
               </tr>
             </thead>
             <tbody>
-              {data.map((item, idx) => (
+              {data.map((item) => (
                 <tr
-                  key={idx}
+                  key={getRowKey(item)}
                   className={`border-b border-border last:border-0 ${onRowClick ? 'cursor-pointer hover:bg-muted/50' : ''}`}
                   onClick={() => onRowClick?.(item)}
                 >

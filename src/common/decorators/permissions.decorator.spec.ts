@@ -9,7 +9,10 @@ describe('Permissions decorator', () => {
     }
 
     const reflector = new Reflector();
-    const meta = reflector.get<string[]>(PERMISSIONS_KEY, TestClass.prototype.testMethod);
+    const meta = reflector.get<string[]>(
+      PERMISSIONS_KEY,
+      TestClass.prototype.testMethod,
+    );
     expect(meta).toEqual(['orders.read', 'orders.create']);
   });
 
@@ -20,7 +23,10 @@ describe('Permissions decorator', () => {
     }
 
     const reflector = new Reflector();
-    const meta = reflector.get<string[]>(PERMISSIONS_KEY, TestClass.prototype.singlePerm);
+    const meta = reflector.get<string[]>(
+      PERMISSIONS_KEY,
+      TestClass.prototype.singlePerm,
+    );
     expect(meta).toEqual(['users.read']);
   });
 
@@ -31,7 +37,10 @@ describe('Permissions decorator', () => {
     }
 
     const reflector = new Reflector();
-    const meta = reflector.get<string[]>(PERMISSIONS_KEY, TestClass.prototype.noPerm);
+    const meta = reflector.get<string[]>(
+      PERMISSIONS_KEY,
+      TestClass.prototype.noPerm,
+    );
     expect(meta).toEqual([]);
   });
 

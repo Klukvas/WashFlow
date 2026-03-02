@@ -4,15 +4,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: washflow
-      POSTGRES_USER: washflow
-      POSTGRES_PASSWORD: washflow_secret
+      POSTGRES_DB: ${POSTGRES_DB:-washflow}
+      POSTGRES_USER: ${POSTGRES_USER:-washflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     ports:
       - '5433:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U washflow']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-washflow}']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -33,11 +33,11 @@ services:
     build: .
     ports:
       - '3000:3000'
+    env_file:
+      - .env.docker
     environment:
-      DATABASE_URL: postgresql://washflow:washflow_secret@postgres:5432/washflow
+      DATABASE_URL: postgresql://${POSTGRES_USER:-washflow}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-washflow}
       REDIS_URL: redis://redis:6379
-      JWT_ACCESS_SECRET: k8Xm2pQ9vL4wR7tB3nJ6hY0cF5dA1sGzUeWoIiMxNbVqKjTfHlDrCyPuEaZgOS
-      JWT_REFRESH_SECRET: W3mR7vX1pL9tK4nB8hJ0cF6dA2sGyUeZoIiMxNbVqQjTfHlDrCaPuEwYgOSkX5z
       NODE_ENV: production
       PORT: 3000
     depends_on:
@@ -46,7 +46,7 @@ services:
       redis:
         condition: service_healthy
     command: >
-      sh -c "npx prisma db push && node dist/prisma/seed.js && node dist/src/main.js"
+      sh -c "npx prisma migrate deploy && node dist/prisma/seed.js && node dist/src/main.js"
 
 volumes:
   postgres_data:

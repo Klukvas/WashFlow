@@ -5,6 +5,7 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { TenantsRepository } from '../tenants/tenants.repository';
 import { SchedulingService } from '../scheduling/scheduling.service';
 import { OrdersService } from '../orders/orders.service';
@@ -72,44 +73,51 @@ export class PublicBookingService {
       throw new ForbiddenException('Online booking is not available');
     }
 
-    // Find or create client
-    let client = await this.prisma.client.findFirst({
-      where: { tenantId: tenant.id, phone: dto.phone, deletedAt: null },
-    });
+    // Find or create client + vehicle inside a serializable transaction
+    // to prevent race conditions with concurrent bookings
+    const { client, vehicle } = await this.prisma.$transaction(
+      async (tx) => {
+        let foundClient = await tx.client.findFirst({
+          where: { tenantId: tenant.id, phone: dto.phone, deletedAt: null },
+        });
 
-    if (!client) {
-      client = await this.prisma.client.create({
-        data: {
-          tenantId: tenant.id,
-          firstName: dto.firstName,
-          lastName: dto.lastName,
-          phone: dto.phone,
-          email: dto.email,
-        },
-      });
-    }
+        if (!foundClient) {
+          foundClient = await tx.client.create({
+            data: {
+              tenantId: tenant.id,
+              firstName: dto.firstName,
+              lastName: dto.lastName,
+              phone: dto.phone,
+              email: dto.email,
+            },
+          });
+        }
 
-    // Find or create vehicle
-    let vehicle = await this.prisma.vehicle.findFirst({
-      where: {
-        tenantId: tenant.id,
-        clientId: client.id,
-        licensePlate: dto.licensePlate,
-        deletedAt: null,
+        let foundVehicle = await tx.vehicle.findFirst({
+          where: {
+            tenantId: tenant.id,
+            clientId: foundClient.id,
+            licensePlate: dto.licensePlate,
+            deletedAt: null,
+          },
+        });
+
+        if (!foundVehicle) {
+          foundVehicle = await tx.vehicle.create({
+            data: {
+              tenantId: tenant.id,
+              clientId: foundClient.id,
+              licensePlate: dto.licensePlate,
+              make: dto.vehicleMake || 'Unknown',
+              model: dto.vehicleModel,
+            },
+          });
+        }
+
+        return { client: foundClient, vehicle: foundVehicle };
       },
-    });
-
-    if (!vehicle) {
-      vehicle = await this.prisma.vehicle.create({
-        data: {
-          tenantId: tenant.id,
-          clientId: client.id,
-          licensePlate: dto.licensePlate,
-          make: dto.vehicleMake || 'Unknown',
-          model: dto.vehicleModel,
-        },
-      });
-    }
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
 
     // Delegate to OrdersService with source WEB
     try {

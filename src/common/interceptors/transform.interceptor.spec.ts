@@ -218,7 +218,13 @@ describe('TransformInterceptor', () => {
     });
 
     it('handles a paginated payload with an empty items array', async () => {
-      const emptyPaginated = { items: [], total: 0, page: 1, limit: 20, totalPages: 0 };
+      const emptyPaginated = {
+        items: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 0,
+      };
       const result = (await intercept(interceptor, emptyPaginated)) as {
         data: unknown;
         meta: Record<string, unknown>;

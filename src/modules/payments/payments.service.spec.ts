@@ -72,14 +72,20 @@ describe('PaymentsService', () => {
 
       await service.findByOrderId(TENANT_ID, ORDER_ID);
 
-      expect(paymentsRepo.findByOrderId).toHaveBeenCalledWith(TENANT_ID, ORDER_ID);
+      expect(paymentsRepo.findByOrderId).toHaveBeenCalledWith(
+        TENANT_ID,
+        ORDER_ID,
+      );
       expect(paymentsRepo.findByOrderId).toHaveBeenCalledTimes(1);
     });
 
     it('returns null when no payment exists for the order', async () => {
       paymentsRepo.findByOrderId.mockResolvedValue(null);
 
-      const result = await service.findByOrderId(TENANT_ID, 'non-existent-order');
+      const result = await service.findByOrderId(
+        TENANT_ID,
+        'non-existent-order',
+      );
 
       expect(result).toBeNull();
     });
@@ -93,7 +99,9 @@ describe('PaymentsService', () => {
     });
 
     it('propagates repository errors', async () => {
-      paymentsRepo.findByOrderId.mockRejectedValue(new Error('DB connection lost'));
+      paymentsRepo.findByOrderId.mockRejectedValue(
+        new Error('DB connection lost'),
+      );
 
       await expect(service.findByOrderId(TENANT_ID, ORDER_ID)).rejects.toThrow(
         'DB connection lost',
@@ -191,7 +199,9 @@ describe('PaymentsService', () => {
       const frozen = Object.freeze({ ...dto });
       paymentsRepo.create.mockResolvedValue(makePayment());
 
-      await expect(service.create(TENANT_ID, ORDER_ID, frozen as any)).resolves.not.toThrow();
+      await expect(
+        service.create(TENANT_ID, ORDER_ID, frozen as any),
+      ).resolves.not.toThrow();
     });
   });
 });

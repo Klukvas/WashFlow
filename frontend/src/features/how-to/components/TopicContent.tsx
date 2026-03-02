@@ -117,14 +117,14 @@ export function TopicContent() {
         <div>
           {Array.isArray(items) &&
             (items as FlowStep[]).map((step, idx) => (
-              <StepCard key={idx} step={step} index={idx} />
+              <StepCard key={step.title || idx} step={step} index={idx} />
             ))}
         </div>
       ) : (
         <div className="space-y-4">
           {Array.isArray(items) &&
             (items as TopicSection[]).map((section, idx) => (
-              <SectionCard key={idx} section={section} />
+              <SectionCard key={section.heading || idx} section={section} />
             ))}
         </div>
       )}

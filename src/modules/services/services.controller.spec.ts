@@ -59,7 +59,9 @@ describe('ServicesController', () => {
 
   describe('update', () => {
     it('should delegate to service.update with tenantId, id, and dto', async () => {
-      const dto: UpdateServiceDto = { name: 'Premium Car Wash' } as UpdateServiceDto;
+      const dto: UpdateServiceDto = {
+        name: 'Premium Car Wash',
+      } as UpdateServiceDto;
 
       await controller.update(tenantId, serviceId, dto);
 

@@ -94,6 +94,7 @@ describe('OrdersService', () => {
   let mockTx: {
     order: { create: jest.Mock };
     employeeProfile: { count: jest.Mock; findFirst: jest.Mock };
+    workPost: { findMany: jest.Mock };
   };
   let ordersRepo: {
     findAll: jest.Mock;
@@ -122,13 +123,24 @@ describe('OrdersService', () => {
         count: jest.fn().mockResolvedValue(0), // zero profiles → skip auto-assign
         findFirst: jest.fn().mockResolvedValue(null),
       },
+      workPost: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+
+    const defaultBookingSettings = {
+      slotDurationMinutes: 30,
+      bufferTimeMinutes: 10,
+      workingHoursStart: '08:00',
+      workingHoursEnd: '20:00',
+      workingDays: [0, 1, 2, 3, 4, 5, 6],
+      maxAdvanceBookingDays: 365,
+      allowOnlineBooking: true,
     };
 
     prisma = {
       $transaction: jest.fn((fn) => fn(mockTx)),
       bookingSettings: {
         findUnique: jest.fn().mockResolvedValue(null),
-        findFirst: jest.fn().mockResolvedValue(null),
+        findFirst: jest.fn().mockResolvedValue(defaultBookingSettings),
       },
       workPost: { findMany: jest.fn().mockResolvedValue([]) },
     };
@@ -475,7 +487,13 @@ describe('OrdersService', () => {
 
     it('uses buffer time from bookingSettings when available', async () => {
       prisma.bookingSettings.findUnique.mockResolvedValue({
+        slotDurationMinutes: 30,
         bufferTimeMinutes: 15,
+        workingHoursStart: '08:00',
+        workingHoursEnd: '20:00',
+        workingDays: [0, 1, 2, 3, 4, 5, 6],
+        maxAdvanceBookingDays: 365,
+        allowOnlineBooking: true,
       });
       const svc = makeService(SERVICE_ID_1);
       servicesRepo.findByIds.mockResolvedValue([svc]);
@@ -516,8 +534,7 @@ describe('OrdersService', () => {
         branchId: BRANCH_ID,
         isActive: true,
       };
-      prisma.workPost.findMany.mockResolvedValue([workPost]);
-      schedulingService.validateNoOverlap.mockResolvedValue(true);
+      mockTx.workPost.findMany.mockResolvedValue([workPost]);
       mockTx.order.create.mockResolvedValue(makeOrder());
       const dto = makeCreateDto({ workPostId: undefined });
 
@@ -533,7 +550,7 @@ describe('OrdersService', () => {
     it('throws BadRequestException when no work posts are available', async () => {
       const svc = makeService(SERVICE_ID_1);
       servicesRepo.findByIds.mockResolvedValue([svc]);
-      prisma.workPost.findMany.mockResolvedValue([
+      mockTx.workPost.findMany.mockResolvedValue([
         {
           id: WORK_POST_ID,
           tenantId: TENANT_ID,
@@ -541,7 +558,9 @@ describe('OrdersService', () => {
           isActive: true,
         },
       ]);
-      schedulingService.validateNoOverlap.mockResolvedValue(false);
+      schedulingService.reserveSlot.mockRejectedValue(
+        new ConflictException('slot overlap'),
+      );
       const dto = makeCreateDto({ workPostId: undefined });
 
       await expect(service.create(TENANT_ID, dto, USER_ID)).rejects.toThrow(
@@ -554,7 +573,7 @@ describe('OrdersService', () => {
     it('throws BadRequestException when work posts list is empty', async () => {
       const svc = makeService(SERVICE_ID_1);
       servicesRepo.findByIds.mockResolvedValue([svc]);
-      prisma.workPost.findMany.mockResolvedValue([]);
+      mockTx.workPost.findMany.mockResolvedValue([]);
       const dto = makeCreateDto({ workPostId: undefined });
 
       await expect(service.create(TENANT_ID, dto, USER_ID)).rejects.toThrow(
@@ -579,10 +598,10 @@ describe('OrdersService', () => {
         branchId: BRANCH_ID,
         isActive: true,
       };
-      prisma.workPost.findMany.mockResolvedValue([busyPost, freePost]);
-      schedulingService.validateNoOverlap
-        .mockResolvedValueOnce(false)
-        .mockResolvedValueOnce(true);
+      mockTx.workPost.findMany.mockResolvedValue([busyPost, freePost]);
+      schedulingService.reserveSlot
+        .mockRejectedValueOnce(new ConflictException('slot overlap'))
+        .mockResolvedValueOnce(undefined);
       mockTx.order.create.mockResolvedValue(makeOrder());
       const dto = makeCreateDto({ workPostId: undefined });
 

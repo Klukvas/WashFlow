@@ -54,7 +54,7 @@ export class SchedulingService {
     // Enforce maxAdvanceBookingDays
     const now = new Date();
     const maxDate = new Date(
-      now.getTime() + settings.maxAdvanceBookingDays * 86400000,
+      now.getTime() + settings.maxAdvanceBookingDays * 86_400_000,
     );
     if (date.getTime() > maxDate.getTime()) {
       return [];
@@ -65,27 +65,17 @@ export class SchedulingService {
     const workStart = settings.workingHoursStart;
     const workEnd = settings.workingHoursEnd;
 
-    // Determine work posts to check
-    let workPostIds: string[];
-    if (workPostId) {
-      workPostIds = [workPostId];
-    } else {
-      const posts = await this.tenantPrisma
-        .forTenant(tenantId)
-        .workPost.findMany({
-          where: { branchId, isActive: true },
-          select: { id: true, name: true },
-        });
-      workPostIds = posts.map((p) => p.id);
-    }
+    // Fetch work posts in a single query
+    const tenantDb = this.tenantPrisma.forTenant(tenantId);
+    const workPosts = await tenantDb.workPost.findMany({
+      where: workPostId
+        ? { id: workPostId, isActive: true }
+        : { branchId, isActive: true },
+      select: { id: true, name: true },
+    });
 
-    const workPostNames = await this.tenantPrisma
-      .forTenant(tenantId)
-      .workPost.findMany({
-        where: { id: { in: workPostIds } },
-        select: { id: true, name: true },
-      });
-    const nameMap = new Map(workPostNames.map((p) => [p.id, p.name]));
+    const workPostIds = workPosts.map((p) => p.id);
+    const nameMap = new Map(workPosts.map((p) => [p.id, p.name]));
 
     // Build date range
     const dayStart = this.parseTime(date, workStart);
@@ -97,19 +87,107 @@ export class SchedulingService {
       branchId,
     );
 
-    // Pass 1: compute per-post slot availability (unchanged core logic)
+    // Batch-fetch all orders for all work posts in one query
+    const allOrders = await this.schedulingRepo.findOrdersForWorkPostsInRange(
+      tenantId,
+      workPostIds,
+      dayStart,
+      dayEnd,
+    );
+
+    // Group orders by work post
+    const ordersByWorkPost = new Map<string, typeof allOrders>();
+    for (const wpId of workPostIds) {
+      ordersByWorkPost.set(wpId, []);
+    }
+    for (const order of allOrders) {
+      const list = ordersByWorkPost.get(order.workPostId ?? '');
+      if (list) list.push(order);
+    }
+
+    // Batch-fetch employee availability (2 queries instead of N per-slot queries)
+    let employeeAvailabilityBySlot: Map<number, string[]> | null = null;
+    if (totalProfiles > 0) {
+      const pad = (n: number) => String(n).padStart(2, '0');
+
+      // 1. Fetch all candidate employees for this branch
+      const candidates = await tenantDb.employeeProfile.findMany({
+        where: {
+          branchId,
+          isWorker: true,
+          active: true,
+          workStartTime: { not: null },
+          workEndTime: { not: null },
+          user: { deletedAt: null },
+          branch: { deletedAt: null },
+        },
+        select: { id: true, workStartTime: true, workEndTime: true },
+      });
+
+      // 2. Fetch all active orders for candidates in the day range (with buffer)
+      const candidateIds = candidates.map((c) => c.id);
+      const bufferedDayStart = new Date(
+        dayStart.getTime() - bufferTime * 60000,
+      );
+      const bufferedDayEnd = new Date(dayEnd.getTime() + bufferTime * 60000);
+
+      const activeOrders =
+        candidateIds.length > 0
+          ? await tenantDb.order.findMany({
+              where: {
+                assignedEmployeeId: { in: candidateIds },
+                status: { notIn: ['CANCELLED', 'NO_SHOW', 'COMPLETED'] },
+                scheduledStart: { lt: bufferedDayEnd },
+                scheduledEnd: { gt: bufferedDayStart },
+                deletedAt: null,
+              },
+              select: {
+                assignedEmployeeId: true,
+                scheduledStart: true,
+                scheduledEnd: true,
+              },
+            })
+          : [];
+
+      // 3. Compute per-slot availability in memory
+      employeeAvailabilityBySlot = new Map();
+      let slotIdx = 0;
+      let cursor = new Date(dayStart);
+      while (cursor.getTime() + slotDuration * 60000 <= dayEnd.getTime()) {
+        const slotEnd = new Date(cursor.getTime() + slotDuration * 60000);
+        const slotStartHH = `${pad(cursor.getUTCHours())}:${pad(cursor.getUTCMinutes())}`;
+        const slotEndHH = `${pad(slotEnd.getUTCHours())}:${pad(slotEnd.getUTCMinutes())}`;
+        const bufferedStart = new Date(cursor.getTime() - bufferTime * 60000);
+        const bufferedEnd = new Date(slotEnd.getTime() + bufferTime * 60000);
+
+        const available = candidates
+          .filter((c) => {
+            if (!c.workStartTime || c.workStartTime > slotStartHH) return false;
+            if (!c.workEndTime || c.workEndTime < slotEndHH) return false;
+            const hasConflict = activeOrders.some(
+              (o) =>
+                o.assignedEmployeeId === c.id &&
+                o.scheduledStart < bufferedEnd &&
+                o.scheduledEnd > bufferedStart,
+            );
+            return !hasConflict;
+          })
+          .map((c) => c.id);
+
+        employeeAvailabilityBySlot.set(slotIdx, available);
+        cursor = new Date(cursor.getTime() + slotDuration * 60000);
+        slotIdx++;
+      }
+    }
+
+    // Pass 1: compute per-post slot availability
     const perPostSlots = new Map<
       string,
       { workPostId: string; workPostName: string; available: boolean }[]
     >();
 
     for (const wpId of workPostIds) {
-      const existingOrders = await this.schedulingRepo.findOrdersInRange(
-        tenantId,
-        wpId,
-        dayStart,
-        dayEnd,
-      );
+      const existingOrders = ordersByWorkPost.get(wpId) ?? [];
 
       const wpSlots: {
         workPostId: string;
@@ -161,18 +239,15 @@ export class SchedulingService {
 
       // Apply workforce cap when profiles are configured
       let effectiveCapacity = availablePostIndices.length;
-      if (totalProfiles > 0 && availablePostIndices.length > 0) {
+      if (
+        totalProfiles > 0 &&
+        availablePostIndices.length > 0 &&
+        employeeAvailabilityBySlot
+      ) {
         const availableEmployeeIds =
-          await this.workforceRepo.findAvailableEmployeesAtSlot(
-            tenantId,
-            branchId,
-            slotStart,
-            slotEnd,
-            bufferTime,
-          );
+          employeeAvailabilityBySlot.get(slotIdx) ?? [];
 
         if (assignedEmployeeId) {
-          // Specific employee selected → slot available only if THIS employee is free
           const isEmployeeFree =
             availableEmployeeIds.includes(assignedEmployeeId);
           effectiveCapacity = isEmployeeFree ? availablePostIndices.length : 0;

@@ -137,19 +137,27 @@ describe('PermissionsService', () => {
 
       await service.findByModule('super-admin_module.v2');
 
-      expect(permissionsRepo.findByModule).toHaveBeenCalledWith('super-admin_module.v2');
+      expect(permissionsRepo.findByModule).toHaveBeenCalledWith(
+        'super-admin_module.v2',
+      );
     });
 
     it('propagates repository errors', async () => {
-      permissionsRepo.findByModule.mockRejectedValue(new Error('Module lookup failed'));
+      permissionsRepo.findByModule.mockRejectedValue(
+        new Error('Module lookup failed'),
+      );
 
-      await expect(service.findByModule('orders')).rejects.toThrow('Module lookup failed');
+      await expect(service.findByModule('orders')).rejects.toThrow(
+        'Module lookup failed',
+      );
     });
 
     it('returns results for each module independently', async () => {
       permissionsRepo.findByModule
         .mockResolvedValueOnce([makePermission({ module: 'orders' })])
-        .mockResolvedValueOnce([makePermission({ id: 'perm-2', module: 'clients' })]);
+        .mockResolvedValueOnce([
+          makePermission({ id: 'perm-2', module: 'clients' }),
+        ]);
 
       const ordersResult = await service.findByModule('orders');
       const clientsResult = await service.findByModule('clients');

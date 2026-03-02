@@ -113,7 +113,12 @@ describe('WorkforceRepository', () => {
     });
 
     it('stores workStartTime and workEndTime when provided', async () => {
-      const data = { userId, branchId, workStartTime: '08:00', workEndTime: '17:00' };
+      const data = {
+        userId,
+        branchId,
+        workStartTime: '08:00',
+        workEndTime: '17:00',
+      };
       await repo.createProfile(tenantId, data);
       const callArgs = tenantClient.employeeProfile.create.mock.calls[0][0];
       expect(callArgs.data.workStartTime).toBe('08:00');
@@ -140,11 +145,14 @@ describe('WorkforceRepository', () => {
   });
 
   describe('deleteProfile', () => {
-    it('hard-deletes profile by id', async () => {
+    it('soft-deletes profile by id', async () => {
       await repo.deleteProfile(tenantId, profileId);
-      expect(tenantClient.employeeProfile.delete).toHaveBeenCalledWith({
-        where: { id: profileId },
-      });
+      expect(tenantClient.employeeProfile.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: profileId },
+          data: { deletedAt: expect.any(Date) },
+        }),
+      );
     });
   });
 
@@ -167,13 +175,23 @@ describe('WorkforceRepository', () => {
         { id: 'emp-1' },
         { id: 'emp-2' },
       ]);
-      const result = await repo.findAvailableEmployeesAtSlot(tenantId, branchId, slotStart, slotEnd);
+      const result = await repo.findAvailableEmployeesAtSlot(
+        tenantId,
+        branchId,
+        slotStart,
+        slotEnd,
+      );
       expect(result).toEqual(['emp-1', 'emp-2']);
     });
 
     it('queries with workStartTime/workEndTime HH:MM comparison', async () => {
       tenantClient.employeeProfile.findMany.mockResolvedValue([]);
-      await repo.findAvailableEmployeesAtSlot(tenantId, branchId, slotStart, slotEnd);
+      await repo.findAvailableEmployeesAtSlot(
+        tenantId,
+        branchId,
+        slotStart,
+        slotEnd,
+      );
       const callArgs = tenantClient.employeeProfile.findMany.mock.calls[0][0];
       expect(callArgs.where.branchId).toBe(branchId);
       expect(callArgs.where.isWorker).toBe(true);
@@ -186,7 +204,12 @@ describe('WorkforceRepository', () => {
 
     it('uses lte/gte string comparison for work hours', async () => {
       tenantClient.employeeProfile.findMany.mockResolvedValue([]);
-      await repo.findAvailableEmployeesAtSlot(tenantId, branchId, slotStart, slotEnd);
+      await repo.findAvailableEmployeesAtSlot(
+        tenantId,
+        branchId,
+        slotStart,
+        slotEnd,
+      );
       const callArgs = tenantClient.employeeProfile.findMany.mock.calls[0][0];
       expect(callArgs.where.workStartTime.lte).toBeDefined();
       expect(callArgs.where.workEndTime.gte).toBeDefined();
@@ -194,7 +217,12 @@ describe('WorkforceRepository', () => {
 
     it('returns empty array when no employees available', async () => {
       tenantClient.employeeProfile.findMany.mockResolvedValue([]);
-      const result = await repo.findAvailableEmployeesAtSlot(tenantId, branchId, slotStart, slotEnd);
+      const result = await repo.findAvailableEmployeesAtSlot(
+        tenantId,
+        branchId,
+        slotStart,
+        slotEnd,
+      );
       expect(result).toEqual([]);
     });
   });

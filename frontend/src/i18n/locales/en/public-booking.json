@@ -39,6 +39,7 @@
   "totalLabel": "Total",
   "confirmBooking": "Confirm Booking",
   "optionalPlaceholder": "Optional",
+  "at": "at",
   "bookingDetails": "Booking Details",
   "duration": "Duration",
   "addToGoogleCalendar": "Add to Google Calendar",

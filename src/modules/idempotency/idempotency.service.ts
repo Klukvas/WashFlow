@@ -15,7 +15,11 @@ export class IdempotencyService {
 
   async check(tenantId: string, key: string): Promise<IdempotencyCheckResult> {
     const existing = await this.repo.findByKey(tenantId, key);
-    if (existing && existing.expiresAt > new Date() && existing.statusCode > 0) {
+    if (
+      existing &&
+      existing.expiresAt > new Date() &&
+      existing.statusCode > 0
+    ) {
       return {
         hit: true,
         cachedResponse: {
@@ -33,7 +37,11 @@ export class IdempotencyService {
     key: string,
   ): Promise<IdempotencyCheckResult> {
     const existing = await this.repo.findByKeyTx(tx, tenantId, key);
-    if (existing && existing.expiresAt > new Date() && existing.statusCode > 0) {
+    if (
+      existing &&
+      existing.expiresAt > new Date() &&
+      existing.statusCode > 0
+    ) {
       return {
         hit: true,
         cachedResponse: {

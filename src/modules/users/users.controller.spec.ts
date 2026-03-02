@@ -71,7 +71,9 @@ describe('UsersController', () => {
 
   describe('update', () => {
     it('should delegate to service.update with tenantId, id, and dto', async () => {
-      const dto: UpdateUserDto = { email: 'updated@example.com' } as UpdateUserDto;
+      const dto: UpdateUserDto = {
+        email: 'updated@example.com',
+      } as UpdateUserDto;
 
       await controller.update(tenantId, userId, dto);
 

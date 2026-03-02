@@ -8,7 +8,13 @@ import { ServicesModule } from '../services/services.module';
 import { BranchesModule } from '../branches/branches.module';
 
 @Module({
-  imports: [TenantsModule, OrdersModule, SchedulingModule, ServicesModule, BranchesModule],
+  imports: [
+    TenantsModule,
+    OrdersModule,
+    SchedulingModule,
+    ServicesModule,
+    BranchesModule,
+  ],
   controllers: [PublicBookingController],
   providers: [PublicBookingService],
 })

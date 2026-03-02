@@ -39,8 +39,14 @@ const makeUser = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-const makePaginationDto = (overrides: Partial<PaginationDto> = {}): PaginationDto =>
-  Object.assign(new PaginationDto(), { page: 1, limit: 20, sortOrder: 'asc' }, overrides);
+const makePaginationDto = (
+  overrides: Partial<PaginationDto> = {},
+): PaginationDto =>
+  Object.assign(
+    new PaginationDto(),
+    { page: 1, limit: 20, sortOrder: 'asc' },
+    overrides,
+  );
 
 // ---------------------------------------------------------------------------
 // Mock factory
@@ -68,10 +74,7 @@ describe('UsersService', () => {
     repo = makeRepoMock();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        UsersService,
-        { provide: UsersRepository, useValue: repo },
-      ],
+      providers: [UsersService, { provide: UsersRepository, useValue: repo }],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
@@ -204,9 +207,9 @@ describe('UsersService', () => {
       // Repository returns null when branch scope filters the user out
       repo.findById.mockResolvedValue(null);
 
-      await expect(service.findById(TENANT_ID, USER_ID, BRANCH_ID)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.findById(TENANT_ID, USER_ID, BRANCH_ID),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -223,7 +226,11 @@ describe('UsersService', () => {
         firstName: 'Jane',
         lastName: 'Smith',
       };
-      const created = makeUser({ email: dto.email, firstName: dto.firstName, lastName: dto.lastName });
+      const created = makeUser({
+        email: dto.email,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+      });
       repo.create.mockResolvedValue(created);
 
       await service.create(TENANT_ID, dto);
@@ -335,7 +342,10 @@ describe('UsersService', () => {
       repo.findById.mockResolvedValue(existing);
       mockedArgon2.hash.mockResolvedValue('$argon2id$new-hash');
       repo.update.mockResolvedValue(makeUser());
-      const dto: UpdateUserDto = { password: 'newPassword99', firstName: 'Bob' };
+      const dto: UpdateUserDto = {
+        password: 'newPassword99',
+        firstName: 'Bob',
+      };
 
       await service.update(TENANT_ID, USER_ID, dto);
 
@@ -400,14 +410,19 @@ describe('UsersService', () => {
 
   describe('restore', () => {
     it('restores a soft-deleted user', async () => {
-      const deletedUser = makeUser({ deletedAt: new Date('2024-06-01T00:00:00Z') });
+      const deletedUser = makeUser({
+        deletedAt: new Date('2024-06-01T00:00:00Z'),
+      });
       const restoredUser = makeUser({ deletedAt: null });
       repo.findByIdIncludeDeleted.mockResolvedValue(deletedUser);
       repo.restore.mockResolvedValue(restoredUser);
 
       const result = await service.restore(TENANT_ID, USER_ID);
 
-      expect(repo.findByIdIncludeDeleted).toHaveBeenCalledWith(TENANT_ID, USER_ID);
+      expect(repo.findByIdIncludeDeleted).toHaveBeenCalledWith(
+        TENANT_ID,
+        USER_ID,
+      );
       expect(repo.restore).toHaveBeenCalledWith(TENANT_ID, USER_ID);
       expect(result).toEqual(restoredUser);
     });

@@ -80,4 +80,32 @@ export class SchedulingRepository {
       orderBy: { scheduledStart: 'asc' },
     });
   }
+
+  /**
+   * Batch-fetch orders for multiple work posts in a given date range (single query).
+   */
+  async findOrdersForWorkPostsInRange(
+    tenantId: string,
+    workPostIds: string[],
+    rangeStart: Date,
+    rangeEnd: Date,
+  ) {
+    if (workPostIds.length === 0) return [];
+    return this.tenantPrisma.forTenant(tenantId).order.findMany({
+      where: {
+        workPostId: { in: workPostIds },
+        status: { notIn: ['CANCELLED', 'NO_SHOW', 'COMPLETED'] },
+        scheduledStart: { lt: rangeEnd },
+        scheduledEnd: { gt: rangeStart },
+      },
+      select: {
+        id: true,
+        workPostId: true,
+        scheduledStart: true,
+        scheduledEnd: true,
+        status: true,
+      },
+      orderBy: { scheduledStart: 'asc' },
+    });
+  }
 }

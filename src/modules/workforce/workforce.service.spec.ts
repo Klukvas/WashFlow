@@ -87,7 +87,12 @@ describe('EmployeeProfileService', () => {
   });
 
   describe('create', () => {
-    const createDto = { userId, branchId, workStartTime: '09:00', workEndTime: '18:00' };
+    const createDto = {
+      userId,
+      branchId,
+      workStartTime: '09:00',
+      workEndTime: '18:00',
+    };
 
     it('should create and return the profile when no duplicate exists', async () => {
       const result = await service.create(tenantId, createDto as any);

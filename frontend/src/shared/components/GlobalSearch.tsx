@@ -68,7 +68,12 @@ export function GlobalSearch() {
               signal,
             }),
             apiClient.get<PaginatedApiResponse<Order>>('/orders', {
-              params: { limit: 5, sortBy: 'createdAt', sortOrder: 'desc' },
+              params: {
+                search: debouncedQuery,
+                limit: 5,
+                sortBy: 'createdAt',
+                sortOrder: 'desc',
+              },
               signal,
             }),
             apiClient.get<PaginatedApiResponse<Service>>('/services', {
@@ -137,8 +142,8 @@ export function GlobalSearch() {
 
         setResults(mapped);
         setActiveIndex(-1);
-      } catch {
-        // Ignore aborted requests
+      } catch (err: unknown) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
       }
     }
 
@@ -192,6 +197,7 @@ export function GlobalSearch() {
         />
         {query && (
           <button
+            aria-label={t('search.clear')}
             className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             onClick={() => {
               setQuery('');

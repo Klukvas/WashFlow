@@ -23,6 +23,10 @@ import { JobsSubscriber } from './jobs.subscriber';
     BookingConfirmationProcessor,
     JobsSubscriber,
   ],
-  exports: [NotificationProducer, AnalyticsProducer, BookingConfirmationProducer],
+  exports: [
+    NotificationProducer,
+    AnalyticsProducer,
+    BookingConfirmationProducer,
+  ],
 })
 export class JobsModule {}

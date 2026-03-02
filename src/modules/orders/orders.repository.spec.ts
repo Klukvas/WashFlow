@@ -53,21 +53,33 @@ describe('OrdersRepository', () => {
     });
 
     it('applies status filter when provided', async () => {
-      const query: OrderQueryDto = { page: 1, limit: 10, status: 'PENDING' as any } as OrderQueryDto;
+      const query: OrderQueryDto = {
+        page: 1,
+        limit: 10,
+        status: 'PENDING' as any,
+      } as OrderQueryDto;
       await repo.findAll(tenantId, query);
       const callArgs = tenantClient.order.findMany.mock.calls[0][0];
       expect(callArgs.where.status).toBe('PENDING');
     });
 
     it('applies clientId filter when provided', async () => {
-      const query: OrderQueryDto = { page: 1, limit: 10, clientId } as OrderQueryDto;
+      const query: OrderQueryDto = {
+        page: 1,
+        limit: 10,
+        clientId,
+      } as OrderQueryDto;
       await repo.findAll(tenantId, query);
       const callArgs = tenantClient.order.findMany.mock.calls[0][0];
       expect(callArgs.where.clientId).toBe(clientId);
     });
 
     it('applies dateFrom filter when provided', async () => {
-      const query: OrderQueryDto = { page: 1, limit: 10, dateFrom: '2026-01-01' } as OrderQueryDto;
+      const query: OrderQueryDto = {
+        page: 1,
+        limit: 10,
+        dateFrom: '2026-01-01',
+      } as OrderQueryDto;
       await repo.findAll(tenantId, query);
       const callArgs = tenantClient.order.findMany.mock.calls[0][0];
       expect(callArgs.where.scheduledStart.gte).toEqual(new Date('2026-01-01'));
@@ -81,7 +93,11 @@ describe('OrdersRepository', () => {
     });
 
     it('applies query branchId when no JWT branchId but query.branchId is set', async () => {
-      const query: OrderQueryDto = { page: 1, limit: 10, branchId } as OrderQueryDto;
+      const query: OrderQueryDto = {
+        page: 1,
+        limit: 10,
+        branchId,
+      } as OrderQueryDto;
       await repo.findAll(tenantId, query, null);
       const callArgs = tenantClient.order.findMany.mock.calls[0][0];
       expect(callArgs.where.branchId).toBe(branchId);

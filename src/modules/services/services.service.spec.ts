@@ -61,7 +61,11 @@ describe('ServicesService', () => {
     });
 
     it('should return multiple services', async () => {
-      const secondService = { ...mockService, id: 'service-2', name: 'Interior Clean' };
+      const secondService = {
+        ...mockService,
+        id: 'service-2',
+        name: 'Interior Clean',
+      };
       repo.findAll.mockResolvedValue([mockService, secondService]);
       const result = await service.findAll(tenantId);
       expect(result).toHaveLength(2);
@@ -156,7 +160,9 @@ describe('ServicesService', () => {
     it('should return the updated service', async () => {
       const updated = { ...mockService, name: 'Updated Wash' };
       repo.update.mockResolvedValue(updated);
-      const result = await service.update(tenantId, serviceId, { name: 'Updated Wash' } as any);
+      const result = await service.update(tenantId, serviceId, {
+        name: 'Updated Wash',
+      } as any);
       expect(result).toEqual(updated);
     });
 
@@ -221,7 +227,10 @@ describe('ServicesService', () => {
         deletedAt: new Date(),
       });
       await service.restore(tenantId, serviceId);
-      expect(repo.findByIdIncludeDeleted).toHaveBeenCalledWith(tenantId, serviceId);
+      expect(repo.findByIdIncludeDeleted).toHaveBeenCalledWith(
+        tenantId,
+        serviceId,
+      );
       expect(repo.restore).toHaveBeenCalledWith(tenantId, serviceId);
     });
 

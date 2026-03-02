@@ -74,28 +74,38 @@ describe('IdempotencyInterceptor', () => {
   });
 
   it('should check idempotency with tenantId from user on cache miss', async () => {
-    const ctx = makeCtx({ 'idempotency-key': 'key-abc' }, { tenantId: 'tenant-x' });
-    const handler = makeHandler({});
-    const obs = await interceptor.intercept(ctx, handler);
-    await firstValueFrom(obs);
-    expect(idempotencyService.check).toHaveBeenCalledWith('tenant-x', 'key-abc');
-  });
-
-  it('should resolve tenantId from params.tenantSlug when user has no tenantId', async () => {
     const ctx = makeCtx(
-      { 'idempotency-key': 'key-slug' },
-      undefined,
-      { tenantSlug: 'my-tenant' },
+      { 'idempotency-key': 'key-abc' },
+      { tenantId: 'tenant-x' },
     );
     const handler = makeHandler({});
     const obs = await interceptor.intercept(ctx, handler);
     await firstValueFrom(obs);
-    expect(idempotencyService.check).toHaveBeenCalledWith('my-tenant', 'key-slug');
+    expect(idempotencyService.check).toHaveBeenCalledWith(
+      'tenant-x',
+      'key-abc',
+    );
+  });
+
+  it('should resolve tenantId from params.tenantSlug when user has no tenantId', async () => {
+    const ctx = makeCtx({ 'idempotency-key': 'key-slug' }, undefined, {
+      tenantSlug: 'my-tenant',
+    });
+    const handler = makeHandler({});
+    const obs = await interceptor.intercept(ctx, handler);
+    await firstValueFrom(obs);
+    expect(idempotencyService.check).toHaveBeenCalledWith(
+      'my-tenant',
+      'key-slug',
+    );
   });
 
   it('should save the response after handling on cache miss', async () => {
     const responseData = { id: 'new-order' };
-    const ctx = makeCtx({ 'idempotency-key': 'key-1' }, { tenantId: 'tenant-1' });
+    const ctx = makeCtx(
+      { 'idempotency-key': 'key-1' },
+      { tenantId: 'tenant-1' },
+    );
     const handler = makeHandler(responseData);
     const obs = await interceptor.intercept(ctx, handler);
     await firstValueFrom(obs);

@@ -1,9 +1,28 @@
-import { Controller, Get, Post, Param, Body, Query, Headers, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  Query,
+  Headers,
+  UseGuards,
+  BadRequestException,
+} from '@nestjs/common';
 import { ThrottlerGuard, Throttle } from '@nestjs/throttler';
 import { Public } from '../../common/decorators/public.decorator';
 import { PublicBookingService } from './public-booking.service';
 import { CheckAvailabilityDto } from './dto/check-availability.dto';
 import { CreateBookingDto } from './dto/create-booking.dto';
+
+const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/;
+
+function validateSlug(slug: string): string {
+  if (!SLUG_REGEX.test(slug)) {
+    throw new BadRequestException('Invalid tenant slug format');
+  }
+  return slug;
+}
 
 @Controller('public/booking')
 @Public()
@@ -17,16 +36,19 @@ export class PublicBookingController {
     @Param('tenantSlug') slug: string,
     @Query() dto: CheckAvailabilityDto,
   ) {
+    validateSlug(slug);
     return this.publicBookingService.checkAvailability(slug, dto);
   }
 
   @Get(':tenantSlug/services')
   getServices(@Param('tenantSlug') slug: string) {
+    validateSlug(slug);
     return this.publicBookingService.getPublicServices(slug);
   }
 
   @Get(':tenantSlug/branches')
   getBranches(@Param('tenantSlug') slug: string) {
+    validateSlug(slug);
     return this.publicBookingService.getPublicBranches(slug);
   }
 
@@ -37,6 +59,7 @@ export class PublicBookingController {
     @Body() dto: CreateBookingDto,
     @Headers('idempotency-key') idempotencyKey?: string,
   ) {
+    validateSlug(slug);
     return this.publicBookingService.createBooking(slug, dto, idempotencyKey);
   }
 }

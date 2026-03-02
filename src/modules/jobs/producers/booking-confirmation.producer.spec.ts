@@ -19,7 +19,9 @@ describe('BookingConfirmationProducer', () => {
       ],
     }).compile();
 
-    producer = module.get<BookingConfirmationProducer>(BookingConfirmationProducer);
+    producer = module.get<BookingConfirmationProducer>(
+      BookingConfirmationProducer,
+    );
   });
 
   describe('scheduleConfirmationTimeout', () => {

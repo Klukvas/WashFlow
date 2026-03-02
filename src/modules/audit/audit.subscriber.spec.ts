@@ -160,7 +160,9 @@ describe('AuditSubscriber', () => {
     it('should not throw when auditRepo.create rejects', async () => {
       auditRepo.create.mockRejectedValue(new Error('DB error'));
       const event = makeEvent({ id: 'order-x', branchId: 'b' });
-      await expect(subscriber.handleOrderCreated(event)).resolves.toBeUndefined();
+      await expect(
+        subscriber.handleOrderCreated(event),
+      ).resolves.toBeUndefined();
     });
 
     it('should still call create only once when it fails', async () => {

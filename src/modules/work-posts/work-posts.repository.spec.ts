@@ -10,7 +10,12 @@ describe('WorkPostsRepository', () => {
   const otherBranchId = 'branch-2';
   const workPostId = 'wp-1';
 
-  const mockWorkPost = { id: workPostId, branchId, name: 'Post A', branch: { id: branchId } };
+  const mockWorkPost = {
+    id: workPostId,
+    branchId,
+    name: 'Post A',
+    branch: { id: branchId },
+  };
 
   const tenantClient = {
     workPost: {

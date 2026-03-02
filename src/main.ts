@@ -19,6 +19,11 @@ async function bootstrap() {
   app.use(cookieParser());
 
   const corsOrigins = config.get<string>('corsOrigins', '*');
+  const nodeEnv = config.get<string>('nodeEnv', 'development');
+  if (nodeEnv === 'production' && corsOrigins === '*') {
+    logger.error('CORS_ORIGINS must not be "*" in production. Exiting.');
+    process.exit(1);
+  }
   app.enableCors({
     origin: corsOrigins === '*' ? '*' : corsOrigins.split(','),
     credentials: true,

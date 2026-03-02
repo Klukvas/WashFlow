@@ -48,12 +48,17 @@ describe('EmployeeProfileController', () => {
       ],
     }).compile();
 
-    controller = module.get<EmployeeProfileController>(EmployeeProfileController);
+    controller = module.get<EmployeeProfileController>(
+      EmployeeProfileController,
+    );
   });
 
   describe('findAll', () => {
     it('delegates to profileService.findAll with tenantId and query', async () => {
-      const query: EmployeeProfileQueryDto = { branchId: BRANCH_ID, active: true };
+      const query: EmployeeProfileQueryDto = {
+        branchId: BRANCH_ID,
+        active: true,
+      };
 
       const result = await controller.findAll(TENANT_ID, query);
 
@@ -68,7 +73,10 @@ describe('EmployeeProfileController', () => {
       const result = await controller.findOne(TENANT_ID, PROFILE_ID);
 
       expect(profileService.findById).toHaveBeenCalledTimes(1);
-      expect(profileService.findById).toHaveBeenCalledWith(TENANT_ID, PROFILE_ID);
+      expect(profileService.findById).toHaveBeenCalledWith(
+        TENANT_ID,
+        PROFILE_ID,
+      );
       expect(result).toEqual(mockProfile);
     });
   });
@@ -101,7 +109,11 @@ describe('EmployeeProfileController', () => {
       const result = await controller.update(TENANT_ID, PROFILE_ID, dto);
 
       expect(profileService.update).toHaveBeenCalledTimes(1);
-      expect(profileService.update).toHaveBeenCalledWith(TENANT_ID, PROFILE_ID, dto);
+      expect(profileService.update).toHaveBeenCalledWith(
+        TENANT_ID,
+        PROFILE_ID,
+        dto,
+      );
       expect(result).toEqual(mockProfile);
     });
   });
@@ -111,7 +123,10 @@ describe('EmployeeProfileController', () => {
       const result = await controller.deactivate(TENANT_ID, PROFILE_ID);
 
       expect(profileService.deactivate).toHaveBeenCalledTimes(1);
-      expect(profileService.deactivate).toHaveBeenCalledWith(TENANT_ID, PROFILE_ID);
+      expect(profileService.deactivate).toHaveBeenCalledWith(
+        TENANT_ID,
+        PROFILE_ID,
+      );
       expect(result).toEqual(mockProfile);
     });
   });

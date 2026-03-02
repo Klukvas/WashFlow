@@ -144,8 +144,14 @@ describe('RolesService', () => {
 
   describe('create', () => {
     it('delegates creation to the repository and returns the created role', async () => {
-      const dto: CreateRoleDto = { name: 'Manager', description: 'Manages things' };
-      const created = buildRole({ name: dto.name, description: dto.description });
+      const dto: CreateRoleDto = {
+        name: 'Manager',
+        description: 'Manages things',
+      };
+      const created = buildRole({
+        name: dto.name,
+        description: dto.description,
+      });
       repoMock.create.mockResolvedValue(created);
 
       const result = await service.create(TENANT_ID, dto);
@@ -242,9 +248,9 @@ describe('RolesService', () => {
     it('throws NotFoundException and skips delete when the role does not exist', async () => {
       repoMock.findById.mockResolvedValue(null);
 
-      await expect(
-        service.softDelete(TENANT_ID, 'ghost-id'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.softDelete(TENANT_ID, 'ghost-id')).rejects.toThrow(
+        NotFoundException,
+      );
 
       expect(repoMock.softDelete).not.toHaveBeenCalled();
     });

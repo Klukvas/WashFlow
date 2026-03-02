@@ -12,7 +12,12 @@ describe('SchedulingRepository', () => {
   const end = new Date('2026-02-22T11:00:00Z');
 
   const mockOrders = [
-    { id: 'order-1', scheduledStart: start, scheduledEnd: end, status: 'PENDING' },
+    {
+      id: 'order-1',
+      scheduledStart: start,
+      scheduledEnd: end,
+      status: 'PENDING',
+    },
   ];
 
   const mockTx = {
@@ -50,14 +55,26 @@ describe('SchedulingRepository', () => {
 
   describe('lockOverlappingSlots', () => {
     it('executes raw SQL to lock overlapping rows', async () => {
-      await repo.lockOverlappingSlots(mockTx as any, tenantId, workPostId, start, end);
+      await repo.lockOverlappingSlots(
+        mockTx as any,
+        tenantId,
+        workPostId,
+        start,
+        end,
+      );
       expect(mockTx.$queryRaw).toHaveBeenCalled();
     });
   });
 
   describe('countOverlapping', () => {
     it('returns the count as a number (converts from BigInt)', async () => {
-      const result = await repo.countOverlapping(mockTx as any, tenantId, workPostId, start, end);
+      const result = await repo.countOverlapping(
+        mockTx as any,
+        tenantId,
+        workPostId,
+        start,
+        end,
+      );
       expect(result).toBe(2);
       expect(typeof result).toBe('number');
     });
@@ -65,7 +82,12 @@ describe('SchedulingRepository', () => {
 
   describe('findOrdersInRange', () => {
     it('returns orders overlapping the given range for a work post', async () => {
-      const result = await repo.findOrdersInRange(tenantId, workPostId, start, end);
+      const result = await repo.findOrdersInRange(
+        tenantId,
+        workPostId,
+        start,
+        end,
+      );
       expect(tenantPrisma.forTenant).toHaveBeenCalledWith(tenantId);
       expect(tenantClient.order.findMany).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -10,9 +10,7 @@ describe('RealtimeSubscriber', () => {
   const tenantId = 'tenant-1';
   const branchId = 'branch-1';
 
-  function makeEvent(
-    payload: Record<string, unknown>,
-  ): DomainEvent {
+  function makeEvent(payload: Record<string, unknown>): DomainEvent {
     return { tenantId, payload } as DomainEvent;
   }
 

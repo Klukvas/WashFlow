@@ -1,4 +1,7 @@
-import { resolveBookingSettings, ResolvedBookingSettings } from './booking-settings.util';
+import {
+  resolveBookingSettings,
+  ResolvedBookingSettings,
+} from './booking-settings.util';
 
 // ---------------------------------------------------------------------------
 // Shared fixtures
@@ -17,17 +20,21 @@ const HARDCODED_DEFAULTS: ResolvedBookingSettings = {
   workingDays: [1, 2, 3, 4, 5, 6],
 };
 
-function buildSettings(overrides: Partial<ResolvedBookingSettings> = {}): ResolvedBookingSettings {
+function buildSettings(
+  overrides: Partial<ResolvedBookingSettings> = {},
+): ResolvedBookingSettings {
   return {
     ...HARDCODED_DEFAULTS,
     ...overrides,
   };
 }
 
-function buildPrismaMock(overrides: {
-  findUnique?: jest.Mock;
-  findFirst?: jest.Mock;
-} = {}) {
+function buildPrismaMock(
+  overrides: {
+    findUnique?: jest.Mock;
+    findFirst?: jest.Mock;
+  } = {},
+) {
   return {
     bookingSettings: {
       findUnique: overrides.findUnique ?? jest.fn().mockResolvedValue(null),
@@ -51,7 +58,10 @@ describe('resolveBookingSettings', () => {
 
   describe('when branchId is provided', () => {
     it('returns branch-level settings when they exist', async () => {
-      const branchSettings = buildSettings({ slotDurationMinutes: 60, workingHoursStart: '09:00' });
+      const branchSettings = buildSettings({
+        slotDurationMinutes: 60,
+        workingHoursStart: '09:00',
+      });
       const prisma = buildPrismaMock({
         findUnique: jest.fn().mockResolvedValue(branchSettings),
       });
@@ -70,7 +80,9 @@ describe('resolveBookingSettings', () => {
 
       expect(findUnique).toHaveBeenCalledTimes(1);
       expect(findUnique).toHaveBeenCalledWith({
-        where: { tenantId_branchId: { tenantId: TENANT_ID, branchId: BRANCH_ID } },
+        where: {
+          tenantId_branchId: { tenantId: TENANT_ID, branchId: BRANCH_ID },
+        },
       });
     });
 

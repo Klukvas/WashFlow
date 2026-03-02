@@ -296,9 +296,7 @@ describe('AuthService', () => {
       });
 
       it('throws UnauthorizedException when user is inactive', async () => {
-        prisma.user.findFirst.mockResolvedValue(
-          buildUser({ isActive: false }),
-        );
+        prisma.user.findFirst.mockResolvedValue(buildUser({ isActive: false }));
 
         await expect(service.login(LOGIN_DTO)).rejects.toThrow(
           UnauthorizedException,
@@ -306,9 +304,7 @@ describe('AuthService', () => {
       });
 
       it('does not call argon2.verify when user is inactive', async () => {
-        prisma.user.findFirst.mockResolvedValue(
-          buildUser({ isActive: false }),
-        );
+        prisma.user.findFirst.mockResolvedValue(buildUser({ isActive: false }));
 
         await expect(service.login(LOGIN_DTO)).rejects.toThrow(
           UnauthorizedException,
@@ -368,7 +364,9 @@ describe('AuthService', () => {
 
       it('propagates unexpected errors from argon2.verify', async () => {
         prisma.user.findFirst.mockResolvedValue(buildUser());
-        mockedArgon2.verify.mockRejectedValue(new Error('argon2 internal error'));
+        mockedArgon2.verify.mockRejectedValue(
+          new Error('argon2 internal error'),
+        );
 
         await expect(service.login(LOGIN_DTO)).rejects.toThrow(
           'argon2 internal error',

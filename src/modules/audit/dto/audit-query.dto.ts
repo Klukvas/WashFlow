@@ -1,4 +1,10 @@
-import { IsOptional, IsString, IsUUID, IsEnum, IsDateString } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsUUID,
+  IsEnum,
+  IsDateString,
+} from 'class-validator';
 import { AuditAction } from '@prisma/client';
 import { PaginationDto } from '../../../common/utils/pagination.dto';
 

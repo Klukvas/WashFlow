@@ -4,7 +4,7 @@ import { CurrentTenant } from './current-tenant.decorator';
 
 function getDecoratorFactory(decorator: ParameterDecorator) {
   class TestClass {
-    test(@(decorator as any)() _val: unknown) {}
+    test(@((decorator as any)()) _val: unknown) {}
   }
   const meta = Reflect.getMetadata(ROUTE_ARGS_METADATA, TestClass, 'test');
   return meta[Object.keys(meta)[0]].factory;

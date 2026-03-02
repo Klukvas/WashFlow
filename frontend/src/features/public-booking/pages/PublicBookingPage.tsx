@@ -179,7 +179,7 @@ export function PublicBookingPage() {
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">{t('dateAndTime')}</span>
               <span className="font-medium">
-                {order.scheduledStart.split('T')[0]} at{' '}
+                {order.scheduledStart.split('T')[0]} {t('at')}{' '}
                 {formatTime(order.scheduledStart)}
               </span>
             </div>
@@ -523,7 +523,7 @@ export function PublicBookingPage() {
                     {t('dateAndTime')}
                   </span>
                   <span className="font-medium">
-                    {selectedDate} at{' '}
+                    {selectedDate} {t('at')}{' '}
                     {watch('scheduledStart')
                       ? formatTime(watch('scheduledStart'))
                       : ''}

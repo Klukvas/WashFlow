@@ -1,5 +1,14 @@
 import {
-  Controller, Get, Post, Patch, Delete, Param, Body, Query, ParseUUIDPipe, UseGuards,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Param,
+  Body,
+  Query,
+  ParseUUIDPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
@@ -17,16 +26,16 @@ export class VehiclesController {
 
   @Get()
   @Permissions('vehicles.read')
-  findAll(
-    @CurrentTenant() tenantId: string,
-    @Query() query: VehicleQueryDto,
-  ) {
+  findAll(@CurrentTenant() tenantId: string, @Query() query: VehicleQueryDto) {
     return this.vehiclesService.findAll(tenantId, query);
   }
 
   @Get(':id')
   @Permissions('vehicles.read')
-  findOne(@CurrentTenant() tenantId: string, @Param('id', ParseUUIDPipe) id: string) {
+  findOne(
+    @CurrentTenant() tenantId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.vehiclesService.findById(tenantId, id);
   }
 
@@ -48,13 +57,19 @@ export class VehiclesController {
 
   @Delete(':id')
   @Permissions('vehicles.delete')
-  remove(@CurrentTenant() tenantId: string, @Param('id', ParseUUIDPipe) id: string) {
+  remove(
+    @CurrentTenant() tenantId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.vehiclesService.softDelete(tenantId, id);
   }
 
   @Patch(':id/restore')
   @Permissions('vehicles.update')
-  restore(@CurrentTenant() tenantId: string, @Param('id', ParseUUIDPipe) id: string) {
+  restore(
+    @CurrentTenant() tenantId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.vehiclesService.restore(tenantId, id);
   }
 }

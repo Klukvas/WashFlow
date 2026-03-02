@@ -12,13 +12,21 @@ interface AuthState {
   logout: () => void;
 }
 
-function decodePermissions(token: string): string[] {
+interface JwtPayloadDecoded {
+  permissions?: string[];
+  isSuperAdmin?: boolean;
+}
+
+export function decodeJwtPayload(token: string): JwtPayloadDecoded {
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.permissions ?? [];
+    return JSON.parse(atob(token.split('.')[1]));
   } catch {
-    return [];
+    return {};
   }
+}
+
+function decodePermissions(token: string): string[] {
+  return decodeJwtPayload(token).permissions ?? [];
 }
 
 function restoreUser(): AuthUser | null {

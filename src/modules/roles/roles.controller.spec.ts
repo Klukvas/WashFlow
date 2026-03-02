@@ -6,15 +6,15 @@ import type { UpdateRoleDto } from './dto/update-role.dto';
 import type { AssignPermissionsDto } from './dto/assign-permissions.dto';
 
 const TENANT_ID = 'tenant-uuid-1111';
-const ROLE_ID   = 'role-uuid-2222';
+const ROLE_ID = 'role-uuid-2222';
 
 const mockRolesService = {
-  findAll:           jest.fn(),
-  findById:          jest.fn(),
-  create:            jest.fn(),
-  update:            jest.fn(),
-  softDelete:        jest.fn(),
-  restore:           jest.fn(),
+  findAll: jest.fn(),
+  findById: jest.fn(),
+  create: jest.fn(),
+  update: jest.fn(),
+  softDelete: jest.fn(),
+  restore: jest.fn(),
   assignPermissions: jest.fn(),
 };
 
@@ -26,13 +26,13 @@ describe('RolesController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [RolesController],
-      providers: [
-        { provide: RolesService, useValue: mockRolesService },
-      ],
+      providers: [{ provide: RolesService, useValue: mockRolesService }],
     })
       .overrideGuard(require('../../common/guards/jwt-auth.guard').JwtAuthGuard)
       .useValue({ canActivate: () => true })
-      .overrideGuard(require('../../common/guards/permissions.guard').PermissionsGuard)
+      .overrideGuard(
+        require('../../common/guards/permissions.guard').PermissionsGuard,
+      )
       .useValue({ canActivate: () => true })
       .compile();
 
@@ -60,7 +60,10 @@ describe('RolesController', () => {
       const result = await controller.findOne(TENANT_ID, ROLE_ID);
 
       expect(mockRolesService.findById).toHaveBeenCalledTimes(1);
-      expect(mockRolesService.findById).toHaveBeenCalledWith(TENANT_ID, ROLE_ID);
+      expect(mockRolesService.findById).toHaveBeenCalledWith(
+        TENANT_ID,
+        ROLE_ID,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -88,7 +91,11 @@ describe('RolesController', () => {
       const result = await controller.update(TENANT_ID, ROLE_ID, dto);
 
       expect(mockRolesService.update).toHaveBeenCalledTimes(1);
-      expect(mockRolesService.update).toHaveBeenCalledWith(TENANT_ID, ROLE_ID, dto);
+      expect(mockRolesService.update).toHaveBeenCalledWith(
+        TENANT_ID,
+        ROLE_ID,
+        dto,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -101,7 +108,10 @@ describe('RolesController', () => {
       const result = await controller.remove(TENANT_ID, ROLE_ID);
 
       expect(mockRolesService.softDelete).toHaveBeenCalledTimes(1);
-      expect(mockRolesService.softDelete).toHaveBeenCalledWith(TENANT_ID, ROLE_ID);
+      expect(mockRolesService.softDelete).toHaveBeenCalledWith(
+        TENANT_ID,
+        ROLE_ID,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -122,14 +132,24 @@ describe('RolesController', () => {
   describe('assignPermissions', () => {
     it('delegates to rolesService.assignPermissions with tenantId, id and permissionIds', async () => {
       const permissionIds = ['perm-uuid-aaa', 'perm-uuid-bbb'];
-      const dto: AssignPermissionsDto = { permissionIds } as AssignPermissionsDto;
+      const dto: AssignPermissionsDto = {
+        permissionIds,
+      } as AssignPermissionsDto;
       const expected = { id: ROLE_ID, permissions: permissionIds };
       mockRolesService.assignPermissions.mockResolvedValue(expected);
 
-      const result = await controller.assignPermissions(TENANT_ID, ROLE_ID, dto);
+      const result = await controller.assignPermissions(
+        TENANT_ID,
+        ROLE_ID,
+        dto,
+      );
 
       expect(mockRolesService.assignPermissions).toHaveBeenCalledTimes(1);
-      expect(mockRolesService.assignPermissions).toHaveBeenCalledWith(TENANT_ID, ROLE_ID, permissionIds);
+      expect(mockRolesService.assignPermissions).toHaveBeenCalledWith(
+        TENANT_ID,
+        ROLE_ID,
+        permissionIds,
+      );
       expect(result).toBe(expected);
     });
   });

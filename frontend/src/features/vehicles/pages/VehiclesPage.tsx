@@ -125,6 +125,7 @@ export function VehiclesPage() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  aria-label={tc('actions.restore')}
                   onClick={(e) => {
                     e.stopPropagation();
                     restoreMut(v.id);
@@ -138,6 +139,7 @@ export function VehiclesPage() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  aria-label={tc('actions.delete')}
                   onClick={(e) => {
                     e.stopPropagation();
                     setDeleteTarget(v);

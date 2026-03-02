@@ -80,10 +80,29 @@ export class AnalyticsRepository {
   }
 
   private getTodayRange(): { todayStart: Date; todayEnd: Date } {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+    const now = new Date();
+    const todayStart = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        0,
+        0,
+        0,
+        0,
+      ),
+    );
+    const todayEnd = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
     return { todayStart, todayEnd };
   }
 
@@ -143,36 +162,46 @@ export class AnalyticsRepository {
     query: AnalyticsQueryDto,
     branchId: string | null = null,
   ) {
-    const where = this.buildDateFilter(query, branchId);
     const db = this.db(tenantId);
 
-    const orders = await db.order.findMany({
-      where: {
-        ...where,
-        status: { in: ['COMPLETED', 'IN_PROGRESS', 'BOOKED'] },
+    // Build where conditions for aggregation
+    const where = this.buildDateFilter(query, branchId);
+    const orderWhere = {
+      ...where,
+      status: {
+        in: ['COMPLETED' as const, 'IN_PROGRESS' as const, 'BOOKED' as const],
       },
-      select: { services: { include: { service: true } } },
+    };
+
+    // Use groupBy on OrderService joined through orders
+    const orderIds = await db.order.findMany({
+      where: orderWhere,
+      select: { id: true },
+      take: 10000,
     });
 
-    const serviceCount = new Map<
-      string,
-      { name: string; count: number; revenue: number }
-    >();
-    for (const order of orders) {
-      for (const os of order.services) {
-        const existing = serviceCount.get(os.serviceId) || {
-          name: os.service.name,
-          count: 0,
-          revenue: 0,
-        };
-        existing.count += os.quantity;
-        existing.revenue += Number(os.price) * os.quantity;
-        serviceCount.set(os.serviceId, existing);
-      }
-    }
+    if (orderIds.length === 0) return [];
 
-    return Array.from(serviceCount.entries())
-      .map(([serviceId, data]) => ({ serviceId, ...data }))
+    const grouped = await db.orderService.groupBy({
+      by: ['serviceId'],
+      where: { orderId: { in: orderIds.map((o) => o.id) } },
+      _sum: { quantity: true, price: true },
+    });
+
+    const serviceIds = grouped.map((g) => g.serviceId);
+    const services = await db.service.findMany({
+      where: { id: { in: serviceIds } },
+      select: { id: true, name: true },
+    });
+    const nameMap = new Map(services.map((s) => [s.id, s.name]));
+
+    return grouped
+      .map((g) => ({
+        serviceId: g.serviceId,
+        name: nameMap.get(g.serviceId) ?? g.serviceId,
+        count: g._sum.quantity ?? 0,
+        revenue: Math.round(Number(g._sum.price ?? 0) * 100) / 100,
+      }))
       .sort((a, b) => b.count - a.count);
   }
 
@@ -245,9 +274,10 @@ export class AnalyticsRepository {
     }
 
     // occupancy = scheduled minutes / (work posts × elapsed minutes today)
+    const utcNow = new Date();
     const minutesElapsedToday = Math.max(
       1,
-      new Date().getHours() * 60 + new Date().getMinutes(),
+      utcNow.getUTCHours() * 60 + utcNow.getUTCMinutes(),
     );
     const scheduledMinutes = completedWithTimes.reduce(
       (sum, o) =>
@@ -349,14 +379,17 @@ export class AnalyticsRepository {
   ): Promise<BranchPerformanceRow[]> {
     const db = this.db(tenantId);
 
-    const dateWhere: Prisma.OrderWhereInput = { deletedAt: null };
-    if (query.dateFrom || query.dateTo) {
-      dateWhere.scheduledStart = {};
-      if (query.dateFrom)
-        (dateWhere.scheduledStart as any).gte = new Date(query.dateFrom);
-      if (query.dateTo)
-        (dateWhere.scheduledStart as any).lte = new Date(query.dateTo);
-    }
+    const scheduledStartFilter: Prisma.DateTimeFilter | undefined =
+      query.dateFrom || query.dateTo
+        ? {
+            ...(query.dateFrom ? { gte: new Date(query.dateFrom) } : {}),
+            ...(query.dateTo ? { lte: new Date(query.dateTo) } : {}),
+          }
+        : undefined;
+    const dateWhere: Prisma.OrderWhereInput = {
+      deletedAt: null,
+      ...(scheduledStartFilter ? { scheduledStart: scheduledStartFilter } : {}),
+    };
 
     const [branches, grouped] = await Promise.all([
       db.branch.findMany({
@@ -410,17 +443,23 @@ export class AnalyticsRepository {
     const db = this.db(tenantId);
     const eBranchId = this.effectiveBranchId(branchId, query.branchId);
 
+    const scheduledStartFilter: Prisma.DateTimeFilter | undefined =
+      query.dateFrom || query.dateTo
+        ? {
+            ...(query.dateFrom ? { gte: new Date(query.dateFrom) } : {}),
+            ...(query.dateTo ? { lte: new Date(query.dateTo) } : {}),
+          }
+        : undefined;
     const baseWhere = applyBranchScope(
-      { deletedAt: null, createdById: { not: null } } as Prisma.OrderWhereInput,
+      {
+        deletedAt: null,
+        createdById: { not: null },
+        ...(scheduledStartFilter
+          ? { scheduledStart: scheduledStartFilter }
+          : {}),
+      } as Prisma.OrderWhereInput,
       eBranchId,
     );
-    if (query.dateFrom || query.dateTo) {
-      (baseWhere as any).scheduledStart = {};
-      if (query.dateFrom)
-        (baseWhere as any).scheduledStart.gte = new Date(query.dateFrom);
-      if (query.dateTo)
-        (baseWhere as any).scheduledStart.lte = new Date(query.dateTo);
-    }
 
     const [completedGrouped, cancelledGrouped] = await Promise.all([
       db.order.groupBy({
@@ -458,7 +497,7 @@ export class AnalyticsRepository {
     );
 
     return completedGrouped
-      .filter((g) => g.createdById !== null && userMap.has(g.createdById!))
+      .filter((g) => g.createdById !== null && userMap.has(g.createdById))
       .map((g) => {
         const user = userMap.get(g.createdById!)!;
         const completedCount = g._count.id;

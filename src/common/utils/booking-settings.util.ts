@@ -17,6 +17,7 @@ const DEFAULTS: ResolvedBookingSettings = {
   allowOnlineBooking: true,
   workingHoursStart: '08:00',
   workingHoursEnd: '20:00',
+  // Days 0-6 where 0=Sunday. Default excludes Sunday (0).
   workingDays: [1, 2, 3, 4, 5, 6],
 };
 

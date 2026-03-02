@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { CleanupService } from './cleanup.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -47,6 +48,10 @@ describe('CleanupService', () => {
       providers: [
         CleanupService,
         { provide: PrismaService, useValue: prisma },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue(30) },
+        },
       ],
     }).compile();
 

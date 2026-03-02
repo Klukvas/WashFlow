@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Pencil, Trash2, RotateCcw, Settings } from 'lucide-react';
@@ -33,24 +33,27 @@ import type { WorkPost } from '@/shared/types/models';
 const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 const DAY_NUMBERS = [1, 2, 3, 4, 5, 6, 0] as const;
 
-const workPostColumns: Column<WorkPost>[] = [
-  {
-    key: 'name',
-    header: 'Name',
-    render: (wp) => <span className="font-medium">{wp.name}</span>,
-  },
-  {
-    key: 'createdAt',
-    header: 'Created',
-    render: (wp) => (
-      <span className="text-muted-foreground">{formatDateTime(wp.createdAt)}</span>
-    ),
-  },
-];
+function buildWorkPostColumns(tc: (key: string) => string): Column<WorkPost>[] {
+  return [
+    {
+      key: 'name',
+      header: tc('fields.name'),
+      render: (wp) => <span className="font-medium">{wp.name}</span>,
+    },
+    {
+      key: 'createdAt',
+      header: tc('fields.createdAt'),
+      render: (wp) => (
+        <span className="text-muted-foreground">
+          {formatDateTime(wp.createdAt)}
+        </span>
+      ),
+    },
+  ];
+}
 
 function formatWorkingDays(days: number[], t: (key: string) => string): string {
-  return DAY_NUMBERS
-    .filter((d) => days.includes(d))
+  return DAY_NUMBERS.filter((d) => days.includes(d))
     .map((d) => {
       const idx = DAY_NUMBERS.indexOf(d);
       return t(`days.${DAY_KEYS[idx]}`);
@@ -76,6 +79,8 @@ export function BranchDetailPage() {
     useBranchBookingSettings(id!);
   const { mutate: updateSettingsMut, isPending: updatingSettings } =
     useUpdateBranchBookingSettings();
+
+  const workPostColumns = useMemo(() => buildWorkPostColumns(tc), [tc]);
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -124,7 +129,11 @@ export function BranchDetailPage() {
         title={branch.name}
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/branches')}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/branches')}
+            >
               <ArrowLeft className="mr-1 h-4 w-4" />
               {tc('actions.back')}
             </Button>
@@ -181,30 +190,48 @@ export function BranchDetailPage() {
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('fields.name')}</span>
+                <span className="text-muted-foreground">
+                  {t('fields.name')}
+                </span>
                 <span className="font-medium">{branch.name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('fields.address')}</span>
+                <span className="text-muted-foreground">
+                  {t('fields.address')}
+                </span>
                 <span className="font-medium">{branch.address ?? '--'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('fields.phone')}</span>
+                <span className="text-muted-foreground">
+                  {t('fields.phone')}
+                </span>
                 <span className="font-medium">{branch.phone ?? '--'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('fields.status')}</span>
+                <span className="text-muted-foreground">
+                  {t('fields.status')}
+                </span>
                 <span className="font-medium">
-                  {branch.isActive ? tc('status.active') : tc('status.inactive')}
+                  {branch.isActive
+                    ? tc('status.active')
+                    : tc('status.inactive')}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{tc('fields.createdAt')}</span>
-                <span className="font-medium">{formatDateTime(branch.createdAt)}</span>
+                <span className="text-muted-foreground">
+                  {tc('fields.createdAt')}
+                </span>
+                <span className="font-medium">
+                  {formatDateTime(branch.createdAt)}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{tc('fields.updatedAt')}</span>
-                <span className="font-medium">{formatDateTime(branch.updatedAt)}</span>
+                <span className="text-muted-foreground">
+                  {tc('fields.updatedAt')}
+                </span>
+                <span className="font-medium">
+                  {formatDateTime(branch.updatedAt)}
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -338,7 +365,9 @@ export function BranchDetailPage() {
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('workPostCount')}</span>
+                <span className="text-muted-foreground">
+                  {t('workPostCount')}
+                </span>
                 <span className="font-semibold">
                   {workPostsData?.meta.total ?? 0}
                 </span>

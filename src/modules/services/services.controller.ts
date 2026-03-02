@@ -1,5 +1,13 @@
 import {
-  Controller, Get, Post, Patch, Delete, Param, Body, ParseUUIDPipe, UseGuards,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Param,
+  Body,
+  ParseUUIDPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
@@ -22,7 +30,10 @@ export class ServicesController {
 
   @Get(':id')
   @Permissions('services.read')
-  findOne(@CurrentTenant() tenantId: string, @Param('id', ParseUUIDPipe) id: string) {
+  findOne(
+    @CurrentTenant() tenantId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.servicesService.findById(tenantId, id);
   }
 
@@ -44,13 +55,19 @@ export class ServicesController {
 
   @Delete(':id')
   @Permissions('services.delete')
-  remove(@CurrentTenant() tenantId: string, @Param('id', ParseUUIDPipe) id: string) {
+  remove(
+    @CurrentTenant() tenantId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.servicesService.softDelete(tenantId, id);
   }
 
   @Patch(':id/restore')
   @Permissions('services.update')
-  restore(@CurrentTenant() tenantId: string, @Param('id', ParseUUIDPipe) id: string) {
+  restore(
+    @CurrentTenant() tenantId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.servicesService.restore(tenantId, id);
   }
 }

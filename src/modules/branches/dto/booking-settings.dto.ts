@@ -4,6 +4,7 @@ import {
   IsBoolean,
   IsString,
   IsArray,
+  ArrayUnique,
   Min,
   Max,
   Matches,
@@ -34,7 +35,9 @@ export class UpdateBookingSettingsDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^\d{2}:\d{2}$/, { message: 'workingHoursStart must be HH:MM format' })
+  @Matches(/^\d{2}:\d{2}$/, {
+    message: 'workingHoursStart must be HH:MM format',
+  })
   workingHoursStart?: string;
 
   @IsOptional()
@@ -44,6 +47,9 @@ export class UpdateBookingSettingsDto {
 
   @IsOptional()
   @IsArray()
+  @ArrayUnique()
   @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
   workingDays?: number[];
 }

@@ -56,8 +56,8 @@ model Tenant {
   slug      String   @unique
   isActive  Boolean  @default(true)
   settings  Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
 
   branches         Branch[]
   users            User[]
@@ -71,6 +71,7 @@ model Tenant {
   auditLogs        AuditLog[]
   bookingSettings  BookingSettings[]
   employeeProfiles EmployeeProfile[]
+  orderServices    OrderService[]
 
   @@map("tenants")
 }
@@ -101,9 +102,9 @@ model Branch {
   address   String?
   phone     String?
   isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
 
   workPosts        WorkPost[]
   orders           Order[]
@@ -130,17 +131,18 @@ model User {
   isSuperAdmin Boolean   @default(false)
   roleId       String?
   role         Role?     @relation(fields: [roleId], references: [id])
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  deletedAt    DateTime?
+  createdAt    DateTime  @default(now()) @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @db.Timestamptz
+  deletedAt    DateTime? @db.Timestamptz
 
   auditLogs       AuditLog[]
   orders          Order[]    @relation("OrderCreatedBy")
   employeeProfile EmployeeProfile?
 
-  @@index([tenantId, email])
+  @@unique([tenantId, email])
   @@index([tenantId])
   @@index([tenantId, branchId])
+  @@index([tenantId, roleId])
   @@map("users")
 }
 
@@ -150,9 +152,9 @@ model Role {
   tenant      Tenant    @relation(fields: [tenantId], references: [id])
   name        String
   description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @db.Timestamptz
+  deletedAt   DateTime? @db.Timestamptz
 
   permissions RolePermission[]
   users       User[]
@@ -167,7 +169,7 @@ model Permission {
   module      String
   action      String
   description String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime @default(now()) @db.Timestamptz
 
   roles RolePermission[]
 
@@ -183,6 +185,7 @@ model RolePermission {
   permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@unique([roleId, permissionId])
+  @@index([permissionId])
   @@map("role_permissions")
 }
 
@@ -195,9 +198,9 @@ model Client {
   phone     String?
   email     String?
   notes     String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
 
   vehicles Vehicle[]
   orders   Order[]
@@ -218,9 +221,9 @@ model Vehicle {
   model        String?
   color        String?
   year         Int?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  deletedAt    DateTime?
+  createdAt    DateTime  @default(now()) @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @db.Timestamptz
+  deletedAt    DateTime? @db.Timestamptz
 
   orders Order[]
 
@@ -240,9 +243,9 @@ model Service {
   price       Decimal   @db.Decimal(10, 2)
   isActive    Boolean   @default(true)
   sortOrder   Int       @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @db.Timestamptz
+  deletedAt   DateTime? @db.Timestamptz
 
   orderServices OrderService[]
 
@@ -252,15 +255,16 @@ model Service {
 }
 
 model WorkPost {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
   branchId  String
-  branch    Branch   @relation(fields: [branchId], references: [id])
+  branch    Branch    @relation(fields: [branchId], references: [id])
   name      String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
 
   orders Order[]
 
@@ -287,14 +291,14 @@ model Order {
   createdBy          User?            @relation("OrderCreatedBy", fields: [createdById], references: [id])
   status             OrderStatus @default(BOOKED)
   source             OrderSource @default(INTERNAL)
-  scheduledStart     DateTime
-  scheduledEnd       DateTime
+  scheduledStart     DateTime    @db.Timestamptz
+  scheduledEnd       DateTime    @db.Timestamptz
   totalPrice         Decimal     @default(0) @db.Decimal(10, 2)
   notes              String?
   cancellationReason String?
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
-  deletedAt          DateTime?
+  createdAt          DateTime    @default(now()) @db.Timestamptz
+  updatedAt          DateTime    @updatedAt @db.Timestamptz
+  deletedAt          DateTime?   @db.Timestamptz
 
   services OrderService[]
   payments Payment[]
@@ -304,11 +308,16 @@ model Order {
   @@index([tenantId, branchId, status])
   @@index([tenantId, scheduledStart, scheduledEnd])
   @@index([tenantId, workPostId, scheduledStart, scheduledEnd])
+  @@index([tenantId, clientId])
+  @@index([tenantId, vehicleId])
+  @@index([tenantId, assignedEmployeeId])
   @@map("orders")
 }
 
 model OrderService {
   id        String  @id @default(uuid())
+  tenantId  String
+  tenant    Tenant  @relation(fields: [tenantId], references: [id])
   orderId   String
   order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   serviceId String
@@ -316,6 +325,8 @@ model OrderService {
   price     Decimal @db.Decimal(10, 2)
   quantity  Int     @default(1)
 
+  @@index([orderId])
+  @@index([serviceId])
   @@map("order_services")
 }
 
@@ -329,8 +340,8 @@ model Payment {
   method    PaymentMethod
   status    PaymentStatus @default(PENDING)
   reference String?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  createdAt DateTime      @default(now()) @db.Timestamptz
+  updatedAt DateTime      @updatedAt @db.Timestamptz
 
   @@index([tenantId])
   @@index([tenantId, orderId])
@@ -349,7 +360,7 @@ model AuditLog {
   performedById String?
   performedBy   User?       @relation(fields: [performedById], references: [id])
   metadata      Json?
-  createdAt     DateTime    @default(now())
+  createdAt     DateTime    @default(now()) @db.Timestamptz
 
   @@index([tenantId])
   @@index([tenantId, entityType, entityId])
@@ -365,8 +376,8 @@ model IdempotencyKey {
   path         String
   statusCode   Int      @default(0)
   responseBody Json     @default("{}")
-  createdAt    DateTime @default(now())
-  expiresAt    DateTime
+  createdAt    DateTime @default(now()) @db.Timestamptz
+  expiresAt    DateTime @db.Timestamptz
 
   @@unique([tenantId, key])
   @@index([expiresAt])
@@ -374,17 +385,18 @@ model IdempotencyKey {
 }
 
 model EmployeeProfile {
-  id                    String   @id @default(uuid())
+  id                    String    @id @default(uuid())
   tenantId              String
-  userId                String   @unique
+  userId                String    @unique
   branchId              String
-  isWorker              Boolean  @default(true)
-  efficiencyCoefficient Float    @default(1)
-  active                Boolean  @default(true)
+  isWorker              Boolean   @default(true)
+  efficiencyCoefficient Float     @default(1)
+  active                Boolean   @default(true)
   workStartTime         String?
   workEndTime           String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt             DateTime  @default(now()) @db.Timestamptz
+  updatedAt             DateTime  @updatedAt @db.Timestamptz
+  deletedAt             DateTime? @db.Timestamptz
 
   tenant  Tenant  @relation(fields: [tenantId], references: [id])
   user    User    @relation(fields: [userId], references: [id])

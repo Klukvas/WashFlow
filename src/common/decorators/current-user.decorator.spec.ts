@@ -5,7 +5,7 @@ import { JwtPayload } from '../types/jwt-payload.type';
 
 function getDecoratorFactory(decorator: ParameterDecorator) {
   class TestClass {
-    test(@(decorator as any)() _val: unknown) {}
+    test(@((decorator as any)()) _val: unknown) {}
   }
   const meta = Reflect.getMetadata(ROUTE_ARGS_METADATA, TestClass, 'test');
   return meta[Object.keys(meta)[0]].factory;
@@ -28,7 +28,10 @@ function makeCtx(user: JwtPayload): ExecutionContext {
 }
 
 describe('CurrentUser decorator', () => {
-  let factory: (data: keyof JwtPayload | undefined, ctx: ExecutionContext) => unknown;
+  let factory: (
+    data: keyof JwtPayload | undefined,
+    ctx: ExecutionContext,
+  ) => unknown;
 
   beforeEach(() => {
     factory = getDecoratorFactory(CurrentUser);

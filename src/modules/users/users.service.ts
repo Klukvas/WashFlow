@@ -56,9 +56,9 @@ export class UsersService {
 
     // Copy non-relational fields
     const { password, ...rest } = raw;
-    Object.assign(updateData, rest);
+    const merged = { ...rest, ...updateData };
 
-    return this.usersRepo.update(tenantId, id, updateData);
+    return this.usersRepo.update(tenantId, id, merged);
   }
 
   async resetPassword(tenantId: string, id: string, dto: ResetPasswordDto) {

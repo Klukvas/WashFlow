@@ -7,29 +7,33 @@ const locales: Record<string, Locale> = {
   uk: uk,
 };
 
-function getLocale(): Locale {
+function resolveLocale(locale?: string): Locale {
+  if (locale && locales[locale]) return locales[locale];
   const lang = localStorage.getItem('i18nextLng') ?? 'en';
   return locales[lang] ?? enUS;
 }
 
-export function formatDate(date: string | Date): string {
+export function formatDate(date: string | Date, locale?: string): string {
   const d = typeof date === 'string' ? parseISO(date) : date;
-  return format(d, 'PP', { locale: getLocale() });
+  return format(d, 'PP', { locale: resolveLocale(locale) });
 }
 
-export function formatDateTime(date: string | Date): string {
+export function formatDateTime(date: string | Date, locale?: string): string {
   const d = typeof date === 'string' ? parseISO(date) : date;
-  return format(d, 'PPp', { locale: getLocale() });
+  return format(d, 'PPp', { locale: resolveLocale(locale) });
 }
 
-export function formatTime(date: string | Date): string {
+export function formatTime(date: string | Date, locale?: string): string {
   const d = typeof date === 'string' ? parseISO(date) : date;
-  return format(d, 'HH:mm', { locale: getLocale() });
+  return format(d, 'HH:mm', { locale: resolveLocale(locale) });
 }
 
-export function formatRelative(date: string | Date): string {
+export function formatRelative(date: string | Date, locale?: string): string {
   const d = typeof date === 'string' ? parseISO(date) : date;
-  return formatDistanceToNow(d, { addSuffix: true, locale: getLocale() });
+  return formatDistanceToNow(d, {
+    addSuffix: true,
+    locale: resolveLocale(locale),
+  });
 }
 
 export function formatCurrency(amount: number, currency = 'UAH'): string {

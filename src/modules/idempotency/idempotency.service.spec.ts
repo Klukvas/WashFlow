@@ -86,7 +86,11 @@ describe('IdempotencyService', () => {
       repo.findByKeyTx.mockResolvedValue(null);
       const result = await service.checkTx(mockTx, 'tenant-1', 'key-1');
       expect(result).toEqual({ hit: false });
-      expect(repo.findByKeyTx).toHaveBeenCalledWith(mockTx, 'tenant-1', 'key-1');
+      expect(repo.findByKeyTx).toHaveBeenCalledWith(
+        mockTx,
+        'tenant-1',
+        'key-1',
+      );
     });
 
     it('should return hit=true with cached response when key exists and is valid', async () => {
@@ -245,7 +249,7 @@ describe('IdempotencyService', () => {
 
       const callArg = repo.upsertResult.mock.calls[0][2];
       expect(callArg.responseBody).toBe(payload);
-      expect((callArg as any).body).toBeUndefined();
+      expect(callArg.body).toBeUndefined();
     });
 
     it('should compute expiresAt approximately 24 hours in the future', async () => {

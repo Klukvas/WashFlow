@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { EmployeeProfileQueryDto } from './dto/employee-profile-query.dto';
 import { buildPaginationArgs } from '../../common/utils/pagination.util';
@@ -83,18 +84,20 @@ export class WorkforceRepository {
   async updateProfile(
     tenantId: string,
     id: string,
-    data: Record<string, unknown>,
+    data: Prisma.EmployeeProfileUpdateInput,
   ) {
     return this.db(tenantId).employeeProfile.update({
-      where: { id } as any,
+      where: { id },
       data,
       include: this.profileInclude,
     });
   }
 
   async deleteProfile(tenantId: string, id: string) {
-    return this.db(tenantId).employeeProfile.delete({
-      where: { id } as any,
+    return this.db(tenantId).employeeProfile.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+      include: this.profileInclude,
     });
   }
 

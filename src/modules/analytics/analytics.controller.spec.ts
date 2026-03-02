@@ -29,7 +29,9 @@ describe('AnalyticsController', () => {
     })
       .overrideGuard(require('../../common/guards/jwt-auth.guard').JwtAuthGuard)
       .useValue({ canActivate: () => true })
-      .overrideGuard(require('../../common/guards/permissions.guard').PermissionsGuard)
+      .overrideGuard(
+        require('../../common/guards/permissions.guard').PermissionsGuard,
+      )
       .useValue({ canActivate: () => true })
       .compile();
 
@@ -47,7 +49,11 @@ describe('AnalyticsController', () => {
 
       const result = await controller.getDashboard(tenantId, branchId, query);
 
-      expect(mockAnalyticsService.getDashboard).toHaveBeenCalledWith(tenantId, query, branchId);
+      expect(mockAnalyticsService.getDashboard).toHaveBeenCalledWith(
+        tenantId,
+        query,
+        branchId,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -63,7 +69,11 @@ describe('AnalyticsController', () => {
 
       const result = await controller.getRevenue(tenantId, branchId, query);
 
-      expect(mockAnalyticsService.getRevenue).toHaveBeenCalledWith(tenantId, query, branchId);
+      expect(mockAnalyticsService.getRevenue).toHaveBeenCalledWith(
+        tenantId,
+        query,
+        branchId,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -77,9 +87,17 @@ describe('AnalyticsController', () => {
 
       mockAnalyticsService.getPopularServices.mockResolvedValue(expected);
 
-      const result = await controller.getPopularServices(tenantId, branchId, query);
+      const result = await controller.getPopularServices(
+        tenantId,
+        branchId,
+        query,
+      );
 
-      expect(mockAnalyticsService.getPopularServices).toHaveBeenCalledWith(tenantId, query, branchId);
+      expect(mockAnalyticsService.getPopularServices).toHaveBeenCalledWith(
+        tenantId,
+        query,
+        branchId,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -95,7 +113,11 @@ describe('AnalyticsController', () => {
 
       const result = await controller.getKpi(tenantId, branchId, query);
 
-      expect(mockAnalyticsService.getKpi).toHaveBeenCalledWith(tenantId, query, branchId);
+      expect(mockAnalyticsService.getKpi).toHaveBeenCalledWith(
+        tenantId,
+        query,
+        branchId,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -110,7 +132,10 @@ describe('AnalyticsController', () => {
 
       const result = await controller.getLiveOperations(tenantId, branchId);
 
-      expect(mockAnalyticsService.getLiveOperations).toHaveBeenCalledWith(tenantId, branchId);
+      expect(mockAnalyticsService.getLiveOperations).toHaveBeenCalledWith(
+        tenantId,
+        branchId,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -125,7 +150,10 @@ describe('AnalyticsController', () => {
 
       const result = await controller.getBranchPerformance(tenantId, query);
 
-      expect(mockAnalyticsService.getBranchPerformance).toHaveBeenCalledWith(tenantId, query);
+      expect(mockAnalyticsService.getBranchPerformance).toHaveBeenCalledWith(
+        tenantId,
+        query,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -139,9 +167,17 @@ describe('AnalyticsController', () => {
 
       mockAnalyticsService.getEmployeePerformance.mockResolvedValue(expected);
 
-      const result = await controller.getEmployeePerformance(tenantId, branchId, query);
+      const result = await controller.getEmployeePerformance(
+        tenantId,
+        branchId,
+        query,
+      );
 
-      expect(mockAnalyticsService.getEmployeePerformance).toHaveBeenCalledWith(tenantId, query, branchId);
+      expect(mockAnalyticsService.getEmployeePerformance).toHaveBeenCalledWith(
+        tenantId,
+        query,
+        branchId,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -157,7 +193,11 @@ describe('AnalyticsController', () => {
 
       const result = await controller.getAlerts(tenantId, branchId, query);
 
-      expect(mockAnalyticsService.getAlerts).toHaveBeenCalledWith(tenantId, query, branchId);
+      expect(mockAnalyticsService.getAlerts).toHaveBeenCalledWith(
+        tenantId,
+        query,
+        branchId,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -171,9 +211,17 @@ describe('AnalyticsController', () => {
 
       mockAnalyticsService.getOnlineBookingStats.mockResolvedValue(expected);
 
-      const result = await controller.getOnlineBookingStats(tenantId, branchId, query);
+      const result = await controller.getOnlineBookingStats(
+        tenantId,
+        branchId,
+        query,
+      );
 
-      expect(mockAnalyticsService.getOnlineBookingStats).toHaveBeenCalledWith(tenantId, query, branchId);
+      expect(mockAnalyticsService.getOnlineBookingStats).toHaveBeenCalledWith(
+        tenantId,
+        query,
+        branchId,
+      );
       expect(result).toBe(expected);
     });
   });

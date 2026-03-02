@@ -21,6 +21,7 @@ describe('PublicBookingService', () => {
   let servicesRepo: { findActive: jest.Mock };
   let branchesRepo: { findActive: jest.Mock };
   let prisma: {
+    $transaction: jest.Mock;
     client: { findFirst: jest.Mock; create: jest.Mock };
     vehicle: { findFirst: jest.Mock; create: jest.Mock };
     bookingSettings: { findUnique: jest.Mock; findFirst: jest.Mock };
@@ -61,9 +62,16 @@ describe('PublicBookingService', () => {
     ordersService = { create: jest.fn() };
     servicesRepo = { findActive: jest.fn() };
     branchesRepo = { findActive: jest.fn() };
+    const clientMock = { findFirst: jest.fn(), create: jest.fn() };
+    const vehicleMock = { findFirst: jest.fn(), create: jest.fn() };
     prisma = {
-      client: { findFirst: jest.fn(), create: jest.fn() },
-      vehicle: { findFirst: jest.fn(), create: jest.fn() },
+      $transaction: jest
+        .fn()
+        .mockImplementation((fn) =>
+          fn({ client: clientMock, vehicle: vehicleMock }),
+        ),
+      client: clientMock,
+      vehicle: vehicleMock,
       bookingSettings: { findUnique: jest.fn(), findFirst: jest.fn() },
     };
 
@@ -407,6 +415,7 @@ describe('PublicBookingService', () => {
             tenantId: activeTenant.id,
             clientId: mockClient.id,
             licensePlate: baseBookingDto.licensePlate,
+            deletedAt: null,
           },
         });
         expect(prisma.vehicle.create).not.toHaveBeenCalled();

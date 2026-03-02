@@ -4,13 +4,15 @@ import { ConfigService } from '@nestjs/config';
 import { RealtimeGateway } from './realtime.gateway';
 import { Socket } from 'socket.io';
 
-function makeSocket(overrides: Partial<{
-  handshake: Record<string, unknown>;
-  id: string;
-  data: Record<string, unknown>;
-  join: jest.Mock;
-  disconnect: jest.Mock;
-}>): Socket {
+function makeSocket(
+  overrides: Partial<{
+    handshake: Record<string, unknown>;
+    id: string;
+    data: Record<string, unknown>;
+    join: jest.Mock;
+    disconnect: jest.Mock;
+  }>,
+): Socket {
   return {
     id: 'socket-1',
     handshake: { auth: {}, headers: {} },
@@ -61,17 +63,26 @@ describe('RealtimeGateway', () => {
         handshake: { auth: { token: 'valid.jwt.token' }, headers: {} },
       });
       await gateway.handleConnection(client);
-      expect(jwtService.verify).toHaveBeenCalledWith('valid.jwt.token', expect.any(Object));
+      expect(jwtService.verify).toHaveBeenCalledWith(
+        'valid.jwt.token',
+        expect.any(Object),
+      );
       expect(client.join).toHaveBeenCalledWith('tenant:tenant-1');
       expect(client.data.user).toEqual(mockPayload);
     });
 
     it('should extract token from Authorization header as fallback', async () => {
       const client = makeSocket({
-        handshake: { auth: {}, headers: { authorization: 'Bearer header.jwt.token' } },
+        handshake: {
+          auth: {},
+          headers: { authorization: 'Bearer header.jwt.token' },
+        },
       });
       await gateway.handleConnection(client);
-      expect(jwtService.verify).toHaveBeenCalledWith('header.jwt.token', expect.any(Object));
+      expect(jwtService.verify).toHaveBeenCalledWith(
+        'header.jwt.token',
+        expect.any(Object),
+      );
     });
 
     it('should disconnect client when no token is provided', async () => {
@@ -84,7 +95,9 @@ describe('RealtimeGateway', () => {
     });
 
     it('should disconnect client when jwt.verify throws', async () => {
-      jwtService.verify.mockImplementation(() => { throw new Error('Invalid token'); });
+      jwtService.verify.mockImplementation(() => {
+        throw new Error('Invalid token');
+      });
       const client = makeSocket({
         handshake: { auth: { token: 'bad.token' }, headers: {} },
       });
@@ -103,7 +116,9 @@ describe('RealtimeGateway', () => {
   describe('emitToTenant', () => {
     it('should emit event to the correct tenant room', () => {
       gateway.emitToTenant('tenant-1', 'order.created', { id: '1' });
-      expect((gateway as any).server.to).toHaveBeenCalledWith('tenant:tenant-1');
+      expect((gateway as any).server.to).toHaveBeenCalledWith(
+        'tenant:tenant-1',
+      );
       const room = (gateway as any).server.to.mock.results[0].value;
       expect(room.emit).toHaveBeenCalledWith('order.created', { id: '1' });
     });
@@ -112,7 +127,9 @@ describe('RealtimeGateway', () => {
   describe('emitToBranch', () => {
     it('should emit event to the correct branch room', () => {
       gateway.emitToBranch('branch-1', 'order.created', { id: '2' });
-      expect((gateway as any).server.to).toHaveBeenCalledWith('branch:branch-1');
+      expect((gateway as any).server.to).toHaveBeenCalledWith(
+        'branch:branch-1',
+      );
       const room = (gateway as any).server.to.mock.results[0].value;
       expect(room.emit).toHaveBeenCalledWith('order.created', { id: '2' });
     });

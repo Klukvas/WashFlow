@@ -21,6 +21,8 @@ import { VALID_STATUS_TRANSITIONS } from './types/order.types';
 import { paginatedResponse } from '../../common/utils/pagination.util';
 import { resolveBookingSettings } from '../../common/utils/booking-settings.util';
 
+const MS_PER_DAY = 86_400_000;
+
 @Injectable()
 export class OrdersService {
   constructor(
@@ -58,72 +60,35 @@ export class OrdersService {
     idempotencyKey?: string,
     userBranchId: string | null = null,
   ) {
-    // Enforce branch scope on creation
-    if (userBranchId !== null && dto.branchId !== userBranchId) {
-      throw new BadRequestException(
-        'Cannot create orders for a different branch',
-      );
-    }
+    this.validateBranchScope(dto.branchId, userBranchId);
 
-    // 1. Validate services exist and are active
-    const services = await this.servicesRepo.findByIds(
-      tenantId,
-      dto.serviceIds,
-    );
-    if (services.length !== dto.serviceIds.length) {
-      throw new BadRequestException(
-        'One or more services not found or inactive',
-      );
-    }
+    const { services, totalPrice, totalDuration } =
+      await this.resolveServicesAndPricing(tenantId, dto.serviceIds);
 
-    // 2. Calculate total price and duration
-    const totalPrice = services.reduce((sum, s) => sum + Number(s.price), 0);
-    const totalDuration = services.reduce((sum, s) => sum + s.durationMin, 0);
-
-    // 3. Calculate scheduled end
     const scheduledStart = new Date(dto.scheduledStart);
     const scheduledEnd = new Date(
       scheduledStart.getTime() + totalDuration * 60000,
     );
 
-    // 4. Load booking settings for buffer time (branch-level → tenant → defaults)
     const bookingSettings = await resolveBookingSettings(
       this.prisma,
       tenantId,
       dto.branchId,
     );
-    const bufferMinutes = bookingSettings.bufferTimeMinutes;
 
-    // 4b. Enforce workingDays
-    const dayOfWeek = scheduledStart.getUTCDay();
-    if (!bookingSettings.workingDays.includes(dayOfWeek)) {
-      throw new BadRequestException(
-        'Booking is not allowed on this day of the week',
-      );
-    }
-
-    // 4c. Enforce maxAdvanceBookingDays
-    const now = new Date();
-    const maxDate = new Date(
-      now.getTime() + bookingSettings.maxAdvanceBookingDays * 86400000,
+    this.enforceBookingConstraints(
+      scheduledStart,
+      bookingSettings.workingDays,
+      bookingSettings.maxAdvanceBookingDays,
     );
-    if (scheduledStart.getTime() > maxDate.getTime()) {
-      throw new BadRequestException(
-        `Cannot book more than ${bookingSettings.maxAdvanceBookingDays} days in advance`,
-      );
-    }
 
-    // 5. Determine source and initial status
     const source = dto.source || 'INTERNAL';
     const status: OrderStatus =
       source === 'WEB' ? 'BOOKED_PENDING_CONFIRMATION' : 'BOOKED';
-
-    // 6. Transaction: idempotency check + auto-assign work post + lock slot + create order atomically
-    let workPostId = dto.workPostId;
+    const bufferMinutes = bookingSettings.bufferTimeMinutes;
 
     const order = await this.prisma.$transaction(
       async (tx) => {
-        // 6a. Idempotency check (if key provided)
         if (idempotencyKey) {
           const cached = await this.idempotencyService.checkTx(
             tx,
@@ -144,103 +109,24 @@ export class OrdersService {
           }
         }
 
-        // 6b. Auto-assign work post inside transaction if not specified
-        if (!workPostId) {
-          const workPosts = await tx.workPost.findMany({
-            where: { tenantId, branchId: dto.branchId, isActive: true },
-          });
+        const workPostId = await this.resolveWorkPost(tx, {
+          tenantId,
+          branchId: dto.branchId,
+          workPostId: dto.workPostId,
+          scheduledStart,
+          scheduledEnd,
+          bufferMinutes,
+        });
 
-          for (const wp of workPosts) {
-            try {
-              await this.schedulingService.reserveSlot(tx, {
-                tenantId,
-                workPostId: wp.id,
-                scheduledStart,
-                scheduledEnd,
-                bufferMinutes,
-              });
-              workPostId = wp.id;
-              break;
-            } catch (err) {
-              if (err instanceof ConflictException) continue;
-              throw err;
-            }
-          }
+        const assignedEmployeeId = await this.resolveEmployee(tx, {
+          tenantId,
+          branchId: dto.branchId,
+          assignedEmployeeId: dto.assignedEmployeeId,
+          scheduledStart,
+          scheduledEnd,
+          bufferMinutes,
+        });
 
-          if (!workPostId) {
-            throw new BadRequestException(
-              'No available work posts for the requested time',
-            );
-          }
-        } else {
-          // 6c. Lock slot for explicitly provided work post
-          await this.schedulingService.reserveSlot(tx, {
-            tenantId,
-            workPostId,
-            scheduledStart,
-            scheduledEnd,
-            bufferMinutes,
-          });
-        }
-
-        // 6d. Auto-assign employee if workforce is configured for this branch
-        let assignedEmployeeId: string | undefined = dto.assignedEmployeeId;
-
-        if (!assignedEmployeeId) {
-          const totalProfiles = await tx.employeeProfile.count({
-            where: {
-              tenantId,
-              branchId: dto.branchId,
-              active: true,
-              workStartTime: { not: null },
-            },
-          });
-
-          if (totalProfiles > 0) {
-            const pad = (n: number) => String(n).padStart(2, '0');
-            const startHH = `${pad(scheduledStart.getUTCHours())}:${pad(scheduledStart.getUTCMinutes())}`;
-            const endHH = `${pad(scheduledEnd.getUTCHours())}:${pad(scheduledEnd.getUTCMinutes())}`;
-
-            const bufferedStart = new Date(
-              scheduledStart.getTime() - bufferMinutes * 60000,
-            );
-            const bufferedEnd = new Date(
-              scheduledEnd.getTime() + bufferMinutes * 60000,
-            );
-
-            const availableEmployee = await tx.employeeProfile.findFirst({
-              where: {
-                tenantId,
-                branchId: dto.branchId,
-                isWorker: true,
-                active: true,
-                workStartTime: { lte: startHH },
-                workEndTime: { gte: endHH },
-                user: { deletedAt: null },
-                branch: { deletedAt: null },
-                orders: {
-                  none: {
-                    status: { notIn: ['CANCELLED', 'NO_SHOW', 'COMPLETED'] },
-                    scheduledStart: { lt: bufferedEnd },
-                    scheduledEnd: { gt: bufferedStart },
-                    deletedAt: null,
-                  },
-                },
-              },
-              select: { id: true },
-            });
-
-            if (!availableEmployee) {
-              throw new BadRequestException(
-                'No available employees for the requested time',
-              );
-            }
-
-            assignedEmployeeId = availableEmployee.id;
-          }
-        } // end if (!assignedEmployeeId)
-
-        // 6e. Create order
         const created = await tx.order.create({
           data: {
             tenantId,
@@ -258,6 +144,7 @@ export class OrdersService {
             notes: dto.notes,
             services: {
               create: services.map((s) => ({
+                tenantId,
                 serviceId: s.id,
                 price: s.price,
                 quantity: 1,
@@ -285,7 +172,6 @@ export class OrdersService {
           },
         });
 
-        // 6f. Save idempotency result
         if (idempotencyKey) {
           await this.idempotencyService.saveResultTx(
             tx,
@@ -304,7 +190,6 @@ export class OrdersService {
       },
     );
 
-    // 7. Dispatch event OUTSIDE transaction
     this.eventDispatcher.dispatch(
       new OrderCreatedEvent(tenantId, {
         id: order.id,
@@ -345,7 +230,6 @@ export class OrdersService {
       dto.cancellationReason,
     );
 
-    // Dispatch status change event
     this.eventDispatcher.dispatch(
       new OrderStatusChangedEvent(tenantId, {
         orderId,
@@ -356,7 +240,6 @@ export class OrdersService {
       }),
     );
 
-    // If cancelled, dispatch cancellation event
     if (dto.status === 'CANCELLED') {
       this.eventDispatcher.dispatch(
         new OrderCancelledEvent(tenantId, {
@@ -388,7 +271,6 @@ export class OrdersService {
     }
     if (!order.deletedAt) throw new BadRequestException('Order is not deleted');
 
-    // Check for scheduling conflicts if order is non-terminal and has a work post
     const terminalStatuses = ['COMPLETED', 'CANCELLED', 'NO_SHOW'];
     if (
       order.workPostId &&
@@ -416,5 +298,189 @@ export class OrdersService {
     }
 
     return this.ordersRepo.restore(tenantId, id);
+  }
+
+  // ─── Private Helpers ────────────────────────────────────────────────────────
+
+  private validateBranchScope(
+    targetBranchId: string,
+    userBranchId: string | null,
+  ): void {
+    if (userBranchId !== null && targetBranchId !== userBranchId) {
+      throw new BadRequestException(
+        'Cannot create orders for a different branch',
+      );
+    }
+  }
+
+  private async resolveServicesAndPricing(
+    tenantId: string,
+    serviceIds: string[],
+  ) {
+    const services = await this.servicesRepo.findByIds(tenantId, serviceIds);
+    if (services.length !== serviceIds.length) {
+      throw new BadRequestException(
+        'One or more services not found or inactive',
+      );
+    }
+
+    const totalPrice = services.reduce((sum, s) => sum + Number(s.price), 0);
+    const totalDuration = services.reduce((sum, s) => sum + s.durationMin, 0);
+
+    return { services, totalPrice, totalDuration };
+  }
+
+  private enforceBookingConstraints(
+    scheduledStart: Date,
+    workingDays: number[],
+    maxAdvanceBookingDays: number,
+  ): void {
+    const dayOfWeek = scheduledStart.getUTCDay();
+    if (!workingDays.includes(dayOfWeek)) {
+      throw new BadRequestException(
+        'Booking is not allowed on this day of the week',
+      );
+    }
+
+    const now = new Date();
+    const maxDate = new Date(
+      now.getTime() + maxAdvanceBookingDays * MS_PER_DAY,
+    );
+    if (scheduledStart.getTime() > maxDate.getTime()) {
+      throw new BadRequestException(
+        `Cannot book more than ${maxAdvanceBookingDays} days in advance`,
+      );
+    }
+  }
+
+  private async resolveWorkPost(
+    tx: Prisma.TransactionClient,
+    params: {
+      tenantId: string;
+      branchId: string;
+      workPostId?: string;
+      scheduledStart: Date;
+      scheduledEnd: Date;
+      bufferMinutes: number;
+    },
+  ): Promise<string> {
+    const {
+      tenantId,
+      branchId,
+      workPostId,
+      scheduledStart,
+      scheduledEnd,
+      bufferMinutes,
+    } = params;
+
+    if (workPostId) {
+      await this.schedulingService.reserveSlot(tx, {
+        tenantId,
+        workPostId,
+        scheduledStart,
+        scheduledEnd,
+        bufferMinutes,
+      });
+      return workPostId;
+    }
+
+    const workPosts = await tx.workPost.findMany({
+      where: { tenantId, branchId, isActive: true, deletedAt: null },
+    });
+
+    for (const wp of workPosts) {
+      try {
+        await this.schedulingService.reserveSlot(tx, {
+          tenantId,
+          workPostId: wp.id,
+          scheduledStart,
+          scheduledEnd,
+          bufferMinutes,
+        });
+        return wp.id;
+      } catch (err) {
+        if (err instanceof ConflictException) continue;
+        throw err;
+      }
+    }
+
+    throw new BadRequestException(
+      'No available work posts for the requested time',
+    );
+  }
+
+  private async resolveEmployee(
+    tx: Prisma.TransactionClient,
+    params: {
+      tenantId: string;
+      branchId: string;
+      assignedEmployeeId?: string;
+      scheduledStart: Date;
+      scheduledEnd: Date;
+      bufferMinutes: number;
+    },
+  ): Promise<string | undefined> {
+    const {
+      tenantId,
+      branchId,
+      assignedEmployeeId,
+      scheduledStart,
+      scheduledEnd,
+      bufferMinutes,
+    } = params;
+
+    if (assignedEmployeeId) return assignedEmployeeId;
+
+    const totalProfiles = await tx.employeeProfile.count({
+      where: {
+        tenantId,
+        branchId,
+        active: true,
+        workStartTime: { not: null },
+      },
+    });
+
+    if (totalProfiles === 0) return undefined;
+
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const startHH = `${pad(scheduledStart.getUTCHours())}:${pad(scheduledStart.getUTCMinutes())}`;
+    const endHH = `${pad(scheduledEnd.getUTCHours())}:${pad(scheduledEnd.getUTCMinutes())}`;
+
+    const bufferedStart = new Date(
+      scheduledStart.getTime() - bufferMinutes * 60000,
+    );
+    const bufferedEnd = new Date(
+      scheduledEnd.getTime() + bufferMinutes * 60000,
+    );
+
+    const availableEmployee = await tx.employeeProfile.findFirst({
+      where: {
+        tenantId,
+        branchId,
+        isWorker: true,
+        active: true,
+        workStartTime: { lte: startHH },
+        workEndTime: { gte: endHH },
+        user: { deletedAt: null },
+        branch: { deletedAt: null },
+        orders: {
+          none: {
+            status: { notIn: ['CANCELLED', 'NO_SHOW', 'COMPLETED'] },
+            scheduledStart: { lt: bufferedEnd },
+            scheduledEnd: { gt: bufferedStart },
+            deletedAt: null,
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!availableEmployee) {
+      throw new BadRequestException(
+        'No available employees for the requested time',
+      );
+    }
+
+    return availableEmployee.id;
   }
 }

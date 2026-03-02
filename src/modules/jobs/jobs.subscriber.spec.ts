@@ -7,7 +7,10 @@ import { DomainEvent } from '../../common/events/domain-event';
 
 describe('JobsSubscriber', () => {
   let subscriber: JobsSubscriber;
-  let notificationProducer: { sendOrderConfirmation: jest.Mock; sendStatusUpdate: jest.Mock };
+  let notificationProducer: {
+    sendOrderConfirmation: jest.Mock;
+    sendStatusUpdate: jest.Mock;
+  };
   let analyticsProducer: { recordOrderCreated: jest.Mock };
   let bookingProducer: { scheduleConfirmationTimeout: jest.Mock };
 
@@ -75,7 +78,9 @@ describe('JobsSubscriber', () => {
         bookingProducer.scheduleConfirmationTimeout.mockClear();
         const event = makeEvent({ id: 'order-1', source });
         await subscriber.onOrderCreated(event);
-        expect(bookingProducer.scheduleConfirmationTimeout).not.toHaveBeenCalled();
+        expect(
+          bookingProducer.scheduleConfirmationTimeout,
+        ).not.toHaveBeenCalled();
       }
     });
   });
@@ -98,7 +103,9 @@ describe('JobsSubscriber', () => {
       const event = makeEvent({ orderId: 'order-2', newStatus: 'COMPLETED' });
       await subscriber.onOrderStatusChanged(event);
       expect(analyticsProducer.recordOrderCreated).not.toHaveBeenCalled();
-      expect(bookingProducer.scheduleConfirmationTimeout).not.toHaveBeenCalled();
+      expect(
+        bookingProducer.scheduleConfirmationTimeout,
+      ).not.toHaveBeenCalled();
     });
   });
 });

@@ -16,9 +16,13 @@ describe('SchedulingService', () => {
   let tenantPrisma: { forTenant: jest.Mock };
 
   const mockWorkPostFindMany = jest.fn();
+  const mockEmployeeProfileFindMany = jest.fn();
+  const mockOrderFindMany = jest.fn();
 
   beforeEach(async () => {
     mockWorkPostFindMany.mockReset();
+    mockEmployeeProfileFindMany.mockReset();
+    mockOrderFindMany.mockReset();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -29,6 +33,7 @@ describe('SchedulingService', () => {
             lockOverlappingSlots: jest.fn().mockResolvedValue([]),
             countOverlapping: jest.fn().mockResolvedValue(0),
             findOrdersInRange: jest.fn().mockResolvedValue([]),
+            findOrdersForWorkPostsInRange: jest.fn().mockResolvedValue([]),
           },
         },
         {
@@ -48,9 +53,9 @@ describe('SchedulingService', () => {
           provide: TenantPrismaService,
           useValue: {
             forTenant: jest.fn().mockReturnValue({
-              workPost: {
-                findMany: mockWorkPostFindMany,
-              },
+              workPost: { findMany: mockWorkPostFindMany },
+              employeeProfile: { findMany: mockEmployeeProfileFindMany },
+              order: { findMany: mockOrderFindMany },
             }),
           },
         },
@@ -292,7 +297,7 @@ describe('SchedulingService', () => {
   });
 
   describe('checkAvailability', () => {
-    const date = new Date('2026-03-01T00:00:00Z');
+    const date = new Date('2026-03-02T00:00:00Z'); // Monday
     const tenantId = 'tenant-1';
     const branchId = 'branch-1';
 
@@ -301,11 +306,14 @@ describe('SchedulingService', () => {
       bufferTimeMinutes: 10,
       workingHoursStart: '08:00',
       workingHoursEnd: '09:00', // Only 1 hour so we get 2 slots
+      workingDays: [0, 1, 2, 3, 4, 5, 6],
+      maxAdvanceBookingDays: 365,
+      allowOnlineBooking: true,
     };
 
     beforeEach(() => {
       prisma.bookingSettings.findUnique.mockResolvedValue(mockSettings);
-      schedulingRepo.findOrdersInRange.mockResolvedValue([]);
+      schedulingRepo.findOrdersForWorkPostsInRange.mockResolvedValue([]);
     });
 
     it('should use a specified workPostId instead of fetching all posts', async () => {
@@ -354,7 +362,7 @@ describe('SchedulingService', () => {
       prisma.bookingSettings.findUnique.mockResolvedValue(null);
       prisma.bookingSettings.findFirst.mockResolvedValue(null);
       mockWorkPostFindMany.mockResolvedValue([{ id: 'wp-1', name: 'Bay 1' }]);
-      schedulingRepo.findOrdersInRange.mockResolvedValue([]);
+      schedulingRepo.findOrdersForWorkPostsInRange.mockResolvedValue([]);
 
       // Defaults: slotDuration=30, workStart=08:00, workEnd=20:00 => 24 slots
       const slots = await service.checkAvailability({
@@ -370,7 +378,7 @@ describe('SchedulingService', () => {
 
     it('should return all slots as available when there are no existing orders', async () => {
       mockWorkPostFindMany.mockResolvedValue([{ id: 'wp-1', name: 'Bay 1' }]);
-      schedulingRepo.findOrdersInRange.mockResolvedValue([]);
+      schedulingRepo.findOrdersForWorkPostsInRange.mockResolvedValue([]);
 
       const slots = await service.checkAvailability({
         tenantId,
@@ -390,11 +398,15 @@ describe('SchedulingService', () => {
 
       // Conflict occupying the entire first slot's buffered window
       const orderStart = new Date(date);
-      orderStart.setHours(8, 0, 0, 0);
+      orderStart.setUTCHours(8, 0, 0, 0);
       const orderEnd = new Date(date);
-      orderEnd.setHours(8, 30, 0, 0);
-      schedulingRepo.findOrdersInRange.mockResolvedValue([
-        { scheduledStart: orderStart, scheduledEnd: orderEnd },
+      orderEnd.setUTCHours(8, 30, 0, 0);
+      schedulingRepo.findOrdersForWorkPostsInRange.mockResolvedValue([
+        {
+          workPostId: 'wp-1',
+          scheduledStart: orderStart,
+          scheduledEnd: orderEnd,
+        },
       ] as any);
 
       const slots = await service.checkAvailability({
@@ -421,15 +433,17 @@ describe('SchedulingService', () => {
         ]);
 
       const orderStart = new Date(date);
-      orderStart.setHours(8, 0, 0, 0);
+      orderStart.setUTCHours(8, 0, 0, 0);
       const orderEnd = new Date(date);
-      orderEnd.setHours(8, 30, 0, 0);
+      orderEnd.setUTCHours(8, 30, 0, 0);
 
-      schedulingRepo.findOrdersInRange
-        .mockResolvedValueOnce([
-          { scheduledStart: orderStart, scheduledEnd: orderEnd },
-        ] as any) // wp-1 is busy
-        .mockResolvedValueOnce([]); // wp-2 is free
+      schedulingRepo.findOrdersForWorkPostsInRange.mockResolvedValue([
+        {
+          workPostId: 'wp-1',
+          scheduledStart: orderStart,
+          scheduledEnd: orderEnd,
+        },
+      ] as any); // wp-1 is busy, wp-2 has no orders
 
       const slots = await service.checkAvailability({
         tenantId,
@@ -451,7 +465,7 @@ describe('SchedulingService', () => {
       const settingsWithDuration = { ...mockSettings, slotDurationMinutes: 60 };
       prisma.bookingSettings.findUnique.mockResolvedValue(settingsWithDuration);
       mockWorkPostFindMany.mockResolvedValue([{ id: 'wp-1', name: 'Bay 1' }]);
-      schedulingRepo.findOrdersInRange.mockResolvedValue([]);
+      schedulingRepo.findOrdersForWorkPostsInRange.mockResolvedValue([]);
 
       const slots = await service.checkAvailability({
         tenantId,
@@ -467,7 +481,6 @@ describe('SchedulingService', () => {
 
     it('should return empty array when no work posts found', async () => {
       mockWorkPostFindMany.mockResolvedValue([]);
-      schedulingRepo.findOrdersInRange.mockResolvedValue([]);
 
       const slots = await service.checkAvailability({
         tenantId,
@@ -477,9 +490,8 @@ describe('SchedulingService', () => {
         durationMinutes: 30,
       });
 
-      // When workPostIds is empty, the per-post loop produces no slots
-      // and the time loop's inner iteration over workPostIds also pushes nothing.
-      expect(schedulingRepo.findOrdersInRange).not.toHaveBeenCalled();
+      // When workPostIds is empty, the time loop produces no slots.
+      expect(slots).toHaveLength(0);
     });
 
     it('should include workPostName from the name map in each slot', async () => {
@@ -488,7 +500,7 @@ describe('SchedulingService', () => {
       mockWorkPostFindMany.mockResolvedValue([
         { id: workPostId, name: workPostName },
       ]);
-      schedulingRepo.findOrdersInRange.mockResolvedValue([]);
+      schedulingRepo.findOrdersForWorkPostsInRange.mockResolvedValue([]);
 
       const slots = await service.checkAvailability({
         tenantId,
@@ -503,7 +515,7 @@ describe('SchedulingService', () => {
 
     it('should set slot start and end times correctly', async () => {
       mockWorkPostFindMany.mockResolvedValue([{ id: 'wp-1', name: 'Bay 1' }]);
-      schedulingRepo.findOrdersInRange.mockResolvedValue([]);
+      schedulingRepo.findOrdersForWorkPostsInRange.mockResolvedValue([]);
 
       const slots = await service.checkAvailability({
         tenantId,
@@ -514,9 +526,9 @@ describe('SchedulingService', () => {
       });
 
       const expectedStart = new Date(date);
-      expectedStart.setHours(8, 0, 0, 0);
+      expectedStart.setUTCHours(8, 0, 0, 0);
       const expectedEnd = new Date(date);
-      expectedEnd.setHours(8, 30, 0, 0);
+      expectedEnd.setUTCHours(8, 30, 0, 0);
 
       expect(slots[0].start.getTime()).toBe(expectedStart.getTime());
       expect(slots[0].end.getTime()).toBe(expectedEnd.getTime());
@@ -524,7 +536,7 @@ describe('SchedulingService', () => {
   });
 
   describe('checkAvailability — workforce capacity cap', () => {
-    const date = new Date('2026-03-01T00:00:00Z');
+    const date = new Date('2026-03-02T00:00:00Z'); // Monday
     const tenantId = 'tenant-1';
     const branchId = 'branch-1';
 
@@ -533,26 +545,23 @@ describe('SchedulingService', () => {
       bufferTimeMinutes: 0,
       workingHoursStart: '08:00',
       workingHoursEnd: '09:00', // 2 slots only
+      workingDays: [0, 1, 2, 3, 4, 5, 6],
+      maxAdvanceBookingDays: 365,
+      allowOnlineBooking: true,
     };
 
     beforeEach(() => {
       prisma.bookingSettings.findUnique.mockResolvedValue(mockSettings);
-      schedulingRepo.findOrdersInRange.mockResolvedValue([]);
+      schedulingRepo.findOrdersForWorkPostsInRange.mockResolvedValue([]);
     });
 
     it('should fall back to work-post count when branch has zero profiles', async () => {
       // 3 work posts, 0 profiles → capacity = 3
-      mockWorkPostFindMany
-        .mockResolvedValueOnce([
-          { id: 'wp-1', name: 'Bay 1' },
-          { id: 'wp-2', name: 'Bay 2' },
-          { id: 'wp-3', name: 'Bay 3' },
-        ])
-        .mockResolvedValueOnce([
-          { id: 'wp-1', name: 'Bay 1' },
-          { id: 'wp-2', name: 'Bay 2' },
-          { id: 'wp-3', name: 'Bay 3' },
-        ]);
+      mockWorkPostFindMany.mockResolvedValue([
+        { id: 'wp-1', name: 'Bay 1' },
+        { id: 'wp-2', name: 'Bay 2' },
+        { id: 'wp-3', name: 'Bay 3' },
+      ]);
       workforceRepo.countProfilesForBranch.mockResolvedValue(0);
 
       const slots = await service.checkAvailability({
@@ -565,28 +574,23 @@ describe('SchedulingService', () => {
       // 2 time windows × 3 work posts = 6 slots, all available
       const available = slots.filter((s) => s.available);
       expect(available).toHaveLength(6);
-      // workforce availability should NOT be called when 0 profiles
-      expect(workforceRepo.findAvailableEmployeesAtSlot).not.toHaveBeenCalled();
+      // employee queries should NOT be called when 0 profiles
+      expect(mockEmployeeProfileFindMany).not.toHaveBeenCalled();
     });
 
     it('should cap slots to employee count when fewer employees than posts', async () => {
       // 3 work posts, 2 profiles configured, 2 employees available → cap at 2
-      mockWorkPostFindMany
-        .mockResolvedValueOnce([
-          { id: 'wp-1', name: 'Bay 1' },
-          { id: 'wp-2', name: 'Bay 2' },
-          { id: 'wp-3', name: 'Bay 3' },
-        ])
-        .mockResolvedValueOnce([
-          { id: 'wp-1', name: 'Bay 1' },
-          { id: 'wp-2', name: 'Bay 2' },
-          { id: 'wp-3', name: 'Bay 3' },
-        ]);
-      workforceRepo.countProfilesForBranch.mockResolvedValue(2);
-      workforceRepo.findAvailableEmployeesAtSlot.mockResolvedValue([
-        'emp-1',
-        'emp-2',
+      mockWorkPostFindMany.mockResolvedValue([
+        { id: 'wp-1', name: 'Bay 1' },
+        { id: 'wp-2', name: 'Bay 2' },
+        { id: 'wp-3', name: 'Bay 3' },
       ]);
+      workforceRepo.countProfilesForBranch.mockResolvedValue(2);
+      mockEmployeeProfileFindMany.mockResolvedValue([
+        { id: 'emp-1', workStartTime: '08:00', workEndTime: '09:00' },
+        { id: 'emp-2', workStartTime: '08:00', workEndTime: '09:00' },
+      ]);
+      mockOrderFindMany.mockResolvedValue([]); // no conflicts
 
       const slots = await service.checkAvailability({
         tenantId,
@@ -605,21 +609,17 @@ describe('SchedulingService', () => {
 
     it('should allow all posts when employees >= posts', async () => {
       // 2 work posts, 3 employees → capacity = 2 (all posts)
-      mockWorkPostFindMany
-        .mockResolvedValueOnce([
-          { id: 'wp-1', name: 'Bay 1' },
-          { id: 'wp-2', name: 'Bay 2' },
-        ])
-        .mockResolvedValueOnce([
-          { id: 'wp-1', name: 'Bay 1' },
-          { id: 'wp-2', name: 'Bay 2' },
-        ]);
-      workforceRepo.countProfilesForBranch.mockResolvedValue(3);
-      workforceRepo.findAvailableEmployeesAtSlot.mockResolvedValue([
-        'emp-1',
-        'emp-2',
-        'emp-3',
+      mockWorkPostFindMany.mockResolvedValue([
+        { id: 'wp-1', name: 'Bay 1' },
+        { id: 'wp-2', name: 'Bay 2' },
       ]);
+      workforceRepo.countProfilesForBranch.mockResolvedValue(3);
+      mockEmployeeProfileFindMany.mockResolvedValue([
+        { id: 'emp-1', workStartTime: '08:00', workEndTime: '09:00' },
+        { id: 'emp-2', workStartTime: '08:00', workEndTime: '09:00' },
+        { id: 'emp-3', workStartTime: '08:00', workEndTime: '09:00' },
+      ]);
+      mockOrderFindMany.mockResolvedValue([]);
 
       const slots = await service.checkAvailability({
         tenantId,
@@ -634,20 +634,14 @@ describe('SchedulingService', () => {
     });
 
     it('should return zero available slots when no employees are available', async () => {
-      // 3 posts configured, profiles exist, but 0 employees available at this time
-      mockWorkPostFindMany
-        .mockResolvedValueOnce([
-          { id: 'wp-1', name: 'Bay 1' },
-          { id: 'wp-2', name: 'Bay 2' },
-          { id: 'wp-3', name: 'Bay 3' },
-        ])
-        .mockResolvedValueOnce([
-          { id: 'wp-1', name: 'Bay 1' },
-          { id: 'wp-2', name: 'Bay 2' },
-          { id: 'wp-3', name: 'Bay 3' },
-        ]);
+      // 3 posts configured, profiles exist, but 0 employees match criteria
+      mockWorkPostFindMany.mockResolvedValue([
+        { id: 'wp-1', name: 'Bay 1' },
+        { id: 'wp-2', name: 'Bay 2' },
+        { id: 'wp-3', name: 'Bay 3' },
+      ]);
       workforceRepo.countProfilesForBranch.mockResolvedValue(3);
-      workforceRepo.findAvailableEmployeesAtSlot.mockResolvedValue([]); // nobody on shift
+      mockEmployeeProfileFindMany.mockResolvedValue([]); // nobody matches criteria
 
       const slots = await service.checkAvailability({
         tenantId,
@@ -661,19 +655,24 @@ describe('SchedulingService', () => {
     });
 
     it('should exclude employee already assigned to overlapping order', async () => {
-      // 2 posts, 2 profiles, but 1 employee already on order → only 1 available per slot
-      mockWorkPostFindMany
-        .mockResolvedValueOnce([
-          { id: 'wp-1', name: 'Bay 1' },
-          { id: 'wp-2', name: 'Bay 2' },
-        ])
-        .mockResolvedValueOnce([
-          { id: 'wp-1', name: 'Bay 1' },
-          { id: 'wp-2', name: 'Bay 2' },
-        ]);
+      // 2 posts, 2 profiles, but emp-1 has a conflicting order → only 1 available per slot
+      mockWorkPostFindMany.mockResolvedValue([
+        { id: 'wp-1', name: 'Bay 1' },
+        { id: 'wp-2', name: 'Bay 2' },
+      ]);
       workforceRepo.countProfilesForBranch.mockResolvedValue(2);
-      // Only emp-2 is free; emp-1 is on an overlapping order
-      workforceRepo.findAvailableEmployeesAtSlot.mockResolvedValue(['emp-2']);
+      mockEmployeeProfileFindMany.mockResolvedValue([
+        { id: 'emp-1', workStartTime: '08:00', workEndTime: '09:00' },
+        { id: 'emp-2', workStartTime: '08:00', workEndTime: '09:00' },
+      ]);
+      // emp-1 has order spanning full window → conflicts with both slots
+      mockOrderFindMany.mockResolvedValue([
+        {
+          assignedEmployeeId: 'emp-1',
+          scheduledStart: new Date('2026-03-02T08:00:00Z'),
+          scheduledEnd: new Date('2026-03-02T09:00:00Z'),
+        },
+      ]);
 
       const slots = await service.checkAvailability({
         tenantId,

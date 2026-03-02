@@ -18,17 +18,26 @@ describe('NotificationProcessor', () => {
   });
 
   it('should process order-confirmation job without error', async () => {
-    const job = makeJob('order-confirmation', { orderId: 'order-1', tenantId: 'tenant-1' });
+    const job = makeJob('order-confirmation', {
+      orderId: 'order-1',
+      tenantId: 'tenant-1',
+    });
     await expect(processor.process(job)).resolves.toBeUndefined();
   });
 
   it('should process status-update job without error', async () => {
-    const job = makeJob('status-update', { orderId: 'order-2', tenantId: 'tenant-1' });
+    const job = makeJob('status-update', {
+      orderId: 'order-2',
+      tenantId: 'tenant-1',
+    });
     await expect(processor.process(job)).resolves.toBeUndefined();
   });
 
   it('should process booking-reminder job without error', async () => {
-    const job = makeJob('booking-reminder', { orderId: 'order-3', tenantId: 'tenant-1' });
+    const job = makeJob('booking-reminder', {
+      orderId: 'order-3',
+      tenantId: 'tenant-1',
+    });
     await expect(processor.process(job)).resolves.toBeUndefined();
   });
 

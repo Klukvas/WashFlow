@@ -631,7 +631,7 @@ export function CreateOrderPage() {
                 </CardTitle>
               </CardHeader>
               <div>
-                <Label>Date</Label>
+                <Label>{t('creation.date')}</Label>
                 <DatePicker
                   value={selectedDate}
                   onChange={setSelectedDate}

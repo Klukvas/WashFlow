@@ -1,8 +1,15 @@
-import { ExecutionContext, ForbiddenException } from '@nestjs/common';
+import {
+  ExecutionContext,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { TenantGuard } from './tenant.guard';
 import { JwtPayload } from '../types/jwt-payload.type';
 
-function makeCtx(user: Partial<JwtPayload> | undefined, headers: Record<string, string> = {}): ExecutionContext {
+function makeCtx(
+  user: Partial<JwtPayload> | undefined,
+  headers: Record<string, string> = {},
+): ExecutionContext {
   const request = { user, headers };
   return {
     switchToHttp: () => ({
@@ -30,24 +37,46 @@ describe('TenantGuard', () => {
 
   describe('super admin', () => {
     it('should return true for a super admin without x-tenant-id header', () => {
-      const user: Partial<JwtPayload> = { isSuperAdmin: true, tenantId: 'tenant-1' };
+      const user: Partial<JwtPayload> = {
+        isSuperAdmin: true,
+        tenantId: 'tenant-1',
+      };
       const ctx = makeCtx(user);
       expect(guard.canActivate(ctx)).toBe(true);
     });
 
     it('should override tenantId with x-tenant-id header for super admin', () => {
-      const user: Partial<JwtPayload> = { isSuperAdmin: true, tenantId: 'tenant-original' };
-      const request = { user, headers: { 'x-tenant-id': 'tenant-override' } };
+      const validUuid = '00000000-0000-0000-0000-000000000001';
+      const user: Partial<JwtPayload> = {
+        isSuperAdmin: true,
+        tenantId: 'tenant-original',
+      };
+      const request = {
+        user,
+        headers: { 'x-tenant-id': validUuid },
+      };
       const ctx = {
         switchToHttp: () => ({ getRequest: () => request }),
       } as unknown as ExecutionContext;
 
       guard.canActivate(ctx);
-      expect(request.user.tenantId).toBe('tenant-override');
+      expect(request.user.tenantId).toBe(validUuid);
+    });
+
+    it('should throw BadRequestException when x-tenant-id is not a valid UUID', () => {
+      const user: Partial<JwtPayload> = {
+        isSuperAdmin: true,
+        tenantId: 'tenant-original',
+      };
+      const ctx = makeCtx(user, { 'x-tenant-id': 'not-a-uuid' });
+      expect(() => guard.canActivate(ctx)).toThrow(BadRequestException);
     });
 
     it('should NOT override tenantId when x-tenant-id header is absent', () => {
-      const user: Partial<JwtPayload> = { isSuperAdmin: true, tenantId: 'tenant-original' };
+      const user: Partial<JwtPayload> = {
+        isSuperAdmin: true,
+        tenantId: 'tenant-original',
+      };
       const request = { user, headers: {} };
       const ctx = {
         switchToHttp: () => ({ getRequest: () => request }),
@@ -60,13 +89,19 @@ describe('TenantGuard', () => {
 
   describe('regular user', () => {
     it('should return true when user has a tenantId', () => {
-      const user: Partial<JwtPayload> = { isSuperAdmin: false, tenantId: 'tenant-1' };
+      const user: Partial<JwtPayload> = {
+        isSuperAdmin: false,
+        tenantId: 'tenant-1',
+      };
       const ctx = makeCtx(user);
       expect(guard.canActivate(ctx)).toBe(true);
     });
 
     it('should throw ForbiddenException when user has no tenantId', () => {
-      const user: Partial<JwtPayload> = { isSuperAdmin: false, tenantId: undefined };
+      const user: Partial<JwtPayload> = {
+        isSuperAdmin: false,
+        tenantId: undefined,
+      };
       const ctx = makeCtx(user as JwtPayload);
       expect(() => guard.canActivate(ctx)).toThrow(ForbiddenException);
     });

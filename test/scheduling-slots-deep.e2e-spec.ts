@@ -1342,7 +1342,7 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
     });
 
     it('custom maxAdvanceBookingDays (14) rejects booking at day 20', async () => {
-      let futureDay = new Date();
+      const futureDay = new Date();
       futureDay.setUTCDate(futureDay.getUTCDate() + 20);
       // Make it a weekday Mon–Fri
       while (futureDay.getUTCDay() === 0 || futureDay.getUTCDay() === 6) {

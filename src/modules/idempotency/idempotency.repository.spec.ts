@@ -8,7 +8,13 @@ describe('IdempotencyRepository', () => {
 
   const tenantId = 'tenant-1';
   const key = 'idem-key-123';
-  const mockRecord = { id: 'idem-1', tenantId, key, statusCode: 201, responseBody: {} };
+  const mockRecord = {
+    id: 'idem-1',
+    tenantId,
+    key,
+    statusCode: 201,
+    responseBody: {},
+  };
 
   const mockTx = {
     $queryRaw: jest.fn().mockResolvedValue([{ id: 'idem-1' }]),

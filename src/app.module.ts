@@ -53,18 +53,23 @@ import { CleanupModule } from './modules/cleanup/cleanup.module';
     // BullMQ
     BullModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        connection: {
-          host: new URL(
-            config.get<string>('redis.url', 'redis://localhost:6379'),
-          ).hostname,
-          port: parseInt(
-            new URL(config.get<string>('redis.url', 'redis://localhost:6379'))
-              .port || '6379',
-            10,
-          ),
-        },
-      }),
+      useFactory: (config: ConfigService) => {
+        const redisUrl = new URL(
+          config.get<string>('redis.url', 'redis://localhost:6379'),
+        );
+        return {
+          connection: {
+            host: redisUrl.hostname,
+            port: parseInt(redisUrl.port || '6379', 10),
+            ...(redisUrl.password
+              ? { password: decodeURIComponent(redisUrl.password) }
+              : {}),
+            ...(redisUrl.username
+              ? { username: decodeURIComponent(redisUrl.username) }
+              : {}),
+          },
+        };
+      },
     }),
 
     // Database

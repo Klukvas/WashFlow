@@ -9,18 +9,18 @@ import type { JwtPayload } from '../../common/types/jwt-payload.type';
 
 const TENANT_ID = 'tenant-uuid-1111';
 const CLIENT_ID = 'client-uuid-2222';
-const USER_ID   = 'user-uuid-3333';
+const USER_ID = 'user-uuid-3333';
 
 const mockUser: JwtPayload = { sub: USER_ID } as JwtPayload;
 
 const mockClientsService = {
-  merge:      jest.fn(),
-  findAll:    jest.fn(),
-  findById:   jest.fn(),
-  create:     jest.fn(),
-  update:     jest.fn(),
+  merge: jest.fn(),
+  findAll: jest.fn(),
+  findById: jest.fn(),
+  create: jest.fn(),
+  update: jest.fn(),
   softDelete: jest.fn(),
-  restore:    jest.fn(),
+  restore: jest.fn(),
 };
 
 describe('ClientsController', () => {
@@ -31,13 +31,13 @@ describe('ClientsController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ClientsController],
-      providers: [
-        { provide: ClientsService, useValue: mockClientsService },
-      ],
+      providers: [{ provide: ClientsService, useValue: mockClientsService }],
     })
       .overrideGuard(require('../../common/guards/jwt-auth.guard').JwtAuthGuard)
       .useValue({ canActivate: () => true })
-      .overrideGuard(require('../../common/guards/permissions.guard').PermissionsGuard)
+      .overrideGuard(
+        require('../../common/guards/permissions.guard').PermissionsGuard,
+      )
       .useValue({ canActivate: () => true })
       .compile();
 
@@ -46,14 +46,21 @@ describe('ClientsController', () => {
 
   describe('merge', () => {
     it('delegates to clientsService.merge with tenantId, dto and user sub', async () => {
-      const dto: MergeClientDto = { survivorId: CLIENT_ID, duplicateIds: ['dup-uuid-1'] } as MergeClientDto;
+      const dto: MergeClientDto = {
+        survivorId: CLIENT_ID,
+        duplicateIds: ['dup-uuid-1'],
+      } as MergeClientDto;
       const expected = { id: CLIENT_ID };
       mockClientsService.merge.mockResolvedValue(expected);
 
       const result = await controller.merge(TENANT_ID, dto, mockUser);
 
       expect(mockClientsService.merge).toHaveBeenCalledTimes(1);
-      expect(mockClientsService.merge).toHaveBeenCalledWith(TENANT_ID, dto, USER_ID);
+      expect(mockClientsService.merge).toHaveBeenCalledWith(
+        TENANT_ID,
+        dto,
+        USER_ID,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -80,7 +87,10 @@ describe('ClientsController', () => {
       const result = await controller.findOne(TENANT_ID, CLIENT_ID);
 
       expect(mockClientsService.findById).toHaveBeenCalledTimes(1);
-      expect(mockClientsService.findById).toHaveBeenCalledWith(TENANT_ID, CLIENT_ID);
+      expect(mockClientsService.findById).toHaveBeenCalledWith(
+        TENANT_ID,
+        CLIENT_ID,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -108,7 +118,11 @@ describe('ClientsController', () => {
       const result = await controller.update(TENANT_ID, CLIENT_ID, dto);
 
       expect(mockClientsService.update).toHaveBeenCalledTimes(1);
-      expect(mockClientsService.update).toHaveBeenCalledWith(TENANT_ID, CLIENT_ID, dto);
+      expect(mockClientsService.update).toHaveBeenCalledWith(
+        TENANT_ID,
+        CLIENT_ID,
+        dto,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -121,7 +135,11 @@ describe('ClientsController', () => {
       const result = await controller.remove(TENANT_ID, CLIENT_ID, mockUser);
 
       expect(mockClientsService.softDelete).toHaveBeenCalledTimes(1);
-      expect(mockClientsService.softDelete).toHaveBeenCalledWith(TENANT_ID, CLIENT_ID, USER_ID);
+      expect(mockClientsService.softDelete).toHaveBeenCalledWith(
+        TENANT_ID,
+        CLIENT_ID,
+        USER_ID,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -134,7 +152,10 @@ describe('ClientsController', () => {
       const result = await controller.restore(TENANT_ID, CLIENT_ID);
 
       expect(mockClientsService.restore).toHaveBeenCalledTimes(1);
-      expect(mockClientsService.restore).toHaveBeenCalledWith(TENANT_ID, CLIENT_ID);
+      expect(mockClientsService.restore).toHaveBeenCalledWith(
+        TENANT_ID,
+        CLIENT_ID,
+      );
       expect(result).toBe(expected);
     });
   });

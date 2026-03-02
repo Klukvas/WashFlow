@@ -2,11 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { PrismaService } from '../src/prisma/prisma.service';
-import {
-  createTestApp,
-  deleteTenantData,
-  TestSetup,
-} from './helpers/test-app';
+import { createTestApp, deleteTenantData, TestSetup } from './helpers/test-app';
 
 describe('Tenants (e2e)', () => {
   let app: INestApplication;
@@ -16,10 +12,9 @@ describe('Tenants (e2e)', () => {
   const createdTenantIds: string[] = [];
 
   const api = (method: 'get' | 'post' | 'patch' | 'delete', path: string) =>
-    (request(app.getHttpServer() as App) as any)[method](`/api/v1${path}`).set(
-      'Authorization',
-      `Bearer ${accessToken}`,
-    );
+    (request(app.getHttpServer() as App) as any)
+      [method](`/api/v1${path}`)
+      .set('Authorization', `Bearer ${accessToken}`);
 
   beforeAll(async () => {
     const setup: TestSetup = await createTestApp('e2e-tenants');
@@ -97,9 +92,7 @@ describe('Tenants (e2e)', () => {
         .expect(201);
       createdTenantIds.push(first.body.data.id);
 
-      await api('post', '/tenants')
-        .send({ name: 'Second', slug })
-        .expect(409);
+      await api('post', '/tenants').send({ name: 'Second', slug }).expect(409);
     });
   });
 

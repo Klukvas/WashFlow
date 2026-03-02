@@ -35,7 +35,9 @@ describe('OrdersController', () => {
     })
       .overrideGuard(require('../../common/guards/jwt-auth.guard').JwtAuthGuard)
       .useValue({ canActivate: () => true })
-      .overrideGuard(require('../../common/guards/permissions.guard').PermissionsGuard)
+      .overrideGuard(
+        require('../../common/guards/permissions.guard').PermissionsGuard,
+      )
       .useValue({ canActivate: () => true })
       .compile();
 
@@ -53,7 +55,11 @@ describe('OrdersController', () => {
 
       const result = await controller.findAll(tenantId, branchId, query);
 
-      expect(mockOrdersService.findAll).toHaveBeenCalledWith(tenantId, query, branchId);
+      expect(mockOrdersService.findAll).toHaveBeenCalledWith(
+        tenantId,
+        query,
+        branchId,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -125,7 +131,11 @@ describe('OrdersController', () => {
 
       const result = await controller.findOne(tenantId, branchId, id);
 
-      expect(mockOrdersService.findById).toHaveBeenCalledWith(tenantId, id, branchId);
+      expect(mockOrdersService.findById).toHaveBeenCalledWith(
+        tenantId,
+        id,
+        branchId,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -141,7 +151,13 @@ describe('OrdersController', () => {
 
       mockOrdersService.create.mockResolvedValue(expected);
 
-      const result = await controller.create(tenantId, branchId, dto, user, idempotencyKey);
+      const result = await controller.create(
+        tenantId,
+        branchId,
+        dto,
+        user,
+        idempotencyKey,
+      );
 
       expect(mockOrdersService.create).toHaveBeenCalledWith(
         tenantId,
@@ -159,13 +175,21 @@ describe('OrdersController', () => {
       const tenantId = 'tenant-uuid';
       const branchId = 'branch-uuid';
       const id = 'order-uuid';
-      const dto: UpdateOrderStatusDto = { status: 'COMPLETED' } as unknown as UpdateOrderStatusDto;
+      const dto: UpdateOrderStatusDto = {
+        status: 'COMPLETED',
+      } as unknown as UpdateOrderStatusDto;
       const user: JwtPayload = { sub: 'user-uuid' } as JwtPayload;
       const expected = { id, status: 'COMPLETED' };
 
       mockOrdersService.updateStatus.mockResolvedValue(expected);
 
-      const result = await controller.updateStatus(tenantId, branchId, id, dto, user);
+      const result = await controller.updateStatus(
+        tenantId,
+        branchId,
+        id,
+        dto,
+        user,
+      );
 
       expect(mockOrdersService.updateStatus).toHaveBeenCalledWith(
         tenantId,
@@ -189,7 +213,11 @@ describe('OrdersController', () => {
 
       const result = await controller.remove(tenantId, branchId, id);
 
-      expect(mockOrdersService.softDelete).toHaveBeenCalledWith(tenantId, id, branchId);
+      expect(mockOrdersService.softDelete).toHaveBeenCalledWith(
+        tenantId,
+        id,
+        branchId,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -205,7 +233,11 @@ describe('OrdersController', () => {
 
       const result = await controller.restore(tenantId, branchId, id);
 
-      expect(mockOrdersService.restore).toHaveBeenCalledWith(tenantId, id, branchId);
+      expect(mockOrdersService.restore).toHaveBeenCalledWith(
+        tenantId,
+        id,
+        branchId,
+      );
       expect(result).toBe(expected);
     });
   });

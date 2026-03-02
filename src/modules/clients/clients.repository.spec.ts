@@ -56,7 +56,11 @@ describe('ClientsRepository', () => {
     });
 
     it('applies search filter across name, phone, email fields when provided', async () => {
-      const query: ClientQueryDto = { page: 1, limit: 10, search: 'alice' } as ClientQueryDto;
+      const query: ClientQueryDto = {
+        page: 1,
+        limit: 10,
+        search: 'alice',
+      } as ClientQueryDto;
       await repo.findAll(tenantId, query);
       const callArgs = tenantClient.client.findMany.mock.calls[0][0];
       expect(callArgs.where.OR).toBeDefined();
@@ -152,7 +156,9 @@ describe('ClientsRepository', () => {
 
     it('moves vehicles without duplicate license plates to target client', async () => {
       mockTx.vehicle.findMany
-        .mockResolvedValueOnce([{ id: 'v1', licensePlate: 'ABC-123', clientId: duplicateId }])
+        .mockResolvedValueOnce([
+          { id: 'v1', licensePlate: 'ABC-123', clientId: duplicateId },
+        ])
         .mockResolvedValueOnce([]); // target has no vehicles
 
       await repo.merge(mockTx as any, duplicateId, survivorId, {});
@@ -167,8 +173,12 @@ describe('ClientsRepository', () => {
 
     it('soft-deletes duplicate source vehicle when license plate exists on target', async () => {
       mockTx.vehicle.findMany
-        .mockResolvedValueOnce([{ id: 'v-src', licensePlate: 'XYZ-999', clientId: duplicateId }])
-        .mockResolvedValueOnce([{ id: 'v-tgt', licensePlate: 'XYZ-999', clientId: survivorId }]);
+        .mockResolvedValueOnce([
+          { id: 'v-src', licensePlate: 'XYZ-999', clientId: duplicateId },
+        ])
+        .mockResolvedValueOnce([
+          { id: 'v-tgt', licensePlate: 'XYZ-999', clientId: survivorId },
+        ]);
 
       await repo.merge(mockTx as any, duplicateId, survivorId, {});
 
@@ -217,7 +227,12 @@ describe('ClientsRepository', () => {
 
     it('returns the merged target client', async () => {
       mockTx.vehicle.findMany.mockResolvedValue([]);
-      const result = await repo.merge(mockTx as any, duplicateId, survivorId, {});
+      const result = await repo.merge(
+        mockTx as any,
+        duplicateId,
+        survivorId,
+        {},
+      );
       expect(mockTx.client.findFirst).toHaveBeenCalledWith({
         where: { id: survivorId },
         include: { vehicles: true },

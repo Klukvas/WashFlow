@@ -7,7 +7,12 @@ describe('AuditRepository', () => {
   let repo: AuditRepository;
 
   const tenantId = 'tenant-1';
-  const mockLog = { id: 'log-1', tenantId, entityType: 'Order', action: 'CREATED' };
+  const mockLog = {
+    id: 'log-1',
+    tenantId,
+    entityType: 'Order',
+    action: 'CREATED',
+  };
 
   const tenantClient = {
     auditLog: {
@@ -77,7 +82,11 @@ describe('AuditRepository', () => {
     });
 
     it('applies action filter when provided', async () => {
-      const query = { page: 1, limit: 10, action: 'CREATED' as AuditAction } as any;
+      const query = {
+        page: 1,
+        limit: 10,
+        action: 'CREATED' as AuditAction,
+      } as any;
       await repo.findAll(tenantId, query);
       const callArgs = tenantClient.auditLog.findMany.mock.calls[0][0];
       expect(callArgs.where.action).toBe('CREATED');
@@ -101,7 +110,10 @@ describe('AuditRepository', () => {
       const query = { page: 1, limit: 10 } as any;
       await repo.findAll(tenantId, query, 'branch-1');
       const callArgs = tenantClient.auditLog.findMany.mock.calls[0][0];
-      expect(callArgs.where.metadata).toEqual({ path: ['branchId'], equals: 'branch-1' });
+      expect(callArgs.where.metadata).toEqual({
+        path: ['branchId'],
+        equals: 'branch-1',
+      });
     });
 
     it('does not apply branchId filter when branchId is null', async () => {

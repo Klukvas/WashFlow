@@ -6,7 +6,10 @@ import { Queue } from 'bullmq';
 export class AnalyticsProducer {
   constructor(@InjectQueue('analytics') private readonly queue: Queue) {}
 
-  async recordOrderCreated(tenantId: string, orderData: Record<string, unknown>) {
+  async recordOrderCreated(
+    tenantId: string,
+    orderData: Record<string, unknown>,
+  ) {
     await this.queue.add(
       'order-created',
       { tenantId, orderData },
@@ -14,7 +17,10 @@ export class AnalyticsProducer {
     );
   }
 
-  async recordOrderCompleted(tenantId: string, orderData: Record<string, unknown>) {
+  async recordOrderCompleted(
+    tenantId: string,
+    orderData: Record<string, unknown>,
+  ) {
     await this.queue.add(
       'order-completed',
       { tenantId, orderData },

@@ -63,10 +63,13 @@ describe('ClientsService', () => {
       dispatch: jest.fn(),
     } as unknown as jest.Mocked<EventDispatcherService>;
 
+    const mockTxClientFindFirst = jest
+      .fn()
+      .mockResolvedValue({ id: 'some-client' });
     const tenantPrismaMock = {
       forTenant: jest.fn().mockReturnValue({
         $transaction: jest.fn((fn: (tx: unknown) => Promise<unknown>) =>
-          fn({}),
+          fn({ client: { findFirst: mockTxClientFindFirst } }),
         ),
       }),
     } as unknown as jest.Mocked<TenantPrismaService>;

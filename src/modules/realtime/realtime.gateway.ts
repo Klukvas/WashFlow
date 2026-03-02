@@ -12,7 +12,7 @@ import { JwtPayload } from '../../common/types/jwt-payload.type';
 
 @WebSocketGateway({
   namespace: '/events',
-  cors: { origin: '*', credentials: true },
+  cors: { origin: true, credentials: true },
 })
 export class RealtimeGateway
   implements OnGatewayConnection, OnGatewayDisconnect
@@ -27,8 +27,27 @@ export class RealtimeGateway
     private readonly config: ConfigService,
   ) {}
 
+  afterInit() {
+    const corsOrigins = this.config.get<string>('corsOrigins', '');
+    if (corsOrigins && corsOrigins !== '*') {
+      const origins = corsOrigins.split(',').map((o) => o.trim());
+      this.server.engine.opts.cors = { origin: origins, credentials: true };
+    }
+  }
+
   async handleConnection(client: Socket) {
     try {
+      // Validate origin against allowed CORS origins
+      const origin = client.handshake.headers?.origin;
+      const corsOrigins = this.config.get<string>('corsOrigins', '');
+      if (corsOrigins && corsOrigins !== '*' && origin) {
+        const allowed = corsOrigins.split(',').map((o) => o.trim());
+        if (!allowed.includes(origin)) {
+          client.disconnect(true);
+          return;
+        }
+      }
+
       const token =
         client.handshake.auth?.token ||
         client.handshake.headers?.authorization?.split(' ')[1];

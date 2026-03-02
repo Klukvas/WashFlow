@@ -64,7 +64,9 @@ describe('ServicesRepository', () => {
   describe('findById', () => {
     it('finds service by id', async () => {
       const result = await repo.findById(tenantId, serviceId);
-      expect(tenantClient.service.findFirst).toHaveBeenCalledWith({ where: { id: serviceId } });
+      expect(tenantClient.service.findFirst).toHaveBeenCalledWith({
+        where: { id: serviceId },
+      });
       expect(result).toEqual(mockService);
     });
   });

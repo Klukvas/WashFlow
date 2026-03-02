@@ -3,8 +3,12 @@ import {
   ExecutionContext,
   Injectable,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtPayload } from '../types/jwt-payload.type.js';
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 @Injectable()
 export class TenantGuard implements CanActivate {
@@ -22,6 +26,11 @@ export class TenantGuard implements CanActivate {
         | undefined;
 
       if (headerTenantId) {
+        if (!UUID_REGEX.test(headerTenantId)) {
+          throw new BadRequestException(
+            'x-tenant-id header must be a valid UUID',
+          );
+        }
         request.user = { ...user, tenantId: headerTenantId };
       }
 

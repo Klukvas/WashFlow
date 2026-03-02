@@ -10,14 +10,13 @@ function makeJob(name: string, data: Record<string, unknown>): Job {
 describe('BookingConfirmationProcessor', () => {
   let processor: BookingConfirmationProcessor;
   let prisma: {
-    order: { findFirst: jest.Mock; update: jest.Mock };
+    order: { updateMany: jest.Mock };
   };
 
   beforeEach(async () => {
     prisma = {
       order: {
-        findFirst: jest.fn().mockResolvedValue(null),
-        update: jest.fn().mockResolvedValue({}),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
     };
 
@@ -37,12 +36,16 @@ describe('BookingConfirmationProcessor', () => {
     const jobData = { orderId: 'order-1', tenantId: 'tenant-1' };
 
     it('should auto-cancel a pending order when timeout fires', async () => {
-      prisma.order.findFirst.mockResolvedValue({ id: 'order-1' });
+      prisma.order.updateMany.mockResolvedValue({ count: 1 });
 
       await processor.process(makeJob('confirmation-timeout', jobData));
 
-      expect(prisma.order.update).toHaveBeenCalledWith({
-        where: { id: 'order-1' },
+      expect(prisma.order.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'order-1',
+          tenantId: 'tenant-1',
+          status: 'BOOKED_PENDING_CONFIRMATION',
+        },
         data: {
           status: 'CANCELLED',
           cancellationReason: 'Auto-cancelled: confirmation timeout',
@@ -50,24 +53,26 @@ describe('BookingConfirmationProcessor', () => {
       });
     });
 
-    it('should NOT cancel when order is no longer pending confirmation', async () => {
-      prisma.order.findFirst.mockResolvedValue(null);
+    it('should call updateMany even when no matching orders (returns count 0)', async () => {
+      prisma.order.updateMany.mockResolvedValue({ count: 0 });
 
       await processor.process(makeJob('confirmation-timeout', jobData));
 
-      expect(prisma.order.update).not.toHaveBeenCalled();
+      expect(prisma.order.updateMany).toHaveBeenCalledTimes(1);
     });
 
-    it('should query the order with correct filters', async () => {
+    it('should use both orderId and tenantId in the where clause for tenant isolation', async () => {
       await processor.process(makeJob('confirmation-timeout', jobData));
 
-      expect(prisma.order.findFirst).toHaveBeenCalledWith({
-        where: {
-          id: 'order-1',
-          tenantId: 'tenant-1',
-          status: 'BOOKED_PENDING_CONFIRMATION',
-        },
-      });
+      expect(prisma.order.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: 'order-1',
+            tenantId: 'tenant-1',
+            status: 'BOOKED_PENDING_CONFIRMATION',
+          }),
+        }),
+      );
     });
   });
 
@@ -80,7 +85,7 @@ describe('BookingConfirmationProcessor', () => {
 
     it('should not query the database for unknown job names', async () => {
       await processor.process(makeJob('unknown-job', {}));
-      expect(prisma.order.findFirst).not.toHaveBeenCalled();
+      expect(prisma.order.updateMany).not.toHaveBeenCalled();
     });
   });
 });

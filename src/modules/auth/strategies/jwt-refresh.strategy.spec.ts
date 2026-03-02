@@ -7,7 +7,9 @@ describe('JwtRefreshStrategy', () => {
   let strategy: JwtRefreshStrategy;
 
   beforeEach(() => {
-    const config = { get: jest.fn().mockReturnValue('test-refresh-secret') } as unknown as ConfigService;
+    const config = {
+      get: jest.fn().mockReturnValue('test-refresh-secret'),
+    } as unknown as ConfigService;
     strategy = new JwtRefreshStrategy(config);
   });
 

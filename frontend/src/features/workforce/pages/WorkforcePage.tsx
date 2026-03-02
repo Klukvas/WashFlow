@@ -104,8 +104,7 @@ export function WorkforcePage() {
     if (!form.getValues('workEndTime') && branchSettings.workingHoursEnd) {
       form.setValue('workEndTime', branchSettings.workingHoursEnd);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branchSettings]);
+  }, [branchSettings, editProfile, form]);
 
   const userOptions = (usersData?.items ?? [])
     .filter((u) => {
@@ -228,7 +227,12 @@ export function WorkforcePage() {
             onClick={(e) => e.stopPropagation()}
           >
             <PermissionGate permission={PERMISSIONS.WORKFORCE.UPDATE}>
-              <Button variant="ghost" size="icon" onClick={() => openEdit(p)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t('editWorker')}
+                onClick={() => openEdit(p)}
+              >
                 <Pencil className="h-4 w-4" />
               </Button>
             </PermissionGate>
@@ -237,6 +241,7 @@ export function WorkforcePage() {
                 <Button
                   variant="ghost"
                   size="icon"
+                  aria-label={t('deactivateConfirm')}
                   onClick={() => setDeactivateTarget(p)}
                 >
                   <PowerOff className="h-4 w-4 text-destructive" />
@@ -247,6 +252,7 @@ export function WorkforcePage() {
                 <Button
                   variant="ghost"
                   size="icon"
+                  aria-label={tc('status.active')}
                   onClick={() =>
                     updateMutation.mutateAsync({
                       id: p.id,
@@ -262,8 +268,7 @@ export function WorkforcePage() {
         ),
       },
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [t, tc, openEdit, updateMutation],
   );
 
   return (

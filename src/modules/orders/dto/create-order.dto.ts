@@ -6,6 +6,7 @@ import {
   IsDateString,
   IsEnum,
   ArrayMinSize,
+  MaxLength,
 } from 'class-validator';
 import { OrderSource } from '@prisma/client';
 
@@ -41,5 +42,6 @@ export class CreateOrderDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(1000)
   notes?: string;
 }

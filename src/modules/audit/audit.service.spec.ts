@@ -67,7 +67,11 @@ describe('AuditService', () => {
 
       await service.findAll(TENANT_ID, query as any, BRANCH_ID);
 
-      expect(auditRepo.findAll).toHaveBeenCalledWith(TENANT_ID, query, BRANCH_ID);
+      expect(auditRepo.findAll).toHaveBeenCalledWith(
+        TENANT_ID,
+        query,
+        BRANCH_ID,
+      );
     });
 
     it('defaults branchId to null when not supplied', async () => {
@@ -110,17 +114,25 @@ describe('AuditService', () => {
       auditRepo.findAll.mockResolvedValue({ items, total: 1 });
 
       // page=1, limit=20, total=1 → totalPages=1
-      const result = await service.findAll(TENANT_ID, makeQuery({ page: 1, limit: 20 }) as any);
+      const result = await service.findAll(
+        TENANT_ID,
+        makeQuery({ page: 1, limit: 20 }) as any,
+      );
 
       expect(result.totalPages).toBe(1);
     });
 
     it('calculates totalPages correctly when items span multiple pages', async () => {
-      const items = Array.from({ length: 5 }, (_, i) => makeAuditEntry({ id: `audit-${i}` }));
+      const items = Array.from({ length: 5 }, (_, i) =>
+        makeAuditEntry({ id: `audit-${i}` }),
+      );
       auditRepo.findAll.mockResolvedValue({ items, total: 45 });
 
       // page=1, limit=5, total=45 → totalPages=9
-      const result = await service.findAll(TENANT_ID, makeQuery({ page: 1, limit: 5 }) as any);
+      const result = await service.findAll(
+        TENANT_ID,
+        makeQuery({ page: 1, limit: 5 }) as any,
+      );
 
       expect(result.totalPages).toBe(9);
     });
@@ -141,9 +153,17 @@ describe('AuditService', () => {
       const branchItems = [makeAuditEntry({ id: 'audit-branch-1' })];
       auditRepo.findAll.mockResolvedValue({ items: branchItems, total: 1 });
 
-      const result = await service.findAll(TENANT_ID, makeQuery() as any, BRANCH_ID);
+      const result = await service.findAll(
+        TENANT_ID,
+        makeQuery() as any,
+        BRANCH_ID,
+      );
 
-      expect(auditRepo.findAll).toHaveBeenCalledWith(TENANT_ID, expect.anything(), BRANCH_ID);
+      expect(auditRepo.findAll).toHaveBeenCalledWith(
+        TENANT_ID,
+        expect.anything(),
+        BRANCH_ID,
+      );
       expect(result.items).toEqual(branchItems);
     });
 

@@ -77,7 +77,11 @@ describe('WorkPostsService', () => {
 
     it('should pass tenantId, id, and userBranchId to the repository', async () => {
       await service.findById(tenantId, workPostId, branchId);
-      expect(repo.findById).toHaveBeenCalledWith(tenantId, workPostId, branchId);
+      expect(repo.findById).toHaveBeenCalledWith(
+        tenantId,
+        workPostId,
+        branchId,
+      );
     });
 
     it('should default userBranchId to null when not provided', async () => {
@@ -171,7 +175,11 @@ describe('WorkPostsService', () => {
 
     it('should pass userBranchId to findById when provided', async () => {
       await service.update(tenantId, workPostId, updateDto, branchId);
-      expect(repo.findById).toHaveBeenCalledWith(tenantId, workPostId, branchId);
+      expect(repo.findById).toHaveBeenCalledWith(
+        tenantId,
+        workPostId,
+        branchId,
+      );
     });
 
     it('should default userBranchId to null in findById', async () => {
@@ -197,7 +205,9 @@ describe('WorkPostsService', () => {
     it('should spread dto fields into the repository update call', async () => {
       const dto = { name: 'Post C' };
       await service.update(tenantId, workPostId, dto);
-      expect(repo.update).toHaveBeenCalledWith(tenantId, workPostId, { ...dto });
+      expect(repo.update).toHaveBeenCalledWith(tenantId, workPostId, {
+        ...dto,
+      });
     });
   });
 });

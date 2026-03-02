@@ -29,6 +29,7 @@
     "notes": "Notes",
     "status": "Status",
     "source": "Source",
+    "schedule": "Schedule",
     "createdAt": "Created"
   },
   "filters": {
@@ -52,6 +53,7 @@
     "noSlots": "No available slots for this date",
     "anyWorkPost": "Any",
     "anyWorker": "Any (auto-assign)",
+    "date": "Date",
     "confirmBooking": "Confirm Booking",
     "success": "Order created successfully"
   },

@@ -5,16 +5,16 @@ import type { CreateVehicleDto } from './dto/create-vehicle.dto';
 import type { UpdateVehicleDto } from './dto/update-vehicle.dto';
 import type { VehicleQueryDto } from './dto/vehicle-query.dto';
 
-const TENANT_ID  = 'tenant-uuid-1111';
+const TENANT_ID = 'tenant-uuid-1111';
 const VEHICLE_ID = 'vehicle-uuid-2222';
 
 const mockVehiclesService = {
-  findAll:    jest.fn(),
-  findById:   jest.fn(),
-  create:     jest.fn(),
-  update:     jest.fn(),
+  findAll: jest.fn(),
+  findById: jest.fn(),
+  create: jest.fn(),
+  update: jest.fn(),
   softDelete: jest.fn(),
-  restore:    jest.fn(),
+  restore: jest.fn(),
 };
 
 describe('VehiclesController', () => {
@@ -25,13 +25,13 @@ describe('VehiclesController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [VehiclesController],
-      providers: [
-        { provide: VehiclesService, useValue: mockVehiclesService },
-      ],
+      providers: [{ provide: VehiclesService, useValue: mockVehiclesService }],
     })
       .overrideGuard(require('../../common/guards/jwt-auth.guard').JwtAuthGuard)
       .useValue({ canActivate: () => true })
-      .overrideGuard(require('../../common/guards/permissions.guard').PermissionsGuard)
+      .overrideGuard(
+        require('../../common/guards/permissions.guard').PermissionsGuard,
+      )
       .useValue({ canActivate: () => true })
       .compile();
 
@@ -47,7 +47,10 @@ describe('VehiclesController', () => {
       const result = await controller.findAll(TENANT_ID, query);
 
       expect(mockVehiclesService.findAll).toHaveBeenCalledTimes(1);
-      expect(mockVehiclesService.findAll).toHaveBeenCalledWith(TENANT_ID, query);
+      expect(mockVehiclesService.findAll).toHaveBeenCalledWith(
+        TENANT_ID,
+        query,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -60,14 +63,19 @@ describe('VehiclesController', () => {
       const result = await controller.findOne(TENANT_ID, VEHICLE_ID);
 
       expect(mockVehiclesService.findById).toHaveBeenCalledTimes(1);
-      expect(mockVehiclesService.findById).toHaveBeenCalledWith(TENANT_ID, VEHICLE_ID);
+      expect(mockVehiclesService.findById).toHaveBeenCalledWith(
+        TENANT_ID,
+        VEHICLE_ID,
+      );
       expect(result).toBe(expected);
     });
   });
 
   describe('create', () => {
     it('delegates to vehiclesService.create with tenantId and dto', async () => {
-      const dto: CreateVehicleDto = { licensePlate: 'ABC-123' } as CreateVehicleDto;
+      const dto: CreateVehicleDto = {
+        licensePlate: 'ABC-123',
+      } as CreateVehicleDto;
       const expected = { id: VEHICLE_ID, licensePlate: 'ABC-123' };
       mockVehiclesService.create.mockResolvedValue(expected);
 
@@ -81,14 +89,20 @@ describe('VehiclesController', () => {
 
   describe('update', () => {
     it('delegates to vehiclesService.update with tenantId, id and dto', async () => {
-      const dto: UpdateVehicleDto = { licensePlate: 'XYZ-999' } as UpdateVehicleDto;
+      const dto: UpdateVehicleDto = {
+        licensePlate: 'XYZ-999',
+      } as UpdateVehicleDto;
       const expected = { id: VEHICLE_ID, licensePlate: 'XYZ-999' };
       mockVehiclesService.update.mockResolvedValue(expected);
 
       const result = await controller.update(TENANT_ID, VEHICLE_ID, dto);
 
       expect(mockVehiclesService.update).toHaveBeenCalledTimes(1);
-      expect(mockVehiclesService.update).toHaveBeenCalledWith(TENANT_ID, VEHICLE_ID, dto);
+      expect(mockVehiclesService.update).toHaveBeenCalledWith(
+        TENANT_ID,
+        VEHICLE_ID,
+        dto,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -101,7 +115,10 @@ describe('VehiclesController', () => {
       const result = await controller.remove(TENANT_ID, VEHICLE_ID);
 
       expect(mockVehiclesService.softDelete).toHaveBeenCalledTimes(1);
-      expect(mockVehiclesService.softDelete).toHaveBeenCalledWith(TENANT_ID, VEHICLE_ID);
+      expect(mockVehiclesService.softDelete).toHaveBeenCalledWith(
+        TENANT_ID,
+        VEHICLE_ID,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -114,7 +131,10 @@ describe('VehiclesController', () => {
       const result = await controller.restore(TENANT_ID, VEHICLE_ID);
 
       expect(mockVehiclesService.restore).toHaveBeenCalledTimes(1);
-      expect(mockVehiclesService.restore).toHaveBeenCalledWith(TENANT_ID, VEHICLE_ID);
+      expect(mockVehiclesService.restore).toHaveBeenCalledWith(
+        TENANT_ID,
+        VEHICLE_ID,
+      );
       expect(result).toBe(expected);
     });
   });

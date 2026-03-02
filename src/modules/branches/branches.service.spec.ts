@@ -79,7 +79,10 @@ describe('BranchesService', () => {
 
     it('should compute totalPages from total and limit', async () => {
       repo.findAll.mockResolvedValue({ items: [mockBranch], total: 40 });
-      const result = await service.findAll(tenantId, { page: 1, limit: 20 } as any);
+      const result = await service.findAll(tenantId, {
+        page: 1,
+        limit: 20,
+      } as any);
 
       expect(result.totalPages).toBe(2);
     });
@@ -134,7 +137,11 @@ describe('BranchesService', () => {
 
   describe('create', () => {
     it('should call repo.create with tenantId and a spread copy of the dto', async () => {
-      const dto = { name: 'New Branch', address: '456 Oak Ave', phone: '+9876543210' };
+      const dto = {
+        name: 'New Branch',
+        address: '456 Oak Ave',
+        phone: '+9876543210',
+      };
       await service.create(tenantId, dto as any);
 
       expect(repo.create).toHaveBeenCalledWith(tenantId, { ...dto });
@@ -160,7 +167,9 @@ describe('BranchesService', () => {
       const dto = { name: 'Minimal Branch' };
       await service.create(tenantId, dto as any);
 
-      expect(repo.create).toHaveBeenCalledWith(tenantId, { name: 'Minimal Branch' });
+      expect(repo.create).toHaveBeenCalledWith(tenantId, {
+        name: 'Minimal Branch',
+      });
     });
   });
 
@@ -211,7 +220,9 @@ describe('BranchesService', () => {
       const dto = { isActive: false };
       await service.update(tenantId, branchId, dto as any);
 
-      expect(repo.update).toHaveBeenCalledWith(tenantId, branchId, { isActive: false });
+      expect(repo.update).toHaveBeenCalledWith(tenantId, branchId, {
+        isActive: false,
+      });
     });
   });
 
@@ -257,7 +268,10 @@ describe('BranchesService', () => {
 
       await service.restore(tenantId, branchId);
 
-      expect(repo.findByIdIncludeDeleted).toHaveBeenCalledWith(tenantId, branchId);
+      expect(repo.findByIdIncludeDeleted).toHaveBeenCalledWith(
+        tenantId,
+        branchId,
+      );
       expect(repo.restore).toHaveBeenCalledWith(tenantId, branchId);
     });
 
