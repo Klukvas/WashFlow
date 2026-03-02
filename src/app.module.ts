@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 import { LoggerModule } from 'nestjs-pino';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { BullModule } from '@nestjs/bullmq';
@@ -54,19 +55,11 @@ import { HealthModule } from './modules/health/health.module';
       },
     }),
 
-    // Rate limiting
-    ThrottlerModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        const isTest = config.get<string>('nodeEnv') === 'test';
-        return {
-          throttlers: [
-            { name: 'short', ttl: 1000, limit: isTest ? 10_000 : 10 },
-            { name: 'long', ttl: 60000, limit: isTest ? 100_000 : 100 },
-          ],
-        };
-      },
-    }),
+    // Rate limiting (CustomThrottlerGuard skips in test env)
+    ThrottlerModule.forRoot([
+      { name: 'short', ttl: 1000, limit: 10 },
+      { name: 'long', ttl: 60000, limit: 100 },
+    ]),
 
     // Event system
     EventEmitterModule.forRoot(),
@@ -134,7 +127,7 @@ import { HealthModule } from './modules/health/health.module';
     // Apply ThrottlerGuard globally — use @SkipThrottle() to skip
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: CustomThrottlerGuard,
     },
   ],
 })
