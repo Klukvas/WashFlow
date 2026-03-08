@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -148,7 +151,7 @@ jobs:
       - run: npx prisma generate
 
       - name: Push schema to test database
-        run: npx prisma db push --accept-data-loss
+        run: npx prisma migrate reset --force --skip-seed
 
       - name: Seed database
         run: npx prisma db seed
@@ -292,7 +295,7 @@ jobs:
       - run: npx prisma generate
 
       - name: Push schema to E2E database
-        run: npx prisma db push --accept-data-loss
+        run: npx prisma migrate reset --force --skip-seed
 
       - name: Seed database
         run: npx prisma db seed

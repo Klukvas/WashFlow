@@ -17,7 +17,11 @@ const localStorageMock = (() => {
   };
 })();
 
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock,
+  writable: true,
+  configurable: true,
+});
 
 // Mock matchMedia (not available in jsdom)
 Object.defineProperty(window, 'matchMedia', {

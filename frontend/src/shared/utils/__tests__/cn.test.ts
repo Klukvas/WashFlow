@@ -33,4 +33,10 @@ describe('cn', () => {
   it('keeps non-conflicting tailwind classes', () => {
     expect(cn('p-2', 'text-sm', 'font-bold')).toBe('p-2 text-sm font-bold');
   });
+
+  it('handles object syntax for conditional classes', () => {
+    expect(cn({ 'bg-red-500': true, 'text-white': true, hidden: false })).toBe(
+      'bg-red-500 text-white',
+    );
+  });
 });

@@ -133,19 +133,17 @@ jobs:
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/washflow/
 
       - name: Deploy via SSH
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DOCKER_IMG: ${{ env.DOCKER_IMAGE }}
         run: |
-          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'DEPLOY_SCRIPT'
+          DOCKER_IMG="${{ env.DOCKER_IMAGE }}"
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "DOCKER_IMG=${DOCKER_IMG}" bash -s << 'DEPLOY_SCRIPT'
+            set -euo pipefail
             cd /opt/washflow
 
             # Rename compose file
             mv -f docker-compose.prod.yml docker-compose.yml
 
             # Pull the latest image
-            docker pull $DOCKER_IMG:latest || true
+            docker pull "${DOCKER_IMG}:latest" || true
 
             # Bring up the stack (recreates only changed services)
             docker compose up -d --remove-orphans

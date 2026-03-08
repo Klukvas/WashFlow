@@ -30,7 +30,7 @@ vi.mock('@/shared/api/client', () => ({
   })),
 }));
 
-import { apiClient } from '@/shared/api/client';
+import { apiClient, withIdempotencyKey } from '@/shared/api/client';
 
 const mockOrder = {
   id: 'o1',
@@ -86,6 +86,7 @@ describe('orders.api', () => {
     };
     await createOrder(payload);
 
+    expect(withIdempotencyKey).toHaveBeenCalled();
     expect(apiClient.post).toHaveBeenCalledWith(
       '/orders',
       payload,
@@ -98,7 +99,9 @@ describe('orders.api', () => {
       data: { data: { ...mockOrder, status: 'IN_PROGRESS' } },
     });
 
-    const result = await updateOrderStatus('o1', { status: 'IN_PROGRESS' as any });
+    const result = await updateOrderStatus('o1', {
+      status: 'IN_PROGRESS' as any,
+    });
 
     expect(apiClient.patch).toHaveBeenCalledWith('/orders/o1/status', {
       status: 'IN_PROGRESS',
@@ -127,7 +130,13 @@ describe('orders.api', () => {
 
   it('fetchAvailability calls GET /orders/availability', async () => {
     const slots = [
-      { start: '10:00', end: '10:30', workPostId: 'wp1', workPostName: 'Post 1', available: true },
+      {
+        start: '10:00',
+        end: '10:30',
+        workPostId: 'wp1',
+        workPostName: 'Post 1',
+        available: true,
+      },
     ];
     vi.mocked(apiClient.get).mockResolvedValue({
       data: { data: slots },
