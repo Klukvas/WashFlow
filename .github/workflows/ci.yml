@@ -379,6 +379,7 @@ jobs:
             echo "JWT_ACCESS_SECRET=${{ secrets.JWT_ACCESS_SECRET }}"
             echo "JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}"
             echo "CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}"
+            echo "DOCKER_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/washflow"
           } > .env.production
           chmod 600 .env.production
 
