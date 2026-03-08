@@ -148,8 +148,9 @@ jobs:
       - name: Deploy via SSH
         run: |
           DOCKER_IMG="${{ env.DOCKER_IMAGE }}"
-          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "DOCKER_IMG=${DOCKER_IMG}" bash -s << 'DEPLOY_SCRIPT'
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "DOCKER_IMG=${DOCKER_IMG}" bash --login -s << 'DEPLOY_SCRIPT'
             set -euo pipefail
+            export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
             cd /opt/washflow
 
             # Install .env from pipeline secrets
