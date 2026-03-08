@@ -229,7 +229,7 @@ jobs:
       JWT_REFRESH_EXPIRATION: '7d'
       NODE_ENV: 'test'
       CORS_ORIGINS: 'http://localhost:5173'
-      PORT: '3000'
+      PORT: '3003'
     steps:
       - uses: actions/checkout@v4
 
@@ -273,7 +273,7 @@ jobs:
         run: |
           PID=$(cat backend.pid)
           for i in $(seq 1 30); do
-            if curl -s http://localhost:3000/api/v1 > /dev/null 2>&1; then
+            if curl -s http://localhost:3003/api/v1 > /dev/null 2>&1; then
               echo "Backend is ready"
               break
             fi

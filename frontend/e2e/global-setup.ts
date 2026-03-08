@@ -19,7 +19,7 @@ setup('authenticate', async ({ page }) => {
   await page.locator('[data-testid="login-submit"]').click();
 
   // Wait for redirect to dashboard after successful login
-  await page.waitForURL('/', { timeout: 10_000 });
+  await page.waitForURL('/dashboard', { timeout: 10_000 });
 
   await page.context().storageState({ path: STORAGE_STATE });
 });
