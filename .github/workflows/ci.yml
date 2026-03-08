@@ -1,10 +1,11 @@
-name: CI
+name: CI/CD
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -16,12 +17,12 @@ concurrency:
 env:
   NODE_VERSION: '20'
   PNPM_VERSION: '9'
-  # Dummy DATABASE_URL for prisma generate (no real DB connection needed)
   DATABASE_URL: 'postgresql://ci:ci@localhost:5432/ci'
+  DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/washflow
 
 jobs:
   # ──────────────────────────────────────────────────────────────────
-  # Backend: lint, build, unit tests
+  # 1. Lint (backend + frontend in parallel)
   # ──────────────────────────────────────────────────────────────────
   backend-lint:
     name: Backend Lint
@@ -40,13 +41,16 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Lint (pre-existing warnings allowed)
+      - name: Lint
         run: pnpm lint
         continue-on-error: true
 
-  backend-build:
-    name: Backend Build
+  frontend-lint:
+    name: Frontend Lint
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
 
@@ -58,16 +62,21 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
 
-      - run: npx prisma generate
+      - name: Lint
+        run: pnpm lint
+        continue-on-error: true
 
-      - run: pnpm build
-
+  # ──────────────────────────────────────────────────────────────────
+  # 2. Unit tests (backend + frontend in parallel)
+  # ──────────────────────────────────────────────────────────────────
   backend-test:
     name: Backend Unit Tests
     runs-on: ubuntu-latest
+    needs: [backend-lint]
     steps:
       - uses: actions/checkout@v4
 
@@ -95,13 +104,37 @@ jobs:
           path: coverage/
           retention-days: 7
 
+  frontend-test:
+    name: Frontend Unit Tests
+    runs-on: ubuntu-latest
+    needs: [frontend-lint]
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm test
+
   # ──────────────────────────────────────────────────────────────────
-  # Backend E2E tests (needs PostgreSQL + Redis)
+  # 3. E2E tests (backend + frontend, needs full stack)
   # ──────────────────────────────────────────────────────────────────
   backend-e2e:
     name: Backend E2E Tests
     runs-on: ubuntu-latest
-    needs: [backend-build]
+    needs: [backend-test]
     services:
       postgres:
         image: postgres:16-alpine
@@ -150,7 +183,7 @@ jobs:
 
       - run: npx prisma generate
 
-      - name: Push schema to test database
+      - name: Reset database
         run: npx prisma migrate reset --force --skip-seed
 
       - name: Seed database
@@ -160,87 +193,10 @@ jobs:
       - name: Run E2E tests
         run: pnpm test:e2e --runInBand --forceExit
 
-  # ──────────────────────────────────────────────────────────────────
-  # Frontend: lint, build, unit tests
-  # ──────────────────────────────────────────────────────────────────
-  frontend-lint:
-    name: Frontend Lint
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Lint (pre-existing warnings allowed)
-        run: pnpm lint
-        continue-on-error: true
-
-  frontend-build:
-    name: Frontend Build
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
-
-      - run: pnpm install --frozen-lockfile
-
-      - run: pnpm build
-
-  frontend-test:
-    name: Frontend Unit Tests
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
-
-      - run: pnpm install --frozen-lockfile
-
-      - run: pnpm test
-
-  # ──────────────────────────────────────────────────────────────────
-  # Frontend E2E tests (Playwright, needs full stack)
-  # ──────────────────────────────────────────────────────────────────
   frontend-e2e:
     name: Frontend E2E Tests
     runs-on: ubuntu-latest
-    needs: [backend-build, frontend-build]
+    needs: [backend-test, frontend-test]
     services:
       postgres:
         image: postgres:16-alpine
@@ -286,7 +242,6 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
 
-      # Install both backend and frontend deps
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm install --frozen-lockfile
@@ -294,7 +249,7 @@ jobs:
 
       - run: npx prisma generate
 
-      - name: Push schema to E2E database
+      - name: Reset database
         run: npx prisma migrate reset --force --skip-seed
 
       - name: Seed database
@@ -355,14 +310,124 @@ jobs:
           retention-days: 7
 
   # ──────────────────────────────────────────────────────────────────
-  # Docker build (verify image builds successfully)
+  # 4. Build & push Docker image (only on main)
   # ──────────────────────────────────────────────────────────────────
-  docker-build:
-    name: Docker Build
+  build-and-push:
+    name: Build & Push Docker Image
     runs-on: ubuntu-latest
-    needs: [backend-build, backend-test, backend-e2e, frontend-build, frontend-test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [backend-e2e, frontend-e2e]
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Docker image
-        run: docker build -t washflow:ci .
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_IMAGE }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ──────────────────────────────────────────────────────────────────
+  # 5. Deploy to Hetzner (only on main)
+  # ──────────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to Hetzner
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [build-and-push]
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Generate .env file
+        run: |
+          {
+            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}"
+            echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}"
+            echo "JWT_ACCESS_SECRET=${{ secrets.JWT_ACCESS_SECRET }}"
+            echo "JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}"
+            echo "CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}"
+          } > .env.production
+          chmod 600 .env.production
+
+      - name: Copy files to server
+        run: |
+          scp -i ~/.ssh/deploy_key \
+            docker-compose.prod.yml .env.production \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/washflow/
+
+      - name: Deploy via SSH
+        run: |
+          DOCKER_IMG="${{ env.DOCKER_IMAGE }}"
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "DOCKER_IMG=${DOCKER_IMG}" bash --login -s << 'DEPLOY_SCRIPT'
+            set -euo pipefail
+            export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+            cd /opt/washflow
+
+            # Install .env from pipeline secrets
+            chmod 600 .env.production
+            mv -f .env.production .env
+
+            # Rename compose file
+            mv -f docker-compose.prod.yml docker-compose.yml
+
+            # Pull the latest image
+            docker pull "${DOCKER_IMG}:latest" || true
+
+            # Bring up the stack (recreates only changed services)
+            docker compose up -d --remove-orphans
+
+            # Wait for backend health check
+            echo "Waiting for backend to be healthy..."
+            for i in $(seq 1 30); do
+              if docker compose exec -T backend wget -qO- http://localhost:3000/api/v1/health > /dev/null 2>&1; then
+                echo "Backend is healthy!"
+                break
+              fi
+              if [ "$i" -eq 30 ]; then
+                echo "Backend failed health check after 60s"
+                docker compose logs backend --tail=50
+                exit 1
+              fi
+              sleep 2
+            done
+
+            # Clean up old dangling images
+            docker image prune -f --filter "until=24h"
+          DEPLOY_SCRIPT
+
+      - name: Cleanup sensitive files
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key
+          rm -f .env.production
