@@ -1195,7 +1195,7 @@ async function main() {
 
   // 4. Create super admin user
   let adminUser = await prisma.user.findFirst({
-    where: { tenantId: tenant.id, email: 'admin@washflow.com' },
+    where: { email: 'admin@washflow.com' },
   });
 
   if (!adminUser) {
@@ -1225,7 +1225,6 @@ async function main() {
   await seedRealisticData(tenant.id, adminUser!.id);
 
   console.log('\n--- Login credentials ---');
-  console.log(`Tenant ID: ${tenant.id}`);
   console.log('Email:     admin@washflow.com');
   console.log('Password:  admin123');
 }

@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { UsersRepository } from './users.repository';
+import { SubscriptionLimitsService } from '../subscriptions/subscription-limits.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -13,7 +14,10 @@ import { paginatedResponse } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly usersRepo: UsersRepository) {}
+  constructor(
+    private readonly usersRepo: UsersRepository,
+    private readonly limits: SubscriptionLimitsService,
+  ) {}
 
   async findAll(
     tenantId: string,
@@ -35,6 +39,7 @@ export class UsersService {
   }
 
   async create(tenantId: string, dto: CreateUserDto) {
+    await this.limits.checkLimit(tenantId, 'users');
     const passwordHash = await argon2.hash(dto.password);
     const { password, ...rest } = dto;
 
@@ -76,6 +81,7 @@ export class UsersService {
     const user = await this.usersRepo.findByIdIncludeDeleted(tenantId, id);
     if (!user) throw new NotFoundException('User not found');
     if (!user.deletedAt) throw new BadRequestException('User is not deleted');
+    await this.limits.checkLimit(tenantId, 'users');
     return this.usersRepo.restore(tenantId, id);
   }
 }

@@ -38,7 +38,9 @@ export function OrderTable({
         header: t('fields.client'),
         render: (order) =>
           order.client
-            ? `${order.client.firstName} ${order.client.lastName}`
+            ? [order.client.firstName, order.client.lastName]
+                .filter(Boolean)
+                .join(' ')
             : '—',
       },
       {

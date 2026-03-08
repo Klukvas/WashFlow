@@ -5,5 +5,6 @@ export interface JwtPayload {
   email: string;
   isSuperAdmin: boolean;
   permissions: string[];
+  tokenVersion: number;
   type: 'access' | 'refresh';
 }

@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException, BadRequestException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -50,7 +50,6 @@ const buildUser = (overrides: Record<string, unknown> = {}) => ({
 });
 
 const LOGIN_DTO: LoginDto = {
-  tenantId: TENANT_ID,
   email: 'jane@example.com',
   password: 'secret123',
 };
@@ -71,8 +70,8 @@ const JWT_PAYLOAD: JwtPayload = {
 
 type PrismaMock = {
   user: {
-    findFirst: jest.Mock;
     findUnique: jest.Mock;
+    update: jest.Mock;
   };
 };
 
@@ -92,8 +91,8 @@ describe('AuthService', () => {
   beforeEach(async () => {
     prisma = {
       user: {
-        findFirst: jest.fn(),
         findUnique: jest.fn(),
+        update: jest.fn().mockResolvedValue(undefined),
       },
     };
 
@@ -149,7 +148,7 @@ describe('AuthService', () => {
     describe('success', () => {
       it('returns accessToken, refreshToken and user on valid credentials', async () => {
         const user = buildUser();
-        prisma.user.findFirst.mockResolvedValue(user);
+        prisma.user.findUnique.mockResolvedValue(user);
         mockedArgon2.verify.mockResolvedValue(true);
 
         const result = await service.login(LOGIN_DTO);
@@ -167,18 +166,16 @@ describe('AuthService', () => {
         });
       });
 
-      it('queries prisma with tenantId, email and deletedAt: null', async () => {
-        prisma.user.findFirst.mockResolvedValue(buildUser());
+      it('queries prisma with email via findUnique', async () => {
+        prisma.user.findUnique.mockResolvedValue(buildUser());
         mockedArgon2.verify.mockResolvedValue(true);
 
         await service.login(LOGIN_DTO);
 
-        expect(prisma.user.findFirst).toHaveBeenCalledWith(
+        expect(prisma.user.findUnique).toHaveBeenCalledWith(
           expect.objectContaining({
             where: {
-              tenantId: LOGIN_DTO.tenantId,
               email: LOGIN_DTO.email,
-              deletedAt: null,
             },
           }),
         );
@@ -186,7 +183,7 @@ describe('AuthService', () => {
 
       it('verifies password against stored hash', async () => {
         const user = buildUser();
-        prisma.user.findFirst.mockResolvedValue(user);
+        prisma.user.findUnique.mockResolvedValue(user);
         mockedArgon2.verify.mockResolvedValue(true);
 
         await service.login(LOGIN_DTO);
@@ -198,7 +195,7 @@ describe('AuthService', () => {
       });
 
       it('signs access token with access secret and expiration', async () => {
-        prisma.user.findFirst.mockResolvedValue(buildUser());
+        prisma.user.findUnique.mockResolvedValue(buildUser());
         mockedArgon2.verify.mockResolvedValue(true);
 
         await service.login(LOGIN_DTO);
@@ -212,7 +209,7 @@ describe('AuthService', () => {
       });
 
       it('signs refresh token with refresh secret and expiration', async () => {
-        prisma.user.findFirst.mockResolvedValue(buildUser());
+        prisma.user.findUnique.mockResolvedValue(buildUser());
         mockedArgon2.verify.mockResolvedValue(true);
 
         await service.login(LOGIN_DTO);
@@ -226,7 +223,7 @@ describe('AuthService', () => {
       });
 
       it('sets branchId to null in token payload when user has no branch', async () => {
-        prisma.user.findFirst.mockResolvedValue(buildUser({ branchId: null }));
+        prisma.user.findUnique.mockResolvedValue(buildUser({ branchId: null }));
         mockedArgon2.verify.mockResolvedValue(true);
 
         await service.login(LOGIN_DTO);
@@ -242,7 +239,7 @@ describe('AuthService', () => {
 
     describe('permissions', () => {
       it('builds permissions from role.permissions junction as "module.action" strings', async () => {
-        prisma.user.findFirst.mockResolvedValue(buildUser());
+        prisma.user.findUnique.mockResolvedValue(buildUser());
         mockedArgon2.verify.mockResolvedValue(true);
 
         await service.login(LOGIN_DTO);
@@ -252,7 +249,7 @@ describe('AuthService', () => {
       });
 
       it('defaults permissions to empty array when user has no role', async () => {
-        prisma.user.findFirst.mockResolvedValue(buildUser({ role: null }));
+        prisma.user.findUnique.mockResolvedValue(buildUser({ role: null }));
         mockedArgon2.verify.mockResolvedValue(true);
 
         await service.login(LOGIN_DTO);
@@ -262,7 +259,7 @@ describe('AuthService', () => {
       });
 
       it('defaults permissions to empty array when role has no permissions', async () => {
-        prisma.user.findFirst.mockResolvedValue(
+        prisma.user.findUnique.mockResolvedValue(
           buildUser({ role: { id: ROLE_ID, permissions: [] } }),
         );
         mockedArgon2.verify.mockResolvedValue(true);
@@ -280,7 +277,7 @@ describe('AuthService', () => {
 
     describe('failures', () => {
       it('throws UnauthorizedException when user is not found', async () => {
-        prisma.user.findFirst.mockResolvedValue(null);
+        prisma.user.findUnique.mockResolvedValue(null);
 
         await expect(service.login(LOGIN_DTO)).rejects.toThrow(
           UnauthorizedException,
@@ -288,7 +285,7 @@ describe('AuthService', () => {
       });
 
       it('throws UnauthorizedException with "Invalid credentials" when user not found', async () => {
-        prisma.user.findFirst.mockResolvedValue(null);
+        prisma.user.findUnique.mockResolvedValue(null);
 
         await expect(service.login(LOGIN_DTO)).rejects.toThrow(
           'Invalid credentials',
@@ -296,7 +293,9 @@ describe('AuthService', () => {
       });
 
       it('throws UnauthorizedException when user is inactive', async () => {
-        prisma.user.findFirst.mockResolvedValue(buildUser({ isActive: false }));
+        prisma.user.findUnique.mockResolvedValue(
+          buildUser({ isActive: false }),
+        );
 
         await expect(service.login(LOGIN_DTO)).rejects.toThrow(
           UnauthorizedException,
@@ -304,7 +303,9 @@ describe('AuthService', () => {
       });
 
       it('does not call argon2.verify when user is inactive', async () => {
-        prisma.user.findFirst.mockResolvedValue(buildUser({ isActive: false }));
+        prisma.user.findUnique.mockResolvedValue(
+          buildUser({ isActive: false }),
+        );
 
         await expect(service.login(LOGIN_DTO)).rejects.toThrow(
           UnauthorizedException,
@@ -313,9 +314,11 @@ describe('AuthService', () => {
       });
 
       it('throws UnauthorizedException when user is soft-deleted', async () => {
-        // Soft-deleted users are excluded by the WHERE clause (deletedAt: null),
-        // so prisma returns null for them — same code path as "not found".
-        prisma.user.findFirst.mockResolvedValue(null);
+        // Soft-deleted users are returned by findUnique but rejected by the
+        // deletedAt check in the service — same code path as inactive user.
+        prisma.user.findUnique.mockResolvedValue(
+          buildUser({ deletedAt: new Date() }),
+        );
 
         await expect(service.login(LOGIN_DTO)).rejects.toThrow(
           UnauthorizedException,
@@ -324,7 +327,7 @@ describe('AuthService', () => {
 
       it('throws UnauthorizedException when user record has deletedAt set but slips through query', async () => {
         // Guard: even if a record somehow arrives with deletedAt set, the service rejects it.
-        prisma.user.findFirst.mockResolvedValue(
+        prisma.user.findUnique.mockResolvedValue(
           buildUser({ deletedAt: new Date() }),
         );
 
@@ -335,7 +338,7 @@ describe('AuthService', () => {
       });
 
       it('throws UnauthorizedException when password is wrong', async () => {
-        prisma.user.findFirst.mockResolvedValue(buildUser());
+        prisma.user.findUnique.mockResolvedValue(buildUser());
         mockedArgon2.verify.mockResolvedValue(false);
 
         await expect(service.login(LOGIN_DTO)).rejects.toThrow(
@@ -344,7 +347,7 @@ describe('AuthService', () => {
       });
 
       it('throws UnauthorizedException with "Invalid credentials" when password is wrong', async () => {
-        prisma.user.findFirst.mockResolvedValue(buildUser());
+        prisma.user.findUnique.mockResolvedValue(buildUser());
         mockedArgon2.verify.mockResolvedValue(false);
 
         await expect(service.login(LOGIN_DTO)).rejects.toThrow(
@@ -353,7 +356,7 @@ describe('AuthService', () => {
       });
 
       it('propagates unexpected errors from prisma', async () => {
-        prisma.user.findFirst.mockRejectedValue(
+        prisma.user.findUnique.mockRejectedValue(
           new Error('Database connection lost'),
         );
 
@@ -363,7 +366,7 @@ describe('AuthService', () => {
       });
 
       it('propagates unexpected errors from argon2.verify', async () => {
-        prisma.user.findFirst.mockResolvedValue(buildUser());
+        prisma.user.findUnique.mockResolvedValue(buildUser());
         mockedArgon2.verify.mockRejectedValue(
           new Error('argon2 internal error'),
         );
@@ -536,6 +539,145 @@ describe('AuthService', () => {
         await expect(service.refreshTokens(JWT_PAYLOAD)).rejects.toThrow(
           'Database connection lost',
         );
+      });
+    });
+  });
+
+  // =========================================================================
+  // changePassword()
+  // =========================================================================
+
+  describe('changePassword()', () => {
+    const CHANGE_DTO = {
+      currentPassword: 'oldPass123',
+      newPassword: 'newPass456',
+    };
+
+    describe('success', () => {
+      it('verifies current password and hashes the new one', async () => {
+        prisma.user.findUnique.mockResolvedValue(buildUser());
+        mockedArgon2.verify.mockResolvedValue(true);
+        mockedArgon2.hash.mockResolvedValue('$argon2id$new-hash');
+
+        await service.changePassword(USER_ID, CHANGE_DTO);
+
+        expect(mockedArgon2.verify).toHaveBeenCalledWith(
+          '$argon2id$hash',
+          'oldPass123',
+        );
+        expect(mockedArgon2.hash).toHaveBeenCalledWith('newPass456');
+      });
+
+      it('updates user with new password hash', async () => {
+        prisma.user.findUnique.mockResolvedValue(buildUser());
+        mockedArgon2.verify.mockResolvedValue(true);
+        mockedArgon2.hash.mockResolvedValue('$argon2id$new-hash');
+
+        await service.changePassword(USER_ID, CHANGE_DTO);
+
+        expect(prisma.user.update).toHaveBeenCalledWith({
+          where: { id: USER_ID },
+          data: { passwordHash: '$argon2id$new-hash' },
+        });
+      });
+
+      it('looks up user by userId', async () => {
+        prisma.user.findUnique.mockResolvedValue(buildUser());
+        mockedArgon2.verify.mockResolvedValue(true);
+        mockedArgon2.hash.mockResolvedValue('$argon2id$new-hash');
+
+        await service.changePassword(USER_ID, CHANGE_DTO);
+
+        expect(prisma.user.findUnique).toHaveBeenCalledWith({
+          where: { id: USER_ID },
+        });
+      });
+    });
+
+    describe('failures', () => {
+      it('throws UnauthorizedException when user is not found', async () => {
+        prisma.user.findUnique.mockResolvedValue(null);
+
+        await expect(
+          service.changePassword(USER_ID, CHANGE_DTO),
+        ).rejects.toThrow(UnauthorizedException);
+      });
+
+      it('throws with "User not found or inactive" when user not found', async () => {
+        prisma.user.findUnique.mockResolvedValue(null);
+
+        await expect(
+          service.changePassword(USER_ID, CHANGE_DTO),
+        ).rejects.toThrow('User not found or inactive');
+      });
+
+      it('throws UnauthorizedException when user is inactive', async () => {
+        prisma.user.findUnique.mockResolvedValue(
+          buildUser({ isActive: false }),
+        );
+
+        await expect(
+          service.changePassword(USER_ID, CHANGE_DTO),
+        ).rejects.toThrow(UnauthorizedException);
+      });
+
+      it('throws UnauthorizedException when user is soft-deleted', async () => {
+        prisma.user.findUnique.mockResolvedValue(
+          buildUser({ deletedAt: new Date() }),
+        );
+
+        await expect(
+          service.changePassword(USER_ID, CHANGE_DTO),
+        ).rejects.toThrow(UnauthorizedException);
+      });
+
+      it('does not call argon2.verify when user is inactive', async () => {
+        prisma.user.findUnique.mockResolvedValue(
+          buildUser({ isActive: false }),
+        );
+
+        await expect(
+          service.changePassword(USER_ID, CHANGE_DTO),
+        ).rejects.toThrow(UnauthorizedException);
+        expect(mockedArgon2.verify).not.toHaveBeenCalled();
+      });
+
+      it('throws BadRequestException when current password is incorrect', async () => {
+        prisma.user.findUnique.mockResolvedValue(buildUser());
+        mockedArgon2.verify.mockResolvedValue(false);
+
+        await expect(
+          service.changePassword(USER_ID, CHANGE_DTO),
+        ).rejects.toThrow(BadRequestException);
+      });
+
+      it('throws with "Current password is incorrect" message', async () => {
+        prisma.user.findUnique.mockResolvedValue(buildUser());
+        mockedArgon2.verify.mockResolvedValue(false);
+
+        await expect(
+          service.changePassword(USER_ID, CHANGE_DTO),
+        ).rejects.toThrow('Current password is incorrect');
+      });
+
+      it('does not call argon2.hash when current password is wrong', async () => {
+        prisma.user.findUnique.mockResolvedValue(buildUser());
+        mockedArgon2.verify.mockResolvedValue(false);
+
+        await expect(
+          service.changePassword(USER_ID, CHANGE_DTO),
+        ).rejects.toThrow(BadRequestException);
+        expect(mockedArgon2.hash).not.toHaveBeenCalled();
+      });
+
+      it('does not call prisma.user.update when current password is wrong', async () => {
+        prisma.user.findUnique.mockResolvedValue(buildUser());
+        mockedArgon2.verify.mockResolvedValue(false);
+
+        await expect(
+          service.changePassword(USER_ID, CHANGE_DTO),
+        ).rejects.toThrow(BadRequestException);
+        expect(prisma.user.update).not.toHaveBeenCalled();
       });
     });
   });

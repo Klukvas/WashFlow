@@ -39,8 +39,19 @@ export function Header({ onMenuClick }: HeaderProps) {
           <LanguageSwitcher />
           <div className="ml-2 flex items-center gap-3 border-l border-border pl-4">
             <div className="hidden text-right text-sm sm:block">
-              <p className="font-medium">{user?.firstName} {user?.lastName}</p>
+              <p className="font-medium">
+                {user?.firstName} {user?.lastName}
+              </p>
               <p className="text-xs text-muted-foreground">{user?.email}</p>
+              {user?.tenantId && (
+                <p
+                  className="mt-0.5 cursor-pointer font-mono text-xs text-muted-foreground/60 transition-colors hover:text-muted-foreground"
+                  title="Click to copy Tenant ID"
+                  onClick={() => navigator.clipboard.writeText(user.tenantId)}
+                >
+                  {user.tenantId.slice(0, 8)}…
+                </p>
+              )}
             </div>
             <Button
               variant="ghost"
@@ -50,7 +61,12 @@ export function Header({ onMenuClick }: HeaderProps) {
             >
               <KeyRound className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={logout} aria-label={t('logout')}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={logout}
+              aria-label={t('logout')}
+            >
               <LogOut className="h-5 w-5" />
             </Button>
           </div>

@@ -1121,5 +1121,299 @@ describe('OrdersService', () => {
         service.restore(TENANT_ID, ORDER_ID, BRANCH_ID),
       ).rejects.toThrow(NotFoundException);
     });
+
+    it('validates no overlap for non-terminal status orders with scheduled times', async () => {
+      const deletedOrder = makeOrder({
+        status: 'BOOKED',
+        deletedAt: new Date(),
+        workPostId: WORK_POST_ID,
+        scheduledStart: new Date('2026-03-01T10:00:00Z'),
+        scheduledEnd: new Date('2026-03-01T11:00:00Z'),
+      });
+      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
+      ordersRepo.restore.mockResolvedValue(makeOrder());
+
+      await service.restore(TENANT_ID, ORDER_ID);
+
+      expect(schedulingService.validateNoOverlap).toHaveBeenCalledWith(
+        TENANT_ID,
+        WORK_POST_ID,
+        deletedOrder.scheduledStart,
+        deletedOrder.scheduledEnd,
+        expect.any(Number),
+      );
+    });
+
+    it('throws ConflictException when the time slot is occupied during restore', async () => {
+      const deletedOrder = makeOrder({
+        status: 'BOOKED',
+        deletedAt: new Date(),
+        workPostId: WORK_POST_ID,
+        scheduledStart: new Date('2026-03-01T10:00:00Z'),
+        scheduledEnd: new Date('2026-03-01T11:00:00Z'),
+      });
+      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
+      schedulingService.validateNoOverlap.mockResolvedValue(false);
+
+      await expect(service.restore(TENANT_ID, ORDER_ID)).rejects.toThrow(
+        new ConflictException(
+          'Cannot restore: the time slot is now occupied by another order',
+        ),
+      );
+    });
+
+    it('does not call repo.restore when overlap validation fails', async () => {
+      const deletedOrder = makeOrder({
+        status: 'BOOKED',
+        deletedAt: new Date(),
+        workPostId: WORK_POST_ID,
+        scheduledStart: new Date('2026-03-01T10:00:00Z'),
+        scheduledEnd: new Date('2026-03-01T11:00:00Z'),
+      });
+      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
+      schedulingService.validateNoOverlap.mockResolvedValue(false);
+
+      await expect(service.restore(TENANT_ID, ORDER_ID)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(ordersRepo.restore).not.toHaveBeenCalled();
+    });
+
+    it('skips overlap validation for COMPLETED orders', async () => {
+      const deletedOrder = makeOrder({
+        status: 'COMPLETED',
+        deletedAt: new Date(),
+        workPostId: WORK_POST_ID,
+        scheduledStart: new Date('2026-03-01T10:00:00Z'),
+        scheduledEnd: new Date('2026-03-01T11:00:00Z'),
+      });
+      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
+      ordersRepo.restore.mockResolvedValue(makeOrder());
+
+      await service.restore(TENANT_ID, ORDER_ID);
+
+      expect(schedulingService.validateNoOverlap).not.toHaveBeenCalled();
+      expect(ordersRepo.restore).toHaveBeenCalled();
+    });
+
+    it('skips overlap validation for CANCELLED orders', async () => {
+      const deletedOrder = makeOrder({
+        status: 'CANCELLED',
+        deletedAt: new Date(),
+        workPostId: WORK_POST_ID,
+        scheduledStart: new Date('2026-03-01T10:00:00Z'),
+        scheduledEnd: new Date('2026-03-01T11:00:00Z'),
+      });
+      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
+      ordersRepo.restore.mockResolvedValue(makeOrder());
+
+      await service.restore(TENANT_ID, ORDER_ID);
+
+      expect(schedulingService.validateNoOverlap).not.toHaveBeenCalled();
+    });
+
+    it('skips overlap validation for NO_SHOW orders', async () => {
+      const deletedOrder = makeOrder({
+        status: 'NO_SHOW',
+        deletedAt: new Date(),
+        workPostId: WORK_POST_ID,
+        scheduledStart: new Date('2026-03-01T10:00:00Z'),
+        scheduledEnd: new Date('2026-03-01T11:00:00Z'),
+      });
+      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
+      ordersRepo.restore.mockResolvedValue(makeOrder());
+
+      await service.restore(TENANT_ID, ORDER_ID);
+
+      expect(schedulingService.validateNoOverlap).not.toHaveBeenCalled();
+    });
+
+    it('skips overlap validation when workPostId is null', async () => {
+      const deletedOrder = makeOrder({
+        status: 'BOOKED',
+        deletedAt: new Date(),
+        workPostId: null,
+        scheduledStart: new Date('2026-03-01T10:00:00Z'),
+        scheduledEnd: new Date('2026-03-01T11:00:00Z'),
+      });
+      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
+      ordersRepo.restore.mockResolvedValue(makeOrder());
+
+      await service.restore(TENANT_ID, ORDER_ID);
+
+      expect(schedulingService.validateNoOverlap).not.toHaveBeenCalled();
+    });
+  });
+
+  // =========================================================================
+  // create — booking constraints edge cases
+  // =========================================================================
+
+  describe('create — booking constraints', () => {
+    it('throws BadRequestException when scheduled on a non-working day', async () => {
+      // 2026-03-01 is a Sunday (day 0)
+      const svc = makeService(SERVICE_ID_1, 50, 30);
+      servicesRepo.findByIds.mockResolvedValue([svc]);
+      // Remove Sunday (0) from working days
+      prisma.bookingSettings.findFirst.mockResolvedValue({
+        slotDurationMinutes: 30,
+        bufferTimeMinutes: 10,
+        workingHoursStart: '08:00',
+        workingHoursEnd: '20:00',
+        workingDays: [1, 2, 3, 4, 5, 6],
+        maxAdvanceBookingDays: 365,
+        allowOnlineBooking: true,
+      });
+      const dto = makeCreateDto({
+        scheduledStart: '2026-03-01T10:00:00Z',
+      });
+
+      await expect(service.create(TENANT_ID, dto, USER_ID)).rejects.toThrow(
+        new BadRequestException(
+          'Booking is not allowed on this day of the week',
+        ),
+      );
+    });
+
+    it('throws BadRequestException when booking too far in advance', async () => {
+      const svc = makeService(SERVICE_ID_1, 50, 30);
+      servicesRepo.findByIds.mockResolvedValue([svc]);
+      prisma.bookingSettings.findFirst.mockResolvedValue({
+        slotDurationMinutes: 30,
+        bufferTimeMinutes: 10,
+        workingHoursStart: '08:00',
+        workingHoursEnd: '20:00',
+        workingDays: [0, 1, 2, 3, 4, 5, 6],
+        maxAdvanceBookingDays: 1,
+        allowOnlineBooking: true,
+      });
+      // Schedule a year from now — way beyond 1-day limit
+      const farFuture = new Date();
+      farFuture.setFullYear(farFuture.getFullYear() + 1);
+      const dto = makeCreateDto({
+        scheduledStart: farFuture.toISOString(),
+      });
+
+      await expect(service.create(TENANT_ID, dto, USER_ID)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('does not throw when booking within advance limit on a working day', async () => {
+      const svc = makeService(SERVICE_ID_1, 50, 30);
+      servicesRepo.findByIds.mockResolvedValue([svc]);
+      mockTx.order.create.mockResolvedValue(makeOrder());
+      // Use tomorrow with all days allowed
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setUTCHours(10, 0, 0, 0);
+      const dto = makeCreateDto({
+        scheduledStart: tomorrow.toISOString(),
+      });
+
+      await expect(
+        service.create(TENANT_ID, dto, USER_ID),
+      ).resolves.not.toThrow();
+    });
+  });
+
+  // =========================================================================
+  // create — employee auto-assignment
+  // =========================================================================
+
+  describe('create — employee auto-assignment', () => {
+    it('returns assignedEmployeeId when dto specifies one', async () => {
+      const svc = makeService(SERVICE_ID_1, 50, 30);
+      servicesRepo.findByIds.mockResolvedValue([svc]);
+      mockTx.order.create.mockResolvedValue(
+        makeOrder({ assignedEmployeeId: 'emp-1' }),
+      );
+      const dto = makeCreateDto({ assignedEmployeeId: 'emp-1' });
+
+      await service.create(TENANT_ID, dto, USER_ID);
+
+      expect(mockTx.order.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ assignedEmployeeId: 'emp-1' }),
+        }),
+      );
+      // Should not try to auto-assign
+      expect(mockTx.employeeProfile.count).not.toHaveBeenCalled();
+    });
+
+    it('sets assignedEmployeeId to undefined when no employee profiles exist', async () => {
+      const svc = makeService(SERVICE_ID_1, 50, 30);
+      servicesRepo.findByIds.mockResolvedValue([svc]);
+      mockTx.employeeProfile.count.mockResolvedValue(0);
+      mockTx.order.create.mockResolvedValue(makeOrder());
+      const dto = makeCreateDto({ assignedEmployeeId: undefined });
+
+      await service.create(TENANT_ID, dto, USER_ID);
+
+      expect(mockTx.order.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ assignedEmployeeId: undefined }),
+        }),
+      );
+    });
+
+    it('auto-assigns an available employee when profiles exist', async () => {
+      const svc = makeService(SERVICE_ID_1, 50, 30);
+      servicesRepo.findByIds.mockResolvedValue([svc]);
+      mockTx.employeeProfile.count.mockResolvedValue(2);
+      mockTx.employeeProfile.findFirst.mockResolvedValue({ id: 'emp-auto' });
+      mockTx.order.create.mockResolvedValue(
+        makeOrder({ assignedEmployeeId: 'emp-auto' }),
+      );
+      const dto = makeCreateDto({ assignedEmployeeId: undefined });
+
+      await service.create(TENANT_ID, dto, USER_ID);
+
+      expect(mockTx.order.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ assignedEmployeeId: 'emp-auto' }),
+        }),
+      );
+    });
+
+    it('throws BadRequestException when profiles exist but none are available', async () => {
+      const svc = makeService(SERVICE_ID_1, 50, 30);
+      servicesRepo.findByIds.mockResolvedValue([svc]);
+      mockTx.employeeProfile.count.mockResolvedValue(3);
+      mockTx.employeeProfile.findFirst.mockResolvedValue(null);
+      const dto = makeCreateDto({ assignedEmployeeId: undefined });
+
+      await expect(service.create(TENANT_ID, dto, USER_ID)).rejects.toThrow(
+        new BadRequestException(
+          'No available employees for the requested time',
+        ),
+      );
+    });
+  });
+
+  // =========================================================================
+  // create — resolveWorkPost re-throws non-ConflictException errors
+  // =========================================================================
+
+  describe('create — resolveWorkPost error propagation', () => {
+    it('re-throws non-ConflictException errors from reserveSlot during auto-assign', async () => {
+      const svc = makeService(SERVICE_ID_1, 50, 30);
+      servicesRepo.findByIds.mockResolvedValue([svc]);
+      mockTx.workPost.findMany.mockResolvedValue([
+        {
+          id: 'wp-1',
+          tenantId: TENANT_ID,
+          branchId: BRANCH_ID,
+          isActive: true,
+        },
+      ]);
+      const internalError = new Error('Internal DB failure');
+      schedulingService.reserveSlot.mockRejectedValue(internalError);
+      const dto = makeCreateDto({ workPostId: undefined });
+
+      await expect(service.create(TENANT_ID, dto, USER_ID)).rejects.toThrow(
+        internalError,
+      );
+    });
   });
 });

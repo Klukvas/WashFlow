@@ -92,6 +92,48 @@ describe('buildPaginationArgs', () => {
     });
   });
 
+  describe('orderBy — disallowed sortBy', () => {
+    it('falls back to createdAt desc when sortBy is not in allowed list', () => {
+      const dto = buildDto({ sortBy: 'hackerField' });
+      const { orderBy } = buildPaginationArgs(dto);
+      expect(orderBy).toEqual({ createdAt: 'desc' });
+    });
+
+    it('falls back to createdAt desc for SQL-injection-like sortBy', () => {
+      const dto = buildDto({ sortBy: 'name; DROP TABLE users' });
+      const { orderBy } = buildPaginationArgs(dto);
+      expect(orderBy).toEqual({ createdAt: 'desc' });
+    });
+  });
+
+  describe('orderBy — all allowed sort fields', () => {
+    const allowedFields = [
+      'createdAt',
+      'updatedAt',
+      'name',
+      'firstName',
+      'lastName',
+      'email',
+      'phone',
+      'status',
+      'scheduledStart',
+      'scheduledEnd',
+      'totalPrice',
+      'price',
+      'sortOrder',
+      'durationMin',
+      'licensePlate',
+      'make',
+      'model',
+    ];
+
+    it.each(allowedFields)('accepts "%s" as a valid sort field', (field) => {
+      const dto = buildDto({ sortBy: field, sortOrder: 'desc' });
+      const { orderBy } = buildPaginationArgs(dto);
+      expect(orderBy).toEqual({ [field]: 'desc' });
+    });
+  });
+
   describe('return shape', () => {
     it('returns an object with exactly skip, take, and orderBy keys', () => {
       const dto = buildDto();

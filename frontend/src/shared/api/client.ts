@@ -4,10 +4,15 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from 'axios';
 import { useAuthStore } from '@/shared/stores/auth.store';
-import type { ApiError, PaginatedApiResponse, PaginatedResponse } from '@/shared/types/api';
+import type {
+  ApiError,
+  PaginatedApiResponse,
+  PaginatedResponse,
+} from '@/shared/types/api';
 
 export const apiClient = axios.create({
   baseURL: '/api/v1',
+  withCredentials: true, // send the HttpOnly refresh_token cookie automatically
   headers: {
     'Content-Type': 'application/json',
   },
@@ -68,18 +73,16 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { refreshToken } = useAuthStore.getState();
-        if (!refreshToken) {
-          throw new Error('No refresh token');
-        }
+        // The refresh token is sent automatically as an HttpOnly cookie.
+        // No need to read it from the store or send it in the request body.
+        const { data } = await axios.post(
+          '/api/v1/auth/refresh',
+          {},
+          { withCredentials: true },
+        );
 
-        const { data } = await axios.post('/api/v1/auth/refresh', {
-          refreshToken,
-        });
-
-        const { accessToken: newAccessToken, refreshToken: newRefreshToken, user } =
-          data.data;
-        useAuthStore.getState().setAuth(newAccessToken, newRefreshToken, user);
+        const { accessToken: newAccessToken, user } = data.data;
+        useAuthStore.getState().setAuth(newAccessToken, user);
 
         processQueue(null, newAccessToken);
 
@@ -90,7 +93,7 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        useAuthStore.getState().logout();
+        await useAuthStore.getState().logout();
         window.location.href = '/login';
         return Promise.reject(refreshError);
       } finally {
@@ -102,7 +105,9 @@ apiClient.interceptors.response.use(
   },
 );
 
-export function withIdempotencyKey(config?: AxiosRequestConfig): AxiosRequestConfig {
+export function withIdempotencyKey(
+  config?: AxiosRequestConfig,
+): AxiosRequestConfig {
   return {
     ...config,
     headers: {
@@ -113,7 +118,9 @@ export function withIdempotencyKey(config?: AxiosRequestConfig): AxiosRequestCon
 }
 
 /** Convert the flat backend paginated response into the frontend PaginatedResponse shape. */
-export function toPaginated<T>(resp: PaginatedApiResponse<T>): PaginatedResponse<T> {
+export function toPaginated<T>(
+  resp: PaginatedApiResponse<T>,
+): PaginatedResponse<T> {
   return {
     items: resp.data,
     meta: {

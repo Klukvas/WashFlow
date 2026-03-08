@@ -46,7 +46,7 @@ docker compose -f docker-compose.dev.yml up          # DB + Redis only
 
 ### Demo Credentials
 
-The login form requires **Tenant ID** (UUID), **Email**, and **Password**.
+The login form requires **Email** and **Password** (email is globally unique — one email maps to one tenant).
 
 | Account | Email | Password | Permissions |
 |---------|-------|----------|-------------|
@@ -56,9 +56,6 @@ The login form requires **Tenant ID** (UUID), **Email**, and **Password**.
 Staff emails are transliterated Ukrainian names (e.g. `oleksandr.marchenko@washflow.com`). First user per branch is **Manager**, rest are **Operator** / **Receptionist**.
 
 ```bash
-# Retrieve Tenant ID
-psql $DATABASE_URL -c "SELECT id FROM tenants WHERE slug = 'demo';"
-
 # List all staff with roles
 psql $DATABASE_URL -c "
   SELECT u.email, r.name AS role, b.name AS branch
@@ -170,6 +167,17 @@ Tracks operational employees independently of RBAC (Users/Roles remain unchanged
 - **Auto-assignment**: when creating an order, the system selects the first available employee (working hours cover the order window, no conflicting active orders) and stores `assignedEmployeeId` on the order
 - **Zero-profile fallback**: branches without profiles (or profiles without configured hours) behave exactly as before — no capacity reduction
 
+### Subscription & Limits
+
+- **Subscription model**: 1:1 with Tenant — `maxUsers`, `maxBranches`, `maxWorkPosts`, `maxServices`
+- **Enforcement**: `SubscriptionLimitsService.checkLimit()` called before create and restore in Users, Branches, WorkPosts, and Services
+- **Trial support**: `isTrial` flag + `trialEndsAt` timestamp; expired trials block all resource creation
+- **Auto-provisioning**: new tenants automatically get a 30-day trial with Business-tier limits (15 users, 3 branches, 10 work posts, 20 services)
+- **Backward compatible**: no Subscription row → no limits enforced
+- **Usage endpoint**: `GET /subscription/usage` (requires `tenants.read`) returns current counts + max limits for all resources, plus trial info (`isTrial`, `trialEndsAt`)
+- **Admin management**: super-admin can create/update/delete subscriptions via `/tenants/:id/subscription`
+- **Paddle fields**: `paddleSubscriptionId`, `paddleCustomerId`, `paddleStatus`, `currentPeriodEnd` reserved for future payment integration
+
 ### Order Lifecycle
 
 Status state machine with enforced transitions:
@@ -242,7 +250,7 @@ Rate-limited `@Public()` endpoints for customer-facing booking. Resolves tenant 
 
 | Route | Page | Description |
 |-------|------|-------------|
-| `/` | Dashboard | KPI cards, live ops panel, revenue chart, branch/employee performance, alerts, online booking stats |
+| `/dashboard` | Dashboard | KPI cards, live ops panel, revenue chart, branch/employee performance, alerts, online booking stats |
 | `/orders` | Orders | Table/card toggle, status/branch filters, search, pagination |
 | `/orders/create` | Create Order | 6-step wizard: client → vehicle → services → worker → time slot → review; slot resets on service/worker change; availability cache invalidated on mutations |
 | `/orders/:id` | Order Detail | Status transitions, services, client/vehicle info, delete/restore |
@@ -259,13 +267,16 @@ Rate-limited `@Public()` endpoints for customer-facing booking. Resolves tenant 
 | `/analytics` | Analytics | Revenue + services charts, branch/date filters |
 | `/audit` | Audit Log | Filterable by action/entity/date, color-coded badges |
 | `/workforce` | Workforce | Employee profiles with working hours (Start/End Time); create, edit, activate/deactivate |
+| `/subscription` | Subscription | Resource usage cards (users, branches, work posts, services) with progress bars; trial banner with days remaining / expired state; admin-only (`tenants.read`); hidden from sidebar + route-guarded for non-admins |
 | `/how-to` | How To (Wiki) | In-app help: 11 reference topics + 4 step-by-step flows (New Client Call, Online Booking, New Employee, Branch Setup), TOC sidebar, EN + UK |
 
 #### Public
 
 | Route | Page | Description |
 |-------|------|-------------|
+| `/` | Landing Page | Hero, features, pricing sections; unauthenticated users see this, authenticated redirect to `/dashboard` |
 | `/login` | Login | Email/password form |
+| `/register` | Registration | Company name, personal info, password; creates tenant + admin user + trial subscription, auto-login |
 | `/public/:slug` | Public Booking | 4-step customer booking wizard |
 
 ### Cross-Cutting
@@ -276,7 +287,9 @@ Rate-limited `@Public()` endpoints for customer-facing booking. Resolves tenant 
 - **Responsive**: all layouts adapt mobile → desktop
 - **Soft delete UX**: badges, include-deleted toggles, restore buttons
 - **Global search** (Cmd+K): searches clients, orders, and services in parallel with type badges and icons
-- **Route-level auth guard**: `RequireAuth` wrapper redirects unauthenticated users to `/login` with return-to state
+- **Global toast notifications**: `sonner` Toaster with `richColors` — all mutation errors (403 limit reached, validation, etc.) automatically surface as toasts via `QueryClient.defaultOptions.mutations.onError`
+- **Route-level auth guard**: `AppShell` conditional layout — shows landing page at `/` for guests, redirects to `/dashboard` for authenticated; inner routes require auth via `RequireAuth` pattern
+- **Tenant self-registration**: `/register` creates tenant + trial subscription + admin role + user in one transaction; auto-login on success
 - **Error boundaries**: root-level + page-level `ErrorBoundary` with "Try Again" / "Go to Dashboard" recovery
 - **Enhanced pagination**: page numbers with ellipsis, first/last page buttons, page size selector (10/20/50/100)
 - **Password management**: self-service change password (Header), admin reset password per user (UsersPage)
@@ -287,7 +300,7 @@ Rate-limited `@Public()` endpoints for customer-facing booking. Resolves tenant 
 
 ## Database Schema
 
-**17 models, 5 enums.** All UUIDs, timestamps. Soft-delete on 7 models with auto-filtering.
+**18 models, 5 enums.** All UUIDs, timestamps. Soft-delete on 7 models with auto-filtering.
 
 ### Enums
 
@@ -306,7 +319,7 @@ Rate-limited `@Public()` endpoints for customer-facing booking. Resolves tenant 
 | **Tenant** | Unique slug, settings JSON, 1:1 BookingSettings |
 | **BookingSettings** | Slot duration, buffer, working hours/days, online booking toggle |
 | **Branch** | Per-tenant, has many WorkPosts, soft-delete |
-| **User** | Unique email per tenant, soft-delete, optional Role + Branch |
+| **User** | Globally unique email, soft-delete, optional Role + Branch |
 | **Role** | Unique name per tenant, M:N Permissions, soft-delete |
 | **RolePermission** | Join table for Role ↔ Permission M:N |
 | **Permission** | Global (no tenantId), seeded `module.action` pairs |
@@ -319,6 +332,7 @@ Rate-limited `@Public()` endpoints for customer-facing booking. Resolves tenant 
 | **OrderService** | Price snapshot at booking time |
 | **Payment** | Amount, method, status, linked to Order |
 | **AuditLog** | Entity type/id, action, old/new values, performer |
+| **Subscription** | 1:1 with Tenant; `maxUsers`, `maxBranches`, `maxWorkPosts`, `maxServices` limits; `isTrial` + `trialEndsAt` for trial support; Paddle fields reserved |
 | **IdempotencyKey** | Tenant-scoped, unique `(tenantId, key)`, TTL-based expiry |
 
 ### Indexes
@@ -326,21 +340,23 @@ Rate-limited `@Public()` endpoints for customer-facing booking. Resolves tenant 
 - **Order**: `(tenantId, status)`, `(tenantId, workPostId, scheduledStart, scheduledEnd)`
 - **All models**: indexed on `tenantId`
 - **IdempotencyKey**: `@@index([expiresAt])` for cron cleanup
+- **Global unique**: `users(email)` — email is globally unique across all tenants
 - **Partial uniques** (soft-delete aware, `WHERE deletedAt IS NULL`):
-  `users(tenantId, email)` | `clients(tenantId, phone)` | `vehicles(tenantId, licensePlate)` | `roles(tenantId, name)`
+  `clients(tenantId, phone)` | `vehicles(tenantId, licensePlate)` | `roles(tenantId, name)`
 
 ---
 
 ## API Reference
 
 All endpoints prefixed with `/api/v1`. Protected by JWT unless marked Public.
-**82 endpoints** (76 protected, 6 public) across 16 controllers.
+**87 endpoints** (80 protected, 7 public) across 17 controllers.
 
 ### Auth
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | POST | `/auth/login` | Public | Returns access + refresh tokens |
+| POST | `/auth/register` | Public | Self-registration: creates tenant + trial subscription + admin role + user; returns tokens (3/min rate limit) |
 | POST | `/auth/refresh` | Public | Refresh tokens |
 | PATCH | `/auth/change-password` | JWT | User changes own password (verifies current password) |
 
@@ -400,6 +416,15 @@ All endpoints require `analytics.view` permission. Params: `dateFrom`, `dateTo`,
 | GET | `/analytics/employees` | Per-employee orders, revenue, cancel rate |
 | GET | `/analytics/alerts` | Business anomalies: high cancel rate, revenue drop, booking decline |
 | GET | `/analytics/online-booking` | Order source breakdown (INTERNAL / WEB / WIDGET / API) |
+
+### Subscriptions
+
+| Method | Path | Permission | Description |
+|--------|------|------------|-------------|
+| GET | `/subscription/usage` | tenants.read | Own tenant limits + current usage |
+| GET | `/tenants/:tenantId/subscription` | tenants.read | Get tenant subscription (super-admin) |
+| PUT | `/tenants/:tenantId/subscription` | tenants.update | Create/update subscription (super-admin) |
+| DELETE | `/tenants/:tenantId/subscription` | tenants.delete | Remove subscription → unlimited (super-admin) |
 
 ### Workforce
 
@@ -462,6 +487,7 @@ src/
     ├── vehicles/                    # CRUD + soft-delete
     ├── services/                    # CRUD + soft-delete
     ├── work-posts/                  # CRUD
+    ├── subscriptions/               # Subscription limits + usage
     ├── scheduling/                  # Availability + row-level locking + workforce cap
     ├── workforce/                   # EmployeeProfile CRUD (working hours on profile)
     ├── orders/                      # Order lifecycle + idempotency + employee auto-assign
@@ -497,10 +523,10 @@ frontend/src/
 │   ├── App.tsx                      # Root + providers
 │   ├── router.tsx                   # Lazy-loaded routes
 │   ├── providers.tsx                # QueryClient, ThemeProvider
-│   ├── layout/                      # DashboardLayout, PublicLayout, Sidebar, Header
+│   ├── layout/                      # DashboardLayout, AppShell, PublicLayout, Sidebar, Header
 │   └── pages/                       # 404, 403
 ├── features/
-│   ├── auth/                        # LoginPage, API, hooks
+│   ├── auth/                        # LoginPage, RegisterPage, API, hooks
 │   ├── dashboard/                   # StatsCards, RevenueChart
 │   ├── orders/                      # OrdersPage, CreateOrderPage, OrderDetailPage
 │   ├── clients/                     # ClientsPage, ClientDetailPage, ClientForm
@@ -513,6 +539,8 @@ frontend/src/
 │   ├── analytics/                   # Charts, stats
 │   ├── audit/                       # AuditPage
 │   ├── workforce/                   # WorkforcePage (employee profiles)
+│   ├── subscription/                # SubscriptionPage (usage + limits)
+│   ├── landing/                     # LandingPage (Hero, Features, Pricing, Header, Footer)
 │   ├── public-booking/              # PublicBookingPage
 │   └── how-to/                      # In-app wiki (HowToLayout, TopicSidebar, TopicContent)
 ├── shared/
@@ -547,6 +575,8 @@ frontend/src/
 | Permission gates in UI | `PermissionGate` component matches backend RBAC |
 | Workforce separate from RBAC | `EmployeeProfile` is an operational layer (who is on shift) — User/Role/Permission tables remain unchanged; branches without profiles get legacy behavior automatically |
 | Employee auto-assignment inside Serializable tx | Assigned inside the same lock that reserves the slot — eliminates TOCTOU race between capacity check and assignment |
+| Subscription limits (optional) | No subscription row → no limits enforced (backward compat); limits checked in service layer before create; Paddle fields reserved for future payment integration |
+| Trial auto-provisioning | New tenants get 30-day Business-tier trial automatically; expired trials block resource creation; trial info exposed on usage endpoint + frontend banner |
 
 ---
 

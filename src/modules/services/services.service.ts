@@ -6,10 +6,14 @@ import {
 import { ServicesRepository } from './services.repository';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
+import { SubscriptionLimitsService } from '../subscriptions/subscription-limits.service';
 
 @Injectable()
 export class ServicesService {
-  constructor(private readonly servicesRepo: ServicesRepository) {}
+  constructor(
+    private readonly servicesRepo: ServicesRepository,
+    private readonly limits: SubscriptionLimitsService,
+  ) {}
 
   async findAll(tenantId: string) {
     return this.servicesRepo.findAll(tenantId);
@@ -26,6 +30,7 @@ export class ServicesService {
   }
 
   async create(tenantId: string, dto: CreateServiceDto) {
+    await this.limits.checkLimit(tenantId, 'services');
     return this.servicesRepo.create(tenantId, { ...dto });
   }
 
@@ -47,6 +52,7 @@ export class ServicesService {
     if (!service) throw new NotFoundException('Service not found');
     if (!service.deletedAt)
       throw new BadRequestException('Service is not deleted');
+    await this.limits.checkLimit(tenantId, 'services');
     return this.servicesRepo.restore(tenantId, id);
   }
 }

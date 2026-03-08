@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate, NavLink } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Trash2, RotateCcw, Edit, Merge } from 'lucide-react';
@@ -12,6 +12,7 @@ import { ClientForm, type ClientFormValues } from '../components/ClientForm';
 import { MergeClientsDialog } from '../components/MergeClientsDialog';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { SoftDeleteBadge } from '@/shared/components/SoftDeleteBadge';
+import { IncludeDeletedToggle } from '@/shared/components/IncludeDeletedToggle';
 import { PermissionGate } from '@/shared/components/PermissionGate';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
@@ -35,6 +36,15 @@ export function ClientDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
+  const [showDeletedVehicles, setShowDeletedVehicles] = useState(false);
+
+  const displayedVehicles = useMemo(
+    () =>
+      showDeletedVehicles
+        ? (client?.vehicles ?? [])
+        : (client?.vehicles ?? []).filter((v) => !v.deletedAt),
+    [client?.vehicles, showDeletedVehicles],
+  );
 
   const handleUpdate = (values: ClientFormValues) => {
     updateClientMut(
@@ -75,7 +85,7 @@ export function ClientDetailPage() {
   return (
     <div>
       <PageHeader
-        title={`${client.firstName} ${client.lastName}`}
+        title={[client.firstName, client.lastName].filter(Boolean).join(' ')}
         actions={
           <div className="flex items-center gap-2">
             <Button
@@ -192,14 +202,20 @@ export function ClientDetailPage() {
           {/* Vehicles List */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">
-                {t('fields.vehicles')} ({client.vehicles?.length ?? 0})
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">
+                  {t('fields.vehicles')} ({displayedVehicles.length})
+                </CardTitle>
+                <IncludeDeletedToggle
+                  checked={showDeletedVehicles}
+                  onChange={setShowDeletedVehicles}
+                />
+              </div>
             </CardHeader>
             <CardContent>
-              {client.vehicles && client.vehicles.length > 0 ? (
+              {displayedVehicles.length > 0 ? (
                 <div className="space-y-3">
-                  {client.vehicles.map((vehicle: Vehicle) => (
+                  {displayedVehicles.map((vehicle: Vehicle) => (
                     <VehicleCard key={vehicle.id} vehicle={vehicle} />
                   ))}
                 </div>
@@ -224,7 +240,9 @@ export function ClientDetailPage() {
                   {t('fields.name')}
                 </span>
                 <span className="font-medium">
-                  {client.firstName} {client.lastName}
+                  {[client.firstName, client.lastName]
+                    .filter(Boolean)
+                    .join(' ')}
                 </span>
               </div>
               <div className="flex justify-between">

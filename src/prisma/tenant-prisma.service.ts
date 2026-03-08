@@ -78,28 +78,23 @@ export class TenantPrismaService {
             return query(args);
           },
           async findUnique({ model, args, query }) {
-            const result = await query(args);
-            if (!shouldBypassTenant(model)) {
-              if (
-                result &&
-                typeof result === 'object' &&
-                'tenantId' in result &&
-                result.tenantId !== tenantId
-              ) {
-                return null;
+            // Rewrite findUnique → findFirst so we can push tenant + soft-delete
+            // filters into SQL rather than fetching and discarding in memory.
+            if (!shouldBypassTenant(model) || shouldSoftDeleteFilter(model)) {
+              const { _includeDeleted, ...cleanWhere } = (args.where ??
+                {}) as any;
+              const extraWhere: Record<string, unknown> = { ...cleanWhere };
+
+              if (!shouldBypassTenant(model)) {
+                extraWhere['tenantId'] = tenantId;
               }
-            }
-            if (shouldSoftDeleteFilter(model) && result) {
-              const includeDeleted = (args.where as any)?._includeDeleted;
-              if (
-                !includeDeleted &&
-                'deletedAt' in result &&
-                result.deletedAt !== null
-              ) {
-                return null;
+              if (shouldSoftDeleteFilter(model) && !_includeDeleted) {
+                extraWhere['deletedAt'] = null;
               }
+
+              return (query as any)({ ...args, where: extraWhere });
             }
-            return result;
+            return query(args);
           },
           async create({ model, args, query }) {
             if (!shouldBypassTenant(model)) {

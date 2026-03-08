@@ -66,14 +66,14 @@ export function ClientForm({
   }, [client, reset]);
 
   const handleFormSubmit = (values: ClientFormValues) => {
-    const payload: ClientFormValues = {
+    const payload = {
       ...values,
-      lastName: values.lastName || undefined,
-      phone: values.phone || undefined,
-      email: values.email || undefined,
-      notes: values.notes || undefined,
+      lastName: values.lastName || null,
+      phone: values.phone || null,
+      email: values.email || null,
+      notes: values.notes || null,
     };
-    onSubmit(payload);
+    onSubmit(payload as ClientFormValues);
   };
 
   return (

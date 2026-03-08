@@ -26,6 +26,7 @@ export function BranchesPage() {
     limit: 20,
     sortBy: 'name',
     sortOrder: 'asc',
+    includeDeleted: false,
   });
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -88,7 +89,9 @@ export function BranchesPage() {
         header: tc('fields.createdAt'),
         className: 'hidden xl:table-cell',
         render: (branch) => (
-          <span className="text-muted-foreground">{formatDateTime(branch.createdAt)}</span>
+          <span className="text-muted-foreground">
+            {formatDateTime(branch.createdAt)}
+          </span>
         ),
       },
     ],
@@ -105,7 +108,11 @@ export function BranchesPage() {
               <IncludeDeletedToggle
                 checked={params.includeDeleted ?? false}
                 onChange={(checked) =>
-                  setParams((prev) => ({ ...prev, includeDeleted: checked, page: 1 }))
+                  setParams((prev) => ({
+                    ...prev,
+                    includeDeleted: checked,
+                    page: 1,
+                  }))
                 }
               />
             </PermissionGate>

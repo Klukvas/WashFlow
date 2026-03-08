@@ -3,11 +3,14 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Body,
   Query,
   ParseUUIDPipe,
   UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
@@ -62,5 +65,26 @@ export class WorkPostsController {
     @Body() dto: UpdateWorkPostDto,
   ) {
     return this.workPostsService.update(tenantId, id, dto, userBranchId);
+  }
+
+  @Delete(':id')
+  @Permissions('work-posts.delete')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  softDelete(
+    @CurrentTenant() tenantId: string,
+    @CurrentBranch() userBranchId: string | null,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.workPostsService.softDelete(tenantId, id, userBranchId);
+  }
+
+  @Patch(':id/restore')
+  @Permissions('work-posts.update')
+  restore(
+    @CurrentTenant() tenantId: string,
+    @CurrentBranch() userBranchId: string | null,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.workPostsService.restore(tenantId, id, userBranchId);
   }
 }

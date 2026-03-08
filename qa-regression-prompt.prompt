@@ -1,0 +1,549 @@
+# WashFlow — Manual QA Regression Prompt
+
+> **For:** GPT Atlas (or any LLM-based QA agent)
+> **App URL:** http://localhost:5173
+> **Backend:** http://localhost:3003
+> **Languages:** English (`en`), Ukrainian (`uk`)
+> **Themes:** Light, Dark, System
+
+---
+
+## Your Role
+
+You are a **Senior Manual QA Engineer** performing a full regression test of the WashFlow admin panel — a multi-tenant car wash management SaaS. You will systematically test every page, modal, and component for:
+
+1. **Translations** — every visible string must exist in both EN and UK, no raw keys (e.g. `nav.dashboard`), no English leaking in UK mode and vice-versa.
+2. **Theme** — every page/modal must render correctly in Light, Dark, and System modes. Check for: invisible text, broken contrast, wrong backgrounds, unstyled borders, hardcoded colors ignoring theme.
+3. **Mobile View** — resize to 375px width (iPhone SE). Check for: overflow, horizontal scroll, truncated buttons, overlapping elements, unreadable text, untappable targets (<44px), broken navigation.
+4. **Business Logic** — verify that forms validate correctly, CRUD operations work, permission gates hide/show elements, soft-delete/restore works, status transitions are valid, pagination works, filters apply correctly.
+
+---
+
+## Test Environment Setup
+
+1. Open the app at `http://localhost:5173`
+2. Login with valid credentials (email + password + tenantId)
+3. For each page/modal below, repeat the full checklist in this order:
+   - [ ] **EN + Light theme**
+   - [ ] **UK + Light theme**
+   - [ ] **EN + Dark theme**
+   - [ ] **UK + Dark theme**
+   - [ ] **Mobile (375px) + Light**
+   - [ ] **Mobile (375px) + Dark**
+
+---
+
+## Global Components (test on every page)
+
+### Header
+- [ ] Hamburger menu appears only on mobile (< lg breakpoint)
+- [ ] GlobalSearch (Cmd/Ctrl+K) opens, searches clients/orders/services, shows type badges — hidden on mobile
+- [ ] ThemeToggle cycles: Light → Dark → System → Light (icons: Sun / Moon / Monitor)
+- [ ] LanguageSwitcher toggles EN ↔ UK, all visible text updates immediately
+- [ ] User info: firstName + lastName, email, truncated tenantId (click to copy — verify toast)
+- [ ] Change Password button (KeyRound icon) opens ChangePasswordDialog
+- [ ] Logout button works, redirects to /login
+
+### Sidebar
+- [ ] Collapsed (64px) and expanded (256px) states work
+- [ ] On mobile: renders as overlay drawer with close (X) button
+- [ ] Section headers: Main, Management, System, Help — translated
+- [ ] Active route highlighted with bg-primary/10 text-primary
+- [ ] Permission-gated items hidden for non-permitted users:
+  - Main: Dashboard (no perm), Orders (ORDERS.READ), Clients (CLIENTS.READ), Vehicles (VEHICLES.READ), Services (SERVICES.READ)
+  - Management: Branches (BRANCHES.READ), Work Posts (WORK_POSTS.READ), Users (USERS.READ), Roles (ROLES.READ), Workforce (WORKFORCE.READ), Subscription (TENANTS.READ)
+  - System: Analytics (ANALYTICS.VIEW), Audit (AUDIT.READ)
+  - Help: How To (no perm)
+
+### ChangePasswordDialog
+- [ ] Fields: currentPassword, newPassword, confirmPassword
+- [ ] Validation: all required, newPassword != currentPassword, confirmPassword must match
+- [ ] Success toast on change, error toast on wrong current password
+- [ ] Translations for title, labels, button, error/success messages
+
+### ConfirmDialog (used globally)
+- [ ] Two variants: default (blue) and destructive (red)
+- [ ] Title, message, confirm/cancel buttons translated
+- [ ] Loading spinner on confirm button while processing
+- [ ] ESC and backdrop click close the dialog
+
+---
+
+## Page-by-Page Test Plan
+
+---
+
+### 1. Login Page (/login)
+
+**Translations:**
+- [ ] Title, subtitle, field labels (Email, Password, Tenant ID), submit button, loading state, error messages
+
+**Theme:**
+- [ ] Card centered, readable in light/dark, no invisible inputs
+
+**Mobile:**
+- [ ] Full-width card, inputs usable, submit button reachable
+
+**Business Logic:**
+- [ ] Empty fields → validation errors
+- [ ] Wrong credentials → error message (no credential leak)
+- [ ] Successful login → redirect to /
+- [ ] Already logged in → redirect to /
+
+---
+
+### 2. Dashboard (/)
+
+**Translations:**
+- [ ] KPI labels: Revenue Today, Orders Today, Avg Duration, Cancel Rate, Active Clients, Occupancy Rate
+- [ ] Live Operations: In Progress, Waiting, Free Work Posts, Overdue
+- [ ] Branch Performance table headers
+- [ ] Employee Performance table headers
+- [ ] Alerts: severity labels (LOW/MEDIUM/HIGH/CRITICAL), alert type messages
+- [ ] Online Booking Stats: source labels (Internal, Web, Widget, API)
+- [ ] Revenue chart title
+
+**Theme:**
+- [ ] Charts (Recharts) render with theme-appropriate colors
+- [ ] KPI cards have correct background/border contrast
+- [ ] Alert severity badges: color-coded correctly in both themes
+
+**Mobile:**
+- [ ] KPI cards stack vertically
+- [ ] Charts are scrollable or resize appropriately
+- [ ] Tables are scrollable horizontally
+- [ ] Live panel doesn't overflow
+
+**Business Logic:**
+- [ ] KPI data loads (not all zeros unless truly empty)
+- [ ] Branch filter on revenue chart works
+- [ ] Alerts panel shows "No alerts" when empty
+- [ ] Live Operations updates in real-time (WebSocket)
+
+---
+
+### 3. Orders Page (/orders)
+
+**Translations:**
+- [ ] Page title, "Create Order" button, table headers (client, vehicle, status, branch, date, total)
+- [ ] Status badges: BOOKED, BOOKED_PENDING_CONFIRMATION, IN_PROGRESS, COMPLETED, CANCELLED, NO_SHOW
+- [ ] Source badges: INTERNAL, WEB, WIDGET, API
+- [ ] Filter labels: Status, Branch, Date From, Date To
+- [ ] Pagination: "Showing X to Y of Z entries", per-page selector
+
+**Theme:**
+- [ ] Status badges have distinct colors in both themes
+- [ ] Table rows alternate correctly
+- [ ] Filter dropdowns styled correctly
+
+**Mobile:**
+- [ ] Table scrolls horizontally or switches to card view
+- [ ] Filters collapse or stack
+- [ ] Create button accessible
+
+**Business Logic:**
+- [ ] Filters apply correctly (status, branch, date range)
+- [ ] Pagination works (10/20/50/100 per page)
+- [ ] Table/Card view toggle works
+- [ ] Click row → navigates to /orders/:id
+
+---
+
+### 4. Create Order (/orders/create)
+
+**Translations:**
+- [ ] Wizard step labels: Select Client, Select Vehicle, Select Services, Select Worker, Select Slot, Review
+- [ ] Field labels, search placeholders, "Create Client" / "Create Vehicle" buttons
+- [ ] Total duration, total amount labels
+- [ ] Available slots / no slots messages
+- [ ] Confirm booking button, success message
+
+**Theme:**
+- [ ] Wizard step indicator styled correctly
+- [ ] Time slot buttons contrast properly
+- [ ] Selected service items highlighted visually
+
+**Mobile:**
+- [ ] Wizard steps navigable (back/next buttons reachable)
+- [ ] Service list scrollable
+- [ ] Time slots grid doesn't overflow
+
+**Business Logic:**
+- [ ] Step 0: Client search works, "+ Create Client" opens inline dialog, selecting client proceeds
+- [ ] Step 1: Vehicle list filters by selected client, "+ Create Vehicle" works
+- [ ] Step 2: Services list shows with price/duration, total updates on selection
+- [ ] Step 3: Worker selection optional ("Any Worker" option)
+- [ ] Step 4: Date picker → available slots load, selecting slot proceeds
+- [ ] Step 5: Review shows all selections, "Confirm Booking" creates order
+- [ ] Success → redirect to order detail or orders list
+- [ ] Cannot skip steps (next disabled until step is valid)
+
+**Quick-create Client Dialog (in step 0):**
+- [ ] Fields: firstName, lastName, email, phone
+- [ ] Validation: required fields
+- [ ] Created client auto-selected
+- [ ] Translations for all fields and buttons
+
+**Quick-create Vehicle Dialog (in step 1):**
+- [ ] Fields: make (required), licensePlate, model, color, year
+- [ ] Created vehicle auto-selected
+- [ ] Translations
+
+---
+
+### 5. Order Detail (/orders/:id)
+
+**Translations:**
+- [ ] Status card title, status badge, transition button labels
+- [ ] Services list title, service names, prices
+- [ ] Client info, vehicle info, schedule, notes card titles
+- [ ] Cancel dialog: title, cancellation reason label, confirm button
+
+**Theme:**
+- [ ] Status badge colors correct
+- [ ] Cards have proper background/border
+
+**Mobile:**
+- [ ] Cards stack vertically
+- [ ] Status transition buttons reachable
+
+**Business Logic:**
+- [ ] Status transitions: BOOKED_PENDING → BOOKED → IN_PROGRESS → COMPLETED
+- [ ] Cancel available from BOOKED/BOOKED_PENDING (opens cancel dialog with optional reason)
+- [ ] NO_SHOW transition available
+- [ ] Delete button → ConfirmDialog (destructive)
+- [ ] Cannot transition to invalid status (buttons disabled/hidden)
+
+---
+
+### 6. Clients Page (/clients)
+
+**Translations:**
+- [ ] Page title, "Create" button, table headers, search placeholder
+- [ ] "Include deleted" toggle, "Deleted" badge
+- [ ] "Merge Selected" button (when 2 selected)
+
+**Theme & Mobile:** Standard table checks
+
+**Business Logic:**
+- [ ] Search filters client list
+- [ ] Create dialog opens ClientForm (firstName, lastName, email, phone)
+- [ ] Soft delete toggle shows/hides deleted records
+- [ ] Selecting 2 clients → "Merge Selected" button appears
+- [ ] Clicking row → navigates to /clients/:id
+
+---
+
+### 7. Client Detail (/clients/:id)
+
+**Translations:**
+- [ ] Field labels, "Save" button, vehicles list, quick info sidebar
+- [ ] "View Orders" quick action, "Merge with..." button, "Delete" button
+
+**Business Logic:**
+- [ ] Inline edit form: firstName, lastName, email, phone — save updates
+- [ ] Vehicles tab shows client's vehicles
+- [ ] "Merge with..." opens MergeClientsDialog
+- [ ] Delete → ConfirmDialog → soft deletes
+
+**MergeClientsDialog (3 steps):**
+- [ ] Step 1: Search for source client
+- [ ] Step 2: Field-by-field picker (target vs source), vehicle dedup analysis
+- [ ] Step 3: Confirm merge summary
+- [ ] Swap button switches target/source
+- [ ] Translations for all steps, labels, buttons
+
+---
+
+### 8. Vehicles Page (/vehicles)
+
+**Translations:**
+- [ ] Page title, "Add Vehicle" button, table headers (Make/Model, License Plate, Year, Client, Status)
+- [ ] Make (required) label
+
+**Business Logic:**
+- [ ] Create vehicle dialog: clientId (Combobox search), make (required), model, licensePlate, color, year
+- [ ] Soft delete toggle
+- [ ] Click row → /vehicles/:id
+
+---
+
+### 9. Vehicle Detail (/vehicles/:id)
+
+**Translations:**
+- [ ] Field labels, owner card title, quick actions
+
+**Business Logic:**
+- [ ] Inline edit form saves changes
+- [ ] Owner card shows linked client (clickable → client detail)
+- [ ] Delete → ConfirmDialog
+
+---
+
+### 10. Services Page (/services)
+
+**Translations:**
+- [ ] Page title, "Add Service", table headers (Name, Description, Duration, Price, Active, Sort Order)
+- [ ] Empty state message
+
+**Business Logic:**
+- [ ] Create/Edit service dialog: name, description, durationMin, price, sortOrder, isActive (checkbox)
+- [ ] Delete → ConfirmDialog
+- [ ] Restore action on soft-deleted services
+- [ ] isActive toggle reflected in list
+
+---
+
+### 11. Branches Page (/branches)
+
+**Translations:**
+- [ ] Page title, "Create Branch", table headers
+
+**Business Logic:**
+- [ ] Create dialog: name, address, phone
+- [ ] Click row → /branches/:id
+- [ ] Soft delete toggle
+
+---
+
+### 12. Branch Detail (/branches/:id)
+
+**Translations:**
+- [ ] Info card labels, work posts table title, booking settings card labels
+- [ ] Day names (Mon-Sun), booking field labels
+- [ ] Edit Branch dialog, Edit Booking Settings dialog
+
+**Business Logic:**
+- [ ] Edit Branch: name, address, phone — saves
+- [ ] Work Posts table shows branch's posts
+- [ ] Booking Settings: working hours (start/end), working days (7 toggles), slot duration (5-480 min), buffer time (0-120 min), max advance booking (1-365 days), allow online booking
+- [ ] "Using Defaults" indicator when settings haven't been customized
+- [ ] Validation: at least one working day, valid time ranges
+- [ ] Delete → ConfirmDialog
+
+---
+
+### 13. Work Posts Page (/work-posts)
+
+**Translations:**
+- [ ] Page title, "Add Work Post", filter label, select prompts
+
+**Business Logic:**
+- [ ] Filter by branch dropdown
+- [ ] Create dialog: branch (Select), name (Input)
+- [ ] Branch-scoped users: branch selector hidden, auto-filtered
+- [ ] Work posts list updates after create
+
+---
+
+### 14. Users Page (/users)
+
+**Translations:**
+- [ ] Page title, "Create" button, table headers (Name, Email, Phone, Role, Branch)
+- [ ] UserForm labels, password optional hint on edit
+
+**Business Logic:**
+- [ ] Create user: firstName, lastName, email, phone, password (required), role, branch
+- [ ] Edit user: same fields, password optional
+- [ ] Reset password (KeyRound icon): newPassword + confirmPassword
+- [ ] Delete → ConfirmDialog (destructive) — cannot delete yourself (no trash icon on own row)
+- [ ] Restore → ConfirmDialog (default)
+- [ ] Soft delete toggle
+
+---
+
+### 15. Roles Page (/roles)
+
+**Translations:**
+- [ ] Page title, "Create Role", table headers (Name, Description, Permissions Count)
+- [ ] Empty state message
+
+**Business Logic:**
+- [ ] Create role: name, description
+- [ ] Click row → /roles/:id
+- [ ] Soft delete toggle
+
+---
+
+### 16. Role Detail (/roles/:id)
+
+**Translations:**
+- [ ] Edit form labels, permission module names, permission action labels
+
+**Business Logic:**
+- [ ] Edit role name and description
+- [ ] Permission assignment: 47 permissions across 14 modules, grouped by module with toggles
+- [ ] Save updates permissions
+- [ ] Delete → ConfirmDialog
+
+---
+
+### 17. Workforce Page (/workforce)
+
+**Translations:**
+- [ ] Page title, description, "Add Worker", table headers (Name, Email, Branch, Hours, Status)
+- [ ] Dialog labels: User, Branch, Start Time, End Time, Is Worker
+- [ ] Deactivate dialog title/message
+
+**Business Logic:**
+- [ ] Create profile: user (Combobox), branch (Combobox), workStartTime, workEndTime, isWorker (Switch)
+- [ ] Auto-fill working hours from branch booking settings on branch select
+- [ ] Edit: user locked, can change branch/times/isWorker
+- [ ] Deactivate → ConfirmDialog (destructive)
+- [ ] Reactivate (Power icon on inactive profiles)
+
+---
+
+### 18. Analytics Page (/analytics)
+
+**Translations:**
+- [ ] KPI labels: Total Revenue, Total Orders, Active Clients, Completion Rate
+- [ ] Chart titles: Revenue Over Time, Popular Services
+- [ ] Filter labels: Branch (All Branches), Date From, Date To
+
+**Theme:**
+- [ ] Charts render with theme-appropriate colors and legends
+
+**Mobile:**
+- [ ] Charts resize or scroll
+- [ ] KPI cards stack
+
+**Business Logic:**
+- [ ] Filters apply: branch selector, date range
+- [ ] Data updates on filter change
+- [ ] Empty state when no data in range
+
+---
+
+### 19. Audit Page (/audit)
+
+**Translations:**
+- [ ] Table headers: Date, Action, Entity, Entity ID, Performed By
+- [ ] Filter labels: Action, Entity Type, Date From, Date To
+- [ ] Action badges: CREATE, UPDATE, DELETE, STATUS_CHANGE
+
+**Theme:**
+- [ ] Action badges color-coded: success (CREATE), warning (UPDATE), destructive (DELETE), default (STATUS_CHANGE)
+
+**Business Logic:**
+- [ ] Filters work: action dropdown, entity type text, date range
+- [ ] Pagination works
+- [ ] Records are read-only (no edit/delete actions)
+
+---
+
+### 20. Subscription Page (/subscription)
+
+**Translations:**
+- [ ] Title, description, resource labels (Users, Branches, Work Posts, Services)
+- [ ] "No limits" text, "Used X of Y"
+- [ ] Trial badge, trial active/expired messages
+
+**Theme:**
+- [ ] Progress bars: green (0-79%), yellow (80-99%), red (100%+) — verify in both themes
+
+**Business Logic:**
+- [ ] Resource cards show current usage / max limit
+- [ ] Progress bar width matches percentage
+- [ ] Trial banner shows days remaining or expired
+- [ ] Permission gate: only TENANTS.READ can access (else redirect to /403)
+
+---
+
+### 21. How To Page (/how-to)
+
+**Translations:**
+- [ ] Sidebar topic titles and flow titles
+- [ ] Content sections, step descriptions
+- [ ] Topics: Getting Started, Dashboard, Orders, Clients, Vehicles, Services, Branches, Users & Roles, Workforce, Analytics, Public Booking
+- [ ] Flows: Client via Order, Client via Tabs, Online Booking, New Employee, Branch Setup
+
+**Theme:**
+- [ ] Split-pane layout readable in both themes
+- [ ] Step numbers and badges styled
+
+**Mobile:**
+- [ ] Topics sidebar collapses or becomes scrollable
+- [ ] Content area fills screen
+
+---
+
+### 22. Public Booking (/public/:slug)
+
+**Translations:**
+- [ ] Landing: subtitle, "Book Now" button, "Our Services" label
+- [ ] Wizard step labels: Services, Schedule, Your Info, Confirm
+- [ ] All field labels: firstName, lastName, phone, email, licensePlate, vehicleMake, vehicleModel, notes
+- [ ] Confirmation: title, message, booking details, "Add to Google Calendar"
+
+**Theme:**
+- [ ] Public pages respect theme (or have their own fixed theme)
+
+**Mobile:**
+- [ ] Full-width layout, steps navigable, forms usable
+
+**Business Logic:**
+- [ ] Step 1: Select location (if multiple branches), choose services, total updates
+- [ ] Step 2: Pick date → time slots load, select slot
+- [ ] Step 3: Enter personal info, required fields validate
+- [ ] Step 4: Review all selections, "Confirm Booking" creates order
+- [ ] Success: confirmation screen with Google Calendar link
+- [ ] Created order has status BOOKED_PENDING_CONFIRMATION and source WEB
+
+---
+
+### 23. Error Pages
+
+**403 Forbidden (/403):**
+- [ ] Message translated
+- [ ] Theme styled
+- [ ] "Go back" or "Home" link works
+
+**404 Not Found (/404):**
+- [ ] Message translated
+- [ ] Theme styled
+- [ ] "Go Home" link works
+
+**Unknown routes → redirect to /404**
+
+---
+
+## Bug Report Format
+
+For each bug found, report:
+
+### [SEVERITY] [CATEGORY] — Short Description
+
+**Page:** Page Name (/route)
+**Component:** Component or Modal name
+**Steps to Reproduce:**
+1. Step one
+2. Step two
+3. Step three
+
+**Expected:** What should happen
+**Actual:** What actually happens
+**Screenshot:** (if applicable)
+**Environment:** Theme (Light/Dark), Language (EN/UK), Viewport (Desktop/Mobile)
+
+**Severity:** CRITICAL, HIGH, MEDIUM, LOW
+**Category:** Translation, Theme, Mobile, Business Logic, Accessibility
+
+---
+
+## Final Checklist
+
+After completing all page tests:
+
+- [ ] All pages tested in EN + UK
+- [ ] All pages tested in Light + Dark themes
+- [ ] All pages tested at 375px mobile width
+- [ ] All modals open/close correctly (ESC, backdrop click, X button)
+- [ ] All forms validate required fields
+- [ ] All CRUD operations work (create, read, update, delete)
+- [ ] All soft-delete/restore flows work
+- [ ] Permission gates hide unauthorized features
+- [ ] Toast notifications appear for success/error actions
+- [ ] No console errors in browser DevTools
+- [ ] No raw translation keys visible anywhere
+- [ ] No horizontal scroll on any page at mobile width

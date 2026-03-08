@@ -1,8 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { UsersService } from './users.service';
 import { UsersRepository } from './users.repository';
+import { SubscriptionLimitsService } from '../subscriptions/subscription-limits.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PaginationDto } from '../../common/utils/pagination.dto';
@@ -62,6 +67,11 @@ const makeRepoMock = () => ({
   restore: jest.fn(),
 });
 
+const makeLimitsMock = () => ({
+  checkLimit: jest.fn().mockResolvedValue(undefined),
+  getUsage: jest.fn(),
+});
+
 // ---------------------------------------------------------------------------
 // Test suite
 // ---------------------------------------------------------------------------
@@ -69,12 +79,18 @@ const makeRepoMock = () => ({
 describe('UsersService', () => {
   let service: UsersService;
   let repo: ReturnType<typeof makeRepoMock>;
+  let limits: ReturnType<typeof makeLimitsMock>;
 
   beforeEach(async () => {
     repo = makeRepoMock();
+    limits = makeLimitsMock();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UsersService, { provide: UsersRepository, useValue: repo }],
+      providers: [
+        UsersService,
+        { provide: UsersRepository, useValue: repo },
+        { provide: SubscriptionLimitsService, useValue: limits },
+      ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
@@ -294,6 +310,38 @@ describe('UsersService', () => {
         roleId: 'role-uuid-001',
       });
     });
+
+    it('calls checkLimit before creating the user', async () => {
+      mockedArgon2.hash.mockResolvedValue(HASHED_PASSWORD);
+      repo.create.mockResolvedValue(makeUser());
+      const dto: CreateUserDto = {
+        email: 'jane@example.com',
+        password: 'plaintext123',
+        firstName: 'Jane',
+        lastName: 'Smith',
+      };
+
+      await service.create(TENANT_ID, dto);
+
+      expect(limits.checkLimit).toHaveBeenCalledWith(TENANT_ID, 'users');
+    });
+
+    it('throws ForbiddenException when subscription limit is reached on create', async () => {
+      limits.checkLimit.mockRejectedValue(
+        new ForbiddenException('Subscription limit reached'),
+      );
+      const dto: CreateUserDto = {
+        email: 'jane@example.com',
+        password: 'plaintext123',
+        firstName: 'Jane',
+        lastName: 'Smith',
+      };
+
+      await expect(service.create(TENANT_ID, dto)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(repo.create).not.toHaveBeenCalled();
+    });
   });
 
   // =========================================================================
@@ -455,6 +503,42 @@ describe('UsersService', () => {
 
       expect(repo.findByIdIncludeDeleted).toHaveBeenCalled();
       expect(repo.findById).not.toHaveBeenCalled();
+    });
+
+    it('calls checkLimit before restoring the user', async () => {
+      const deletedUser = makeUser({ deletedAt: new Date() });
+      repo.findByIdIncludeDeleted.mockResolvedValue(deletedUser);
+      repo.restore.mockResolvedValue(makeUser());
+
+      await service.restore(TENANT_ID, USER_ID);
+
+      expect(limits.checkLimit).toHaveBeenCalledWith(TENANT_ID, 'users');
+    });
+
+    it('throws ForbiddenException when subscription limit is reached', async () => {
+      const deletedUser = makeUser({ deletedAt: new Date() });
+      repo.findByIdIncludeDeleted.mockResolvedValue(deletedUser);
+      limits.checkLimit.mockRejectedValue(
+        new ForbiddenException('Subscription limit reached'),
+      );
+
+      await expect(service.restore(TENANT_ID, USER_ID)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('does not call repo.restore when limit check fails', async () => {
+      const deletedUser = makeUser({ deletedAt: new Date() });
+      repo.findByIdIncludeDeleted.mockResolvedValue(deletedUser);
+      limits.checkLimit.mockRejectedValue(
+        new ForbiddenException('Subscription limit reached'),
+      );
+
+      await expect(service.restore(TENANT_ID, USER_ID)).rejects.toThrow(
+        ForbiddenException,
+      );
+
+      expect(repo.restore).not.toHaveBeenCalled();
     });
   });
 });

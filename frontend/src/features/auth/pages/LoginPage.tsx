@@ -2,7 +2,13 @@ import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation } from 'react-router';
 import { LoginForm } from '../components/LoginForm';
 import { useAuthStore } from '@/shared/stores/auth.store';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/shared/ui/card';
 import { ThemeToggle } from '@/shared/components/ThemeToggle';
 import { LanguageSwitcher } from '@/shared/components/LanguageSwitcher';
 
@@ -10,7 +16,7 @@ export function LoginPage() {
   const { t } = useTranslation('auth');
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const location = useLocation();
-  const from = (location.state as { from?: string })?.from ?? '/';
+  const from = (location.state as { from?: string })?.from ?? '/dashboard';
 
   if (isAuthenticated) {
     return <Navigate to={from} replace />;

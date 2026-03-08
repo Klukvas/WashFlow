@@ -1,0 +1,97 @@
+{
+  "header": {
+    "signIn": "Sign In",
+    "getStarted": "Get Started",
+    "goToPlatform": "Go to Platform"
+  },
+  "hero": {
+    "title": "Car Wash Management Made Simple",
+    "subtitle": "Streamline your car wash operations with powerful tools for orders, clients, branches, and analytics. Start your free trial today.",
+    "cta": "Start Free Trial",
+    "secondaryCta": "Learn More"
+  },
+  "features": {
+    "title": "Everything You Need to Run Your Car Wash",
+    "subtitle": "Powerful tools designed specifically for car wash businesses",
+    "orders": {
+      "title": "Order Management",
+      "description": "Track orders from booking to completion. Manage scheduling, work posts, and service assignments with ease."
+    },
+    "clients": {
+      "title": "Client Database",
+      "description": "Build lasting relationships with a complete client and vehicle database. Track history, preferences, and contact info."
+    },
+    "branches": {
+      "title": "Multi-Branch Support",
+      "description": "Manage multiple locations from a single dashboard. Each branch has its own schedule, staff, and work posts."
+    },
+    "analytics": {
+      "title": "Analytics & Reports",
+      "description": "Make data-driven decisions with revenue reports, order trends, and performance metrics across all branches."
+    },
+    "team": {
+      "title": "Team Management",
+      "description": "Manage employees, roles, and permissions. Track workforce efficiency and schedule shifts across branches."
+    },
+    "booking": {
+      "title": "Online Booking",
+      "description": "Let customers book services online with a branded booking page. Configurable time slots and availability."
+    },
+    "scheduling": {
+      "title": "Smart Scheduling",
+      "description": "Automatic work post assignment, conflict prevention, and workforce capacity tracking. No double-bookings ever."
+    },
+    "roles": {
+      "title": "Roles & Permissions",
+      "description": "Fine-grained access control with 47 permissions across 14 modules. Each team member sees only what they need."
+    },
+    "audit": {
+      "title": "Audit Trail",
+      "description": "Full history of every action — who changed what and when. Stay compliant and resolve disputes with confidence."
+    }
+  },
+  "howItWorks": {
+    "title": "Up and Running in Minutes",
+    "subtitle": "Three simple steps to digitize your car wash",
+    "steps": {
+      "register": {
+        "step": "1",
+        "title": "Create an Account",
+        "description": "Sign up with your company name and email. Your workspace is ready instantly — no setup calls or demos required."
+      },
+      "configure": {
+        "step": "2",
+        "title": "Configure Your Business",
+        "description": "Add branches, work posts, services, and invite your team. Set working hours, prices, and booking rules."
+      },
+      "launch": {
+        "step": "3",
+        "title": "Start Taking Orders",
+        "description": "Accept bookings from your dashboard or share your public booking page with customers. Track everything in real time."
+      }
+    }
+  },
+  "stats": {
+    "title": "Built for Real Car Wash Operations",
+    "orders": "Orders Processed",
+    "branches": "Branches Managed",
+    "uptime": "Uptime",
+    "languages": "Languages"
+  },
+  "cta": {
+    "title": "Ready to Modernize Your Car Wash?",
+    "subtitle": "Join hundreds of car wash businesses already using WashFlow. Start your free 30-day trial — no credit card needed.",
+    "button": "Get Started for Free"
+  },
+  "pricing": {
+    "title": "Start Free, Scale When Ready",
+    "subtitle": "No credit card required. Get full access to all features during your 30-day trial.",
+    "trial": "30-Day Free Trial",
+    "trialDetails": "Up to {{users}} users, {{branches}} branches, {{workPosts}} work posts, and {{services}} services",
+    "cta": "Create Free Account",
+    "noCard": "No credit card required"
+  },
+  "footer": {
+    "copyright": "WashFlow. All rights reserved."
+  }
+}

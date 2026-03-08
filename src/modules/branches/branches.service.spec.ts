@@ -1,11 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { BranchesService } from './branches.service';
 import { BranchesRepository } from './branches.repository';
+import { SubscriptionLimitsService } from '../subscriptions/subscription-limits.service';
 
 describe('BranchesService', () => {
   let service: BranchesService;
   let repo: Record<string, jest.Mock>;
+  let limits: Record<string, jest.Mock>;
 
   const tenantId = 'tenant-1';
   const branchId = 'branch-1';
@@ -31,10 +37,16 @@ describe('BranchesService', () => {
       restore: jest.fn().mockResolvedValue(mockBranch),
     };
 
+    limits = {
+      checkLimit: jest.fn().mockResolvedValue(undefined),
+      getUsage: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BranchesService,
         { provide: BranchesRepository, useValue: repo },
+        { provide: SubscriptionLimitsService, useValue: limits },
       ],
     }).compile();
 
@@ -170,6 +182,25 @@ describe('BranchesService', () => {
       expect(repo.create).toHaveBeenCalledWith(tenantId, {
         name: 'Minimal Branch',
       });
+    });
+
+    it('should call checkLimit before creating the branch', async () => {
+      const dto = { name: 'New Branch' };
+      await service.create(tenantId, dto as any);
+
+      expect(limits.checkLimit).toHaveBeenCalledWith(tenantId, 'branches');
+    });
+
+    it('should throw ForbiddenException when subscription limit is reached on create', async () => {
+      limits.checkLimit.mockRejectedValue(
+        new ForbiddenException('Subscription limit reached'),
+      );
+      const dto = { name: 'New Branch' };
+
+      await expect(service.create(tenantId, dto as any)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(repo.create).not.toHaveBeenCalled();
     });
   });
 
@@ -336,6 +367,160 @@ describe('BranchesService', () => {
       );
 
       expect(repo.restore).not.toHaveBeenCalled();
+    });
+
+    it('should call checkLimit before restoring the branch', async () => {
+      repo.findByIdIncludeDeleted.mockResolvedValue({
+        ...mockBranch,
+        deletedAt: new Date('2026-01-01'),
+      });
+
+      await service.restore(tenantId, branchId);
+
+      expect(limits.checkLimit).toHaveBeenCalledWith(tenantId, 'branches');
+    });
+
+    it('should throw ForbiddenException when subscription limit is reached', async () => {
+      repo.findByIdIncludeDeleted.mockResolvedValue({
+        ...mockBranch,
+        deletedAt: new Date('2026-01-01'),
+      });
+      limits.checkLimit.mockRejectedValue(
+        new ForbiddenException('Subscription limit reached'),
+      );
+
+      await expect(service.restore(tenantId, branchId)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('should not call repo.restore when limit check fails', async () => {
+      repo.findByIdIncludeDeleted.mockResolvedValue({
+        ...mockBranch,
+        deletedAt: new Date('2026-01-01'),
+      });
+      limits.checkLimit.mockRejectedValue(
+        new ForbiddenException('Subscription limit reached'),
+      );
+
+      await expect(service.restore(tenantId, branchId)).rejects.toThrow(
+        ForbiddenException,
+      );
+
+      expect(repo.restore).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getBookingSettings', () => {
+    beforeEach(() => {
+      repo.getBookingSettings = jest.fn().mockResolvedValue({
+        slotDurationMinutes: 30,
+        bufferTimeMinutes: 10,
+        workingDays: [1, 2, 3, 4, 5],
+      });
+    });
+
+    it('should verify the branch exists before fetching settings', async () => {
+      await service.getBookingSettings(tenantId, branchId);
+
+      expect(repo.findById).toHaveBeenCalledWith(tenantId, branchId, null);
+    });
+
+    it('should return booking settings from repo', async () => {
+      const result = await service.getBookingSettings(tenantId, branchId);
+
+      expect(result).toEqual({
+        slotDurationMinutes: 30,
+        bufferTimeMinutes: 10,
+        workingDays: [1, 2, 3, 4, 5],
+      });
+    });
+
+    it('should call repo.getBookingSettings with tenantId and branchId', async () => {
+      await service.getBookingSettings(tenantId, branchId);
+
+      expect(repo.getBookingSettings).toHaveBeenCalledWith(tenantId, branchId);
+    });
+
+    it('should throw NotFoundException when branch does not exist', async () => {
+      repo.findById.mockResolvedValue(null);
+
+      await expect(
+        service.getBookingSettings(tenantId, branchId),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should not call repo.getBookingSettings when branch is not found', async () => {
+      repo.findById.mockResolvedValue(null);
+
+      await expect(
+        service.getBookingSettings(tenantId, branchId),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(repo.getBookingSettings).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateBookingSettings', () => {
+    const dto = {
+      slotDurationMinutes: 45,
+      bufferTimeMinutes: 15,
+      workingDays: [1, 2, 3, 4, 5],
+    };
+
+    beforeEach(() => {
+      repo.upsertBookingSettings = jest.fn().mockResolvedValue({
+        ...dto,
+        branchId,
+        tenantId,
+      });
+    });
+
+    it('should verify the branch exists before upserting settings', async () => {
+      await service.updateBookingSettings(tenantId, branchId, dto as any);
+
+      expect(repo.findById).toHaveBeenCalledWith(tenantId, branchId, null);
+    });
+
+    it('should return the upserted settings from repo', async () => {
+      const result = await service.updateBookingSettings(
+        tenantId,
+        branchId,
+        dto as any,
+      );
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          slotDurationMinutes: 45,
+          bufferTimeMinutes: 15,
+        }),
+      );
+    });
+
+    it('should call upsertBookingSettings with spread copy of dto', async () => {
+      await service.updateBookingSettings(tenantId, branchId, dto as any);
+
+      const [, , passedData] = repo.upsertBookingSettings.mock.calls[0];
+      expect(passedData).not.toBe(dto);
+      expect(passedData).toEqual(dto);
+    });
+
+    it('should throw NotFoundException when branch does not exist', async () => {
+      repo.findById.mockResolvedValue(null);
+
+      await expect(
+        service.updateBookingSettings(tenantId, branchId, dto as any),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should not call upsertBookingSettings when branch is not found', async () => {
+      repo.findById.mockResolvedValue(null);
+
+      await expect(
+        service.updateBookingSettings(tenantId, branchId, dto as any),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(repo.upsertBookingSettings).not.toHaveBeenCalled();
     });
   });
 });

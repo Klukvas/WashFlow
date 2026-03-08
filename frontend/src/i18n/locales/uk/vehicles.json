@@ -9,5 +9,7 @@
   "make": "Марка",
   "makeRequired": "Марка *",
   "model": "Модель",
-  "color": "Колір"
+  "color": "Колір",
+  "vehicleDetails": "Дані автомобіля",
+  "owner": "Власник"
 }

@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Trash2, RotateCcw } from 'lucide-react';
@@ -38,7 +39,10 @@ const vehicleSchema = z.object({
   make: z.string().min(1, 'Make is required'),
   model: z.string().optional(),
   color: z.string().optional(),
-  year: z.number().int().min(1900).max(2100).optional(),
+  year: z.preprocess(
+    (v) => (v === '' || v === undefined || v === null ? undefined : Number(v)),
+    z.number().int().min(1900).max(2100).optional(),
+  ),
 });
 
 type VehicleFormData = z.infer<typeof vehicleSchema>;
@@ -46,6 +50,7 @@ type VehicleFormData = z.infer<typeof vehicleSchema>;
 export function VehiclesPage() {
   const { t } = useTranslation('vehicles');
   const { t: tc } = useTranslation('common');
+  const navigate = useNavigate();
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
@@ -69,7 +74,7 @@ export function VehiclesPage() {
     () =>
       (clientsData?.items ?? []).map((c) => ({
         value: c.id,
-        label: `${c.firstName} ${c.lastName}`,
+        label: [c.firstName, c.lastName].filter(Boolean).join(' '),
         sublabel: c.phone ?? undefined,
       })),
     [clientsData],
@@ -112,7 +117,9 @@ export function VehiclesPage() {
         key: 'client',
         header: t('client'),
         render: (v) =>
-          v.client ? `${v.client.firstName} ${v.client.lastName}` : '—',
+          v.client
+            ? [v.client.firstName, v.client.lastName].filter(Boolean).join(' ')
+            : '—',
       },
       {
         key: 'status',
@@ -204,6 +211,7 @@ export function VehiclesPage() {
         total={data?.meta.total ?? 0}
         limit={20}
         onPageChange={setPage}
+        onRowClick={(v) => navigate(`/vehicles/${v.id}`)}
       />
 
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)}>
@@ -250,7 +258,11 @@ export function VehiclesPage() {
             </div>
             <div>
               <Label>{t('year')}</Label>
-              <Input type="number" {...register('year')} />
+              <Input
+                type="number"
+                {...register('year')}
+                error={errors.year?.message}
+              />
             </div>
           </div>
           <DialogFooter>

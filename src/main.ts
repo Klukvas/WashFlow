@@ -24,6 +24,7 @@ async function bootstrap() {
   const nodeEnv = config.get<string>('nodeEnv', 'development');
   if (nodeEnv === 'production' && corsOrigins === '*') {
     logger.error('CORS_ORIGINS must not be "*" in production. Exiting.');
+    app.flushLogs();
     process.exit(1);
   }
   app.enableCors({

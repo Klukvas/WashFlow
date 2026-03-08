@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { TenantsService } from './tenants.service';
 import { TenantsRepository } from './tenants.repository';
+import { PrismaService } from '../../prisma/prisma.service';
+import { TRIAL_DEFAULTS } from '../subscriptions/trial.constants';
 
 const makeTenant = (overrides: Record<string, unknown> = {}) => ({
   id: 'tenant-1',
@@ -39,6 +41,9 @@ describe('TenantsService', () => {
     update: jest.Mock;
     getBookingSettings: jest.Mock;
   };
+  let prisma: {
+    $transaction: jest.Mock;
+  };
 
   beforeEach(async () => {
     tenantsRepo = {
@@ -50,10 +55,15 @@ describe('TenantsService', () => {
       getBookingSettings: jest.fn(),
     };
 
+    prisma = {
+      $transaction: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TenantsService,
         { provide: TenantsRepository, useValue: tenantsRepo },
+        { provide: PrismaService, useValue: prisma },
       ],
     }).compile();
 
@@ -196,34 +206,62 @@ describe('TenantsService', () => {
   // ─── create ───────────────────────────────────────────────────────────────
 
   describe('create', () => {
-    it('creates and returns a new tenant when the slug is available', async () => {
-      const dto = makeCreateDto();
-      const created = makeTenant();
-      tenantsRepo.findBySlug.mockResolvedValue(null);
-      tenantsRepo.create.mockResolvedValue(created);
+    const tenantCreated = makeTenant();
 
-      const result = await service.create(dto as any);
-
-      expect(result).toEqual(created);
+    beforeEach(() => {
+      // $transaction executes the callback with a mock tx client
+      prisma.$transaction.mockImplementation(async (cb: Function) => {
+        const tx = {
+          tenant: {
+            create: jest.fn().mockResolvedValue(tenantCreated),
+          },
+          subscription: {
+            create: jest.fn().mockResolvedValue({}),
+          },
+        };
+        return cb(tx);
+      });
     });
 
-    it('calls the repository create with name and slug from the DTO', async () => {
+    it('creates and returns a new tenant when the slug is available', async () => {
+      tenantsRepo.findBySlug.mockResolvedValue(null);
+
+      const result = await service.create(makeCreateDto() as any);
+
+      expect(result).toEqual(tenantCreated);
+    });
+
+    it('uses a transaction for atomic tenant + subscription creation', async () => {
+      tenantsRepo.findBySlug.mockResolvedValue(null);
+
+      await service.create(makeCreateDto() as any);
+
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('creates tenant with name and slug inside the transaction', async () => {
       const dto = makeCreateDto();
       tenantsRepo.findBySlug.mockResolvedValue(null);
-      tenantsRepo.create.mockResolvedValue(makeTenant());
+
+      let capturedTx: any;
+      prisma.$transaction.mockImplementation(async (cb: Function) => {
+        capturedTx = {
+          tenant: { create: jest.fn().mockResolvedValue(tenantCreated) },
+          subscription: { create: jest.fn().mockResolvedValue({}) },
+        };
+        return cb(capturedTx);
+      });
 
       await service.create(dto as any);
 
-      expect(tenantsRepo.create).toHaveBeenCalledWith({
-        name: dto.name,
-        slug: dto.slug,
+      expect(capturedTx.tenant.create).toHaveBeenCalledWith({
+        data: { name: dto.name, slug: dto.slug },
       });
     });
 
     it('checks slug uniqueness before creating', async () => {
       const dto = makeCreateDto();
       tenantsRepo.findBySlug.mockResolvedValue(null);
-      tenantsRepo.create.mockResolvedValue(makeTenant());
 
       await service.create(dto as any);
 
@@ -231,10 +269,9 @@ describe('TenantsService', () => {
     });
 
     it('throws ConflictException when the slug is already taken', async () => {
-      const dto = makeCreateDto();
       tenantsRepo.findBySlug.mockResolvedValue(makeTenant());
 
-      await expect(service.create(dto as any)).rejects.toThrow(
+      await expect(service.create(makeCreateDto() as any)).rejects.toThrow(
         ConflictException,
       );
     });
@@ -247,22 +284,72 @@ describe('TenantsService', () => {
       );
     });
 
-    it('does not call repository create when the slug is already taken', async () => {
+    it('does not start transaction when the slug is already taken', async () => {
       tenantsRepo.findBySlug.mockResolvedValue(makeTenant());
 
       await expect(service.create(makeCreateDto() as any)).rejects.toThrow(
         ConflictException,
       );
 
-      expect(tenantsRepo.create).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
-    it('propagates repository create errors', async () => {
+    it('auto-provisions a trial subscription with TRIAL_DEFAULTS', async () => {
       tenantsRepo.findBySlug.mockResolvedValue(null);
-      tenantsRepo.create.mockRejectedValue(new Error('Insert failed'));
+
+      let capturedTx: any;
+      prisma.$transaction.mockImplementation(async (cb: Function) => {
+        capturedTx = {
+          tenant: { create: jest.fn().mockResolvedValue(tenantCreated) },
+          subscription: { create: jest.fn().mockResolvedValue({}) },
+        };
+        return cb(capturedTx);
+      });
+
+      await service.create(makeCreateDto() as any);
+
+      expect(capturedTx.subscription.create).toHaveBeenCalledTimes(1);
+      const createArg = capturedTx.subscription.create.mock.calls[0][0];
+      expect(createArg.data.tenantId).toBe('tenant-1');
+      expect(createArg.data.maxUsers).toBe(TRIAL_DEFAULTS.maxUsers);
+      expect(createArg.data.maxBranches).toBe(TRIAL_DEFAULTS.maxBranches);
+      expect(createArg.data.maxWorkPosts).toBe(TRIAL_DEFAULTS.maxWorkPosts);
+      expect(createArg.data.maxServices).toBe(TRIAL_DEFAULTS.maxServices);
+      expect(createArg.data.isTrial).toBe(true);
+      expect(createArg.data.trialEndsAt).toBeInstanceOf(Date);
+    });
+
+    it('sets trial end date to approximately 14 days from now', async () => {
+      tenantsRepo.findBySlug.mockResolvedValue(null);
+
+      let capturedTx: any;
+      prisma.$transaction.mockImplementation(async (cb: Function) => {
+        capturedTx = {
+          tenant: { create: jest.fn().mockResolvedValue(tenantCreated) },
+          subscription: { create: jest.fn().mockResolvedValue({}) },
+        };
+        return cb(capturedTx);
+      });
+
+      const before = Date.now();
+      await service.create(makeCreateDto() as any);
+      const after = Date.now();
+
+      const createArg = capturedTx.subscription.create.mock.calls[0][0];
+      const trialEnd = createArg.data.trialEndsAt.getTime();
+      const expectedDuration =
+        TRIAL_DEFAULTS.durationDays * 24 * 60 * 60 * 1000;
+
+      expect(trialEnd).toBeGreaterThanOrEqual(before + expectedDuration);
+      expect(trialEnd).toBeLessThanOrEqual(after + expectedDuration);
+    });
+
+    it('propagates transaction errors', async () => {
+      tenantsRepo.findBySlug.mockResolvedValue(null);
+      prisma.$transaction.mockRejectedValue(new Error('DB error'));
 
       await expect(service.create(makeCreateDto() as any)).rejects.toThrow(
-        'Insert failed',
+        'DB error',
       );
     });
   });
@@ -289,14 +376,16 @@ describe('TenantsService', () => {
       expect(tenantsRepo.findById).toHaveBeenCalledWith('tenant-1');
     });
 
-    it('passes the id and DTO to the repository update', async () => {
+    it('spreads the dto to avoid mutation', async () => {
       const dto = makeUpdateDto();
       tenantsRepo.findById.mockResolvedValue(makeTenant());
       tenantsRepo.update.mockResolvedValue(makeTenant());
 
       await service.update('tenant-1', dto as any);
 
-      expect(tenantsRepo.update).toHaveBeenCalledWith('tenant-1', dto);
+      const [, passedDto] = tenantsRepo.update.mock.calls[0];
+      expect(passedDto).not.toBe(dto);
+      expect(passedDto).toEqual(dto);
     });
 
     it('throws NotFoundException when the tenant does not exist', async () => {

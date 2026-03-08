@@ -55,4 +55,19 @@ export class WorkPostsRepository {
       include: { branch: true },
     });
   }
+
+  async softDelete(tenantId: string, id: string) {
+    return this.db(tenantId).workPost.update({
+      where: { id } as Prisma.WorkPostWhereUniqueInput,
+      data: { deletedAt: new Date() },
+    });
+  }
+
+  async restore(tenantId: string, id: string) {
+    return this.db(tenantId).workPost.update({
+      where: { id, _includeDeleted: true } as Prisma.WorkPostWhereUniqueInput,
+      data: { deletedAt: null },
+      include: { branch: true },
+    });
+  }
 }

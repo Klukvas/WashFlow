@@ -72,6 +72,7 @@ model Tenant {
   bookingSettings  BookingSettings[]
   employeeProfiles EmployeeProfile[]
   orderServices    OrderService[]
+  subscription     Subscription?
 
   @@map("tenants")
 }
@@ -128,18 +129,19 @@ model User {
   lastName     String
   phone        String?
   isActive     Boolean   @default(true)
-  isSuperAdmin Boolean   @default(false)
-  roleId       String?
-  role         Role?     @relation(fields: [roleId], references: [id])
-  createdAt    DateTime  @default(now()) @db.Timestamptz
-  updatedAt    DateTime  @updatedAt @db.Timestamptz
-  deletedAt    DateTime? @db.Timestamptz
+  isSuperAdmin  Boolean   @default(false)
+  tokenVersion  Int       @default(0)
+  roleId        String?
+  role          Role?     @relation(fields: [roleId], references: [id])
+  createdAt     DateTime  @default(now()) @db.Timestamptz
+  updatedAt     DateTime  @updatedAt @db.Timestamptz
+  deletedAt     DateTime? @db.Timestamptz
 
   auditLogs       AuditLog[]
   orders          Order[]    @relation("OrderCreatedBy")
   employeeProfile EmployeeProfile?
 
-  @@unique([tenantId, email])
+  @@unique([email])
   @@index([tenantId])
   @@index([tenantId, branchId])
   @@index([tenantId, roleId])
@@ -406,4 +408,24 @@ model EmployeeProfile {
   @@index([tenantId])
   @@index([tenantId, branchId])
   @@map("employee_profiles")
+}
+
+model Subscription {
+  id                   String    @id @default(uuid())
+  tenantId             String    @unique
+  tenant               Tenant    @relation(fields: [tenantId], references: [id])
+  maxUsers             Int       @default(5)
+  maxBranches          Int       @default(2)
+  maxWorkPosts         Int       @default(5)
+  maxServices          Int       @default(20)
+  isTrial              Boolean   @default(false)
+  trialEndsAt          DateTime? @db.Timestamptz
+  paddleSubscriptionId String?
+  paddleCustomerId     String?
+  paddleStatus         String?
+  currentPeriodEnd     DateTime? @db.Timestamptz
+  createdAt            DateTime  @default(now()) @db.Timestamptz
+  updatedAt            DateTime  @updatedAt @db.Timestamptz
+
+  @@map("subscriptions")
 }

@@ -9,5 +9,7 @@
   "make": "Make",
   "makeRequired": "Make *",
   "model": "Model",
-  "color": "Color"
+  "color": "Color",
+  "vehicleDetails": "Vehicle Details",
+  "owner": "Owner"
 }

@@ -8,9 +8,8 @@ import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 
 const loginSchema = z.object({
-  tenantId: z.string().uuid(),
   email: z.string().email(),
-  password: z.string().min(6),
+  password: z.string().min(8),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -31,16 +30,6 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="tenantId">{t('login.tenantId')}</Label>
-        <Input
-          id="tenantId"
-          placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-          error={errors.tenantId?.message}
-          {...register('tenantId')}
-        />
-      </div>
-
       <div className="space-y-2">
         <Label htmlFor="email">{t('login.email')}</Label>
         <Input

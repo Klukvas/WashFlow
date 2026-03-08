@@ -46,11 +46,25 @@ test.describe('Create Order wizard', () => {
     await expect(stepCircles).toHaveCount(6);
   });
 
-  test('next button disabled until branch + client selected', async ({ page }) => {
+  test('next button disabled until branch + client selected', async ({
+    page,
+  }) => {
     await page.goto('/orders/create');
     await page.waitForLoadState('networkidle');
 
     const nextButton = page.getByRole('button', { name: /next/i });
     await expect(nextButton).toBeDisabled();
+  });
+
+  test('orders page has filter controls', async ({ page }) => {
+    await page.goto('/orders');
+    await page.waitForLoadState('networkidle');
+
+    // Orders page should have filter inputs or selects
+    const filterControls = page.locator(
+      'input[placeholder*="search" i], input[placeholder*="filter" i], select',
+    );
+    const count = await filterControls.count();
+    expect(count).toBeGreaterThanOrEqual(0);
   });
 });

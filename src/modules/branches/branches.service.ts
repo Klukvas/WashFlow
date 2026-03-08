@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { BranchesRepository } from './branches.repository';
+import { SubscriptionLimitsService } from '../subscriptions/subscription-limits.service';
 import { CreateBranchDto } from './dto/create-branch.dto';
 import { UpdateBranchDto } from './dto/update-branch.dto';
 import { UpdateBookingSettingsDto } from './dto/booking-settings.dto';
@@ -12,7 +13,10 @@ import { paginatedResponse } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class BranchesService {
-  constructor(private readonly branchesRepo: BranchesRepository) {}
+  constructor(
+    private readonly branchesRepo: BranchesRepository,
+    private readonly limits: SubscriptionLimitsService,
+  ) {}
 
   async findAll(
     tenantId: string,
@@ -34,6 +38,7 @@ export class BranchesService {
   }
 
   async create(tenantId: string, dto: CreateBranchDto) {
+    await this.limits.checkLimit(tenantId, 'branches');
     return this.branchesRepo.create(tenantId, { ...dto });
   }
 
@@ -52,6 +57,7 @@ export class BranchesService {
     if (!branch) throw new NotFoundException('Branch not found');
     if (!branch.deletedAt)
       throw new BadRequestException('Branch is not deleted');
+    await this.limits.checkLimit(tenantId, 'branches');
     return this.branchesRepo.restore(tenantId, id);
   }
 

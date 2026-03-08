@@ -1,11 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ServicesService } from './services.service';
 import { ServicesRepository } from './services.repository';
+import { SubscriptionLimitsService } from '../subscriptions/subscription-limits.service';
 
 describe('ServicesService', () => {
   let service: ServicesService;
   let repo: Record<string, jest.Mock>;
+  let limits: Record<string, jest.Mock>;
 
   const tenantId = 'tenant-1';
   const serviceId = 'service-1';
@@ -33,10 +39,15 @@ describe('ServicesService', () => {
       restore: jest.fn().mockResolvedValue(mockService),
     };
 
+    limits = {
+      checkLimit: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ServicesService,
         { provide: ServicesRepository, useValue: repo },
+        { provide: SubscriptionLimitsService, useValue: limits },
       ],
     }).compile();
 
@@ -116,6 +127,34 @@ describe('ServicesService', () => {
   });
 
   describe('create', () => {
+    it('should check subscription limit before creating', async () => {
+      const dto = {
+        name: 'Car Wash',
+        durationMin: 30,
+        price: 15.99,
+      };
+      await service.create(tenantId, dto as any);
+      expect(limits.checkLimit).toHaveBeenCalledWith(tenantId, 'services');
+      expect(repo.create).toHaveBeenCalledWith(tenantId, { ...dto });
+    });
+
+    it('should throw ForbiddenException when services limit reached', async () => {
+      limits.checkLimit.mockRejectedValue(
+        new ForbiddenException(
+          'Subscription limit reached: maximum 20 services allowed',
+        ),
+      );
+
+      await expect(
+        service.create(tenantId, {
+          name: 'Test',
+          durationMin: 30,
+          price: 10,
+        } as any),
+      ).rejects.toThrow(ForbiddenException);
+      expect(repo.create).not.toHaveBeenCalled();
+    });
+
     it('should create a service and return the result', async () => {
       const dto = {
         name: 'Car Wash',
@@ -284,6 +323,32 @@ describe('ServicesService', () => {
       repo.findByIdIncludeDeleted.mockResolvedValue(mockService);
       await expect(service.restore(tenantId, serviceId)).rejects.toThrow(
         BadRequestException,
+      );
+      expect(repo.restore).not.toHaveBeenCalled();
+    });
+
+    it('should check subscription limit before restoring', async () => {
+      repo.findByIdIncludeDeleted.mockResolvedValue({
+        ...mockService,
+        deletedAt: new Date(),
+      });
+      await service.restore(tenantId, serviceId);
+      expect(limits.checkLimit).toHaveBeenCalledWith(tenantId, 'services');
+    });
+
+    it('should throw ForbiddenException when services limit reached on restore', async () => {
+      repo.findByIdIncludeDeleted.mockResolvedValue({
+        ...mockService,
+        deletedAt: new Date(),
+      });
+      limits.checkLimit.mockRejectedValue(
+        new ForbiddenException(
+          'Subscription limit reached: maximum 20 services allowed',
+        ),
+      );
+
+      await expect(service.restore(tenantId, serviceId)).rejects.toThrow(
+        ForbiddenException,
       );
       expect(repo.restore).not.toHaveBeenCalled();
     });

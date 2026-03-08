@@ -4,6 +4,7 @@ import {
   OnModuleDestroy,
   Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
@@ -14,14 +15,14 @@ export class PrismaService
 {
   private readonly logger = new Logger(PrismaService.name);
 
-  constructor() {
+  constructor(config: ConfigService) {
     const adapter = new PrismaPg({
-      connectionString: process.env.DATABASE_URL!,
+      connectionString: config.get<string>('database.url')!,
     });
     super({
       adapter,
       log:
-        process.env.NODE_ENV === 'development'
+        config.get<string>('nodeEnv') === 'development'
           ? ['info', 'warn', 'error']
           : ['error'],
     });

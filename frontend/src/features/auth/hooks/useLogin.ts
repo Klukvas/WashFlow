@@ -11,8 +11,8 @@ export function useLogin() {
   return useMutation({
     mutationFn: (data: LoginRequest) => login(data),
     onSuccess: (data) => {
-      setAuth(data.accessToken, data.refreshToken, data.user);
-      navigate('/', { replace: true });
+      setAuth(data.accessToken, data.user);
+      navigate('/dashboard', { replace: true });
     },
   });
 }

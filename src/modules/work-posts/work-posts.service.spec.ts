@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { WorkPostsService } from './work-posts.service';
 import { WorkPostsRepository } from './work-posts.repository';
+import { SubscriptionLimitsService } from '../subscriptions/subscription-limits.service';
 
 describe('WorkPostsService', () => {
   let service: WorkPostsService;
@@ -31,6 +32,13 @@ describe('WorkPostsService', () => {
       providers: [
         WorkPostsService,
         { provide: WorkPostsRepository, useValue: repo },
+        {
+          provide: SubscriptionLimitsService,
+          useValue: {
+            checkLimit: jest.fn().mockResolvedValue(undefined),
+            getUsage: jest.fn(),
+          },
+        },
       ],
     }).compile();
 

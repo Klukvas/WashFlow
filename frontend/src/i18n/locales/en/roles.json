@@ -1,0 +1,15 @@
+{
+  "title": "Roles",
+  "createRole": "Create Role",
+  "editRole": "Edit Role",
+  "emptyState": "No roles found",
+  "fields": {
+    "name": "Name",
+    "description": "Description",
+    "permissionsCount": "Permissions"
+  },
+  "placeholders": {
+    "name": "Role name",
+    "description": "Role description (optional)"
+  }
+}

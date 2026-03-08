@@ -70,11 +70,6 @@ export function WorkPostsPage() {
         header: t('name'),
         render: (wp) => <span className="font-medium">{wp.name}</span>,
       },
-      {
-        key: 'branch',
-        header: t('branch'),
-        render: (wp) => wp.branch?.name ?? '—',
-      },
     ],
     [t],
   );

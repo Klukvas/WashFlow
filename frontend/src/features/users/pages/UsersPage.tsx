@@ -19,6 +19,7 @@ import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { Dialog, DialogHeader, DialogTitle } from '@/shared/ui/dialog';
 import { Button } from '@/shared/ui/button';
 import { PERMISSIONS } from '@/shared/constants/permissions';
+import { useAuthStore } from '@/shared/stores/auth.store';
 import type { User } from '@/shared/types/models';
 import type {
   UserQueryParams,
@@ -29,6 +30,7 @@ import type {
 export function UsersPage() {
   const { t } = useTranslation('common');
   const { t: tAuth } = useTranslation('auth');
+  const { user: currentUser } = useAuthStore();
 
   const [params, setParams] = useState<UserQueryParams>({
     page: 1,
@@ -186,15 +188,17 @@ export function UsersPage() {
                     <Edit className="h-4 w-4" />
                   </Button>
                 </PermissionGate>
-                <PermissionGate permission={PERMISSIONS.USERS.DELETE}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setDeleteTarget(user)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </PermissionGate>
+                {user.id !== currentUser?.id && (
+                  <PermissionGate permission={PERMISSIONS.USERS.DELETE}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setDeleteTarget(user)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </PermissionGate>
+                )}
               </>
             )}
           </div>

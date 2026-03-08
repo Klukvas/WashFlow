@@ -11,6 +11,7 @@ import configuration from './config/configuration';
 import { PrismaModule } from './prisma/prisma.module';
 import { EventsModule } from './common/events/events.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { TenantGuard } from './common/guards/tenant.guard';
 import { AuthModule } from './modules/auth/auth.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { UsersModule } from './modules/users/users.module';
@@ -30,6 +31,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { PublicBookingModule } from './modules/public-booking/public-booking.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { JobsModule } from './modules/jobs/jobs.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { CleanupModule } from './modules/cleanup/cleanup.module';
 import { HealthModule } from './modules/health/health.module';
 
@@ -106,6 +108,7 @@ import { HealthModule } from './modules/health/health.module';
     VehiclesModule,
     ServicesModule,
     WorkPostsModule,
+    SubscriptionsModule,
     WorkforceModule,
     OrdersModule,
     SchedulingModule,
@@ -128,6 +131,12 @@ import { HealthModule } from './modules/health/health.module';
     {
       provide: APP_GUARD,
       useClass: CustomThrottlerGuard,
+    },
+    // Apply TenantGuard globally — enforces tenantId isolation; superAdmin can
+    // override via x-tenant-id header
+    {
+      provide: APP_GUARD,
+      useClass: TenantGuard,
     },
   ],
 })

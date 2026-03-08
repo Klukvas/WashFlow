@@ -1,13 +1,19 @@
 export interface LoginRequest {
-  tenantId: string;
   email: string;
   password: string;
 }
 
 export interface AuthResponse {
   accessToken: string;
-  refreshToken: string;
   user: AuthUser;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  companyName: string;
 }
 
 export interface AuthUser {
@@ -18,10 +24,6 @@ export interface AuthUser {
   tenantId: string;
   branchId: string | null;
   isSuperAdmin: boolean;
-}
-
-export interface RefreshRequest {
-  refreshToken: string;
 }
 
 export interface JwtPayload {

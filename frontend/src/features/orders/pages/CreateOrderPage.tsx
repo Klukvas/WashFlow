@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowLeft, Check, Plus } from 'lucide-react';
 import { useCreateOrder, useAvailability } from '../hooks/useOrders';
+import { useBranchBookingSettings } from '@/features/branches/hooks/useBranches';
 import { useCreateClient } from '@/features/clients/hooks/useClients';
 import { useCreateVehicle } from '@/features/vehicles/hooks/useVehicles';
 import {
@@ -50,7 +51,10 @@ const vehicleSchema = z.object({
   licensePlate: z.string().optional().or(z.literal('')),
   model: z.string().optional().or(z.literal('')),
   color: z.string().optional().or(z.literal('')),
-  year: z.coerce.number().int().min(1900).max(2100).optional(),
+  year: z.preprocess(
+    (v) => (v === '' || v === undefined || v === null ? undefined : Number(v)),
+    z.number().int().min(1900).max(2100).optional(),
+  ),
 });
 
 type VehicleFormValues = z.infer<typeof vehicleSchema>;
@@ -203,6 +207,16 @@ export function CreateOrderPage() {
     .reduce((sum, s) => sum + Number(s.price), 0);
 
   const assignedEmployeeId = watch('assignedEmployeeId');
+
+  const { data: branchBookingSettings } = useBranchBookingSettings(
+    branchId ?? '',
+  );
+
+  const isDayOff = (() => {
+    if (!selectedDate || !branchBookingSettings?.workingDays) return false;
+    const dayOfWeek = new Date(selectedDate + 'T12:00:00').getDay();
+    return !branchBookingSettings.workingDays.includes(dayOfWeek);
+  })();
 
   const { data: slots } = useAvailability({
     branchId,
@@ -395,12 +409,12 @@ export function CreateOrderPage() {
                           shouldDirty: true,
                         });
                         setClientSearch(
-                          `${c.firstName} ${c.lastName ?? ''}`.trim(),
+                          [c.firstName, c.lastName].filter(Boolean).join(' '),
                         );
                       }}
                     >
                       <span className="font-medium">
-                        {c.firstName} {c.lastName}
+                        {[c.firstName, c.lastName].filter(Boolean).join(' ')}
                       </span>
                       <span className="text-sm text-muted-foreground">
                         {c.phone}
@@ -658,7 +672,16 @@ export function CreateOrderPage() {
                   />
                 </div>
               )}
-              {selectedDate && (
+              {selectedDate && isDayOff && (
+                <div className="rounded-md border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-warning-foreground">
+                  {t('creation.branchClosed', {
+                    defaultValue:
+                      'This branch is closed on the selected day. Please choose a different date.',
+                  })}
+                </div>
+              )}
+
+              {selectedDate && !isDayOff && (
                 <div>
                   <p className="mb-2 text-sm font-medium">
                     {t('creation.availableSlots')}
@@ -703,7 +726,7 @@ export function CreateOrderPage() {
                 </Button>
                 <Button
                   onClick={() => setStep(5)}
-                  disabled={!watch('scheduledStart')}
+                  disabled={!watch('scheduledStart') || isDayOff}
                 >
                   {tc('actions.next')}
                 </Button>

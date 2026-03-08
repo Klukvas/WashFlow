@@ -1,0 +1,15 @@
+{
+  "title": "Ролі",
+  "createRole": "Створити роль",
+  "editRole": "Редагувати роль",
+  "emptyState": "Ролі не знайдено",
+  "fields": {
+    "name": "Назва",
+    "description": "Опис",
+    "permissionsCount": "Дозволи"
+  },
+  "placeholders": {
+    "name": "Назва ролі",
+    "description": "Опис ролі (необов'язково)"
+  }
+}

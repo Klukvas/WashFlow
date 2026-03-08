@@ -459,6 +459,7 @@ export class OrdersService {
         branchId,
         isWorker: true,
         active: true,
+        deletedAt: null,
         workStartTime: { lte: startHH },
         workEndTime: { gte: endHH },
         user: { deletedAt: null },

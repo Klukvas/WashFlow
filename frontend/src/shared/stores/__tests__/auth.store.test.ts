@@ -23,7 +23,6 @@ describe('auth.store', () => {
     localStorage.clear();
     useAuthStore.setState({
       accessToken: null,
-      refreshToken: null,
       user: null,
       permissions: [],
       isAuthenticated: false,
@@ -37,22 +36,28 @@ describe('auth.store', () => {
     expect(state.accessToken).toBeNull();
   });
 
-  it('setAuth stores tokens, user, and decodes permissions', () => {
+  it('setAuth stores token, user, and decodes permissions', () => {
     const token = makeJwt({ permissions: ['orders.read', 'orders.create'] });
-    useAuthStore.getState().setAuth(token, 'refresh-tok', mockUser);
+    useAuthStore.getState().setAuth(token, mockUser);
 
     const state = useAuthStore.getState();
     expect(state.isAuthenticated).toBe(true);
     expect(state.accessToken).toBe(token);
-    expect(state.refreshToken).toBe('refresh-tok');
     expect(state.user).toEqual(mockUser);
     expect(state.permissions).toEqual(['orders.read', 'orders.create']);
-    expect(localStorage.getItem('refreshToken')).toBe('refresh-tok');
+  });
+
+  it('setAuth persists to localStorage', () => {
+    const token = makeJwt({ permissions: ['orders.read'] });
+    useAuthStore.getState().setAuth(token, mockUser);
+
+    expect(localStorage.getItem('accessToken')).toBe(token);
+    expect(localStorage.getItem('user')).toBe(JSON.stringify(mockUser));
   });
 
   it('setAuth handles token without permissions gracefully', () => {
     const token = makeJwt({ sub: '1' });
-    useAuthStore.getState().setAuth(token, 'refresh-tok', mockUser);
+    useAuthStore.getState().setAuth(token, mockUser);
 
     const state = useAuthStore.getState();
     expect(state.permissions).toEqual([]);
@@ -60,25 +65,25 @@ describe('auth.store', () => {
   });
 
   it('setAuth handles malformed token gracefully', () => {
-    useAuthStore.getState().setAuth('bad-token', 'refresh-tok', mockUser);
+    useAuthStore.getState().setAuth('bad-token', mockUser);
 
     const state = useAuthStore.getState();
     expect(state.permissions).toEqual([]);
     expect(state.isAuthenticated).toBe(true);
   });
 
-  it('logout clears state and localStorage', () => {
+  it('logout clears state and localStorage', async () => {
     const token = makeJwt({ permissions: ['orders.read'] });
-    useAuthStore.getState().setAuth(token, 'refresh-tok', mockUser);
-    useAuthStore.getState().logout();
+    useAuthStore.getState().setAuth(token, mockUser);
+    await useAuthStore.getState().logout();
 
     const state = useAuthStore.getState();
     expect(state.isAuthenticated).toBe(false);
     expect(state.accessToken).toBeNull();
-    expect(state.refreshToken).toBeNull();
     expect(state.user).toBeNull();
     expect(state.permissions).toEqual([]);
-    expect(localStorage.getItem('refreshToken')).toBeNull();
+    expect(localStorage.getItem('accessToken')).toBeNull();
+    expect(localStorage.getItem('user')).toBeNull();
   });
 
   it('setPermissions updates permissions directly', () => {

@@ -1,15 +1,15 @@
 import { create } from 'zustand';
+import axios from 'axios';
 import type { AuthUser } from '@/shared/types/auth';
 
 interface AuthState {
   accessToken: string | null;
-  refreshToken: string | null;
   user: AuthUser | null;
   permissions: string[];
   isAuthenticated: boolean;
-  setAuth: (accessToken: string, refreshToken: string, user: AuthUser) => void;
+  setAuth: (accessToken: string, user: AuthUser) => void;
   setPermissions: (permissions: string[]) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 interface JwtPayloadDecoded {
@@ -40,36 +40,44 @@ function restoreUser(): AuthUser | null {
 
 const storedAccessToken = localStorage.getItem('accessToken');
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   accessToken: storedAccessToken,
-  refreshToken: localStorage.getItem('refreshToken'),
   user: restoreUser(),
   permissions: storedAccessToken ? decodePermissions(storedAccessToken) : [],
   isAuthenticated: !!storedAccessToken,
 
-  setAuth: (accessToken, refreshToken, user) => {
+  setAuth: (accessToken, user) => {
     localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
     localStorage.setItem('user', JSON.stringify(user));
     const permissions = decodePermissions(accessToken);
-    set({
-      accessToken,
-      refreshToken,
-      user,
-      permissions,
-      isAuthenticated: true,
-    });
+    set({ accessToken, user, permissions, isAuthenticated: true });
   },
 
   setPermissions: (permissions) => set({ permissions }),
 
-  logout: () => {
+  logout: async () => {
+    // Tell the backend to invalidate the tokenVersion and clear the HttpOnly cookie.
+    // Use axios directly (not apiClient) to avoid circular dependency.
+    try {
+      await axios.post(
+        '/api/v1/auth/logout',
+        {},
+        {
+          withCredentials: true,
+          headers: {
+            Authorization: `Bearer ${get().accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+    } catch {
+      // Ignore network / auth errors — proceed with local cleanup regardless.
+    }
+
     localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     set({
       accessToken: null,
-      refreshToken: null,
       user: null,
       permissions: [],
       isAuthenticated: false,

@@ -25,10 +25,10 @@ export interface CreateClientPayload {
 
 export interface UpdateClientPayload {
   firstName?: string;
-  lastName?: string;
-  phone?: string;
-  email?: string;
-  notes?: string;
+  lastName?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  notes?: string | null;
 }
 
 export async function fetchClients(

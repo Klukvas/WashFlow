@@ -3,7 +3,7 @@ import type { ApiResponse } from '@/shared/types/api';
 import type {
   AuthResponse,
   LoginRequest,
-  RefreshRequest,
+  RegisterRequest,
 } from '@/shared/types/auth';
 
 export async function login(data: LoginRequest): Promise<AuthResponse> {
@@ -14,11 +14,9 @@ export async function login(data: LoginRequest): Promise<AuthResponse> {
   return response.data.data;
 }
 
-export async function refreshTokens(
-  data: RefreshRequest,
-): Promise<AuthResponse> {
+export async function register(data: RegisterRequest): Promise<AuthResponse> {
   const response = await apiClient.post<ApiResponse<AuthResponse>>(
-    '/auth/refresh',
+    '/auth/register',
     data,
   );
   return response.data.data;

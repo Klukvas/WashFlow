@@ -15,6 +15,9 @@ import en_workPosts from './locales/en/work-posts.json';
 import en_workforce from './locales/en/workforce.json';
 import en_publicBooking from './locales/en/public-booking.json';
 import en_howTo from './locales/en/how-to.json';
+import en_subscription from './locales/en/subscription.json';
+import en_roles from './locales/en/roles.json';
+import en_landing from './locales/en/landing.json';
 import uk_common from './locales/uk/common.json';
 import uk_auth from './locales/uk/auth.json';
 import uk_orders from './locales/uk/orders.json';
@@ -30,6 +33,9 @@ import uk_workPosts from './locales/uk/work-posts.json';
 import uk_workforce from './locales/uk/workforce.json';
 import uk_publicBooking from './locales/uk/public-booking.json';
 import uk_howTo from './locales/uk/how-to.json';
+import uk_subscription from './locales/uk/subscription.json';
+import uk_roles from './locales/uk/roles.json';
+import uk_landing from './locales/uk/landing.json';
 
 const resources = {
   en: {
@@ -48,6 +54,9 @@ const resources = {
     workforce: en_workforce,
     'public-booking': en_publicBooking,
     'how-to': en_howTo,
+    subscription: en_subscription,
+    roles: en_roles,
+    landing: en_landing,
   },
   uk: {
     common: uk_common,
@@ -65,6 +74,9 @@ const resources = {
     workforce: uk_workforce,
     'public-booking': uk_publicBooking,
     'how-to': uk_howTo,
+    subscription: uk_subscription,
+    roles: uk_roles,
+    landing: uk_landing,
   },
 };
 
@@ -91,6 +103,9 @@ i18n.use(initReactI18next).init({
     'workforce',
     'public-booking',
     'how-to',
+    'subscription',
+    'roles',
+    'landing',
   ],
   interpolation: {
     escapeValue: false,

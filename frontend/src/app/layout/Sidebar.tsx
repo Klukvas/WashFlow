@@ -13,6 +13,7 @@ import {
   BarChart3,
   FileText,
   HardHat,
+  CreditCard,
   BookOpen,
   X,
 } from 'lucide-react';
@@ -35,7 +36,7 @@ interface NavItem {
 }
 
 const mainItems: NavItem[] = [
-  { to: '/', icon: LayoutDashboard, labelKey: 'dashboard' },
+  { to: '/dashboard', icon: LayoutDashboard, labelKey: 'dashboard' },
   {
     to: '/orders',
     icon: ShoppingCart,
@@ -93,6 +94,12 @@ const managementItems: NavItem[] = [
     labelKey: 'workforce',
     permission: PERMISSIONS.WORKFORCE.READ,
   },
+  {
+    to: '/subscription',
+    icon: CreditCard,
+    labelKey: 'subscription',
+    permission: PERMISSIONS.TENANTS.READ,
+  },
 ];
 
 const systemItems: NavItem[] = [
@@ -144,7 +151,7 @@ function NavSection({
           <NavLink
             key={item.to}
             to={item.to}
-            end={item.to === '/'}
+            end={item.to === '/dashboard'}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
@@ -177,7 +184,14 @@ export function Sidebar({ collapsed, mobile, onClose }: SidebarProps) {
     >
       <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
         {!collapsed && (
-          <span className="text-lg font-bold text-primary">WashFlow</span>
+          <div className="flex flex-col">
+            <span className="text-lg font-bold leading-tight text-primary">
+              WashFlow
+            </span>
+            <span className="text-[10px] leading-tight text-muted-foreground">
+              Powered by FluxLab
+            </span>
+          </div>
         )}
         {mobile && onClose && (
           <Button variant="ghost" size="icon" onClick={onClose}>

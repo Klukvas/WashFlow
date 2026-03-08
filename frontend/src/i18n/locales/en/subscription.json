@@ -1,0 +1,19 @@
+{
+  "title": "Subscription & Usage",
+  "description": "Current resource usage and subscription limits",
+  "noLimits": "No limits",
+  "used": "used",
+  "loadError": "Failed to load subscription data. Please try again later.",
+  "resources": {
+    "users": "Users",
+    "branches": "Branches",
+    "workPosts": "Work Posts",
+    "services": "Services"
+  },
+  "trial": {
+    "badge": "Trial",
+    "active_one": "Free trial — {{count}} day remaining",
+    "active_other": "Free trial — {{count}} days remaining",
+    "expired": "Trial expired. Please subscribe to continue."
+  }
+}

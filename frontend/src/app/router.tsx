@@ -1,14 +1,26 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router';
-import { DashboardLayout } from './layout/DashboardLayout';
+import { ErrorBoundary } from '@/shared/components/ErrorBoundary';
 import { PublicLayout } from './layout/PublicLayout';
+import { AppShell } from './layout/AppShell';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { ForbiddenPage } from './pages/ForbiddenPage';
 import { NotFoundPage } from './pages/NotFoundPage';
-import { RequireAuth } from '@/shared/components/RequireAuth';
+import { PermissionGate } from '@/shared/components/PermissionGate';
+import { PERMISSIONS } from '@/shared/constants/permissions';
 import { Skeleton } from '@/shared/ui/skeleton';
 
 // Lazy-loaded feature pages
+const LandingPage = lazy(() =>
+  import('@/features/landing/pages/LandingPage').then((m) => ({
+    default: m.LandingPage,
+  })),
+);
+const RegisterPage = lazy(() =>
+  import('@/features/auth/pages/RegisterPage').then((m) => ({
+    default: m.RegisterPage,
+  })),
+);
 const DashboardPage = lazy(() =>
   import('@/features/dashboard/pages/DashboardPage').then((m) => ({
     default: m.DashboardPage,
@@ -42,6 +54,11 @@ const ClientDetailPage = lazy(() =>
 const VehiclesPage = lazy(() =>
   import('@/features/vehicles/pages/VehiclesPage').then((m) => ({
     default: m.VehiclesPage,
+  })),
+);
+const VehicleDetailPage = lazy(() =>
+  import('@/features/vehicles/pages/VehicleDetailPage').then((m) => ({
+    default: m.VehicleDetailPage,
   })),
 );
 const ServicesPage = lazy(() =>
@@ -94,6 +111,11 @@ const WorkforcePage = lazy(() =>
     default: m.WorkforcePage,
   })),
 );
+const SubscriptionPage = lazy(() =>
+  import('@/features/subscription/pages/SubscriptionPage').then((m) => ({
+    default: m.SubscriptionPage,
+  })),
+);
 const PublicLandingPage = lazy(() =>
   import('@/features/public-booking/pages/PublicLandingPage').then((m) => ({
     default: m.PublicLandingPage,
@@ -117,16 +139,18 @@ const HowToTopicPage = lazy(() =>
 
 function SuspenseWrapper({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense
-      fallback={
-        <div className="space-y-4 p-6">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-64" />
-        </div>
-      }
-    >
-      {children}
-    </Suspense>
+    <ErrorBoundary>
+      <Suspense
+        fallback={
+          <div className="space-y-4 p-6">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-64" />
+          </div>
+        }
+      >
+        {children}
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 
@@ -134,6 +158,14 @@ export const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/register',
+    element: (
+      <SuspenseWrapper>
+        <RegisterPage />
+      </SuspenseWrapper>
+    ),
   },
   {
     path: '/public/:slug',
@@ -159,14 +191,18 @@ export const router = createBrowserRouter([
   },
   {
     path: '/',
-    element: (
-      <RequireAuth>
-        <DashboardLayout />
-      </RequireAuth>
-    ),
+    element: <AppShell />,
     children: [
       {
         index: true,
+        element: (
+          <SuspenseWrapper>
+            <LandingPage />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: 'dashboard',
         element: (
           <SuspenseWrapper>
             <DashboardPage />
@@ -218,6 +254,14 @@ export const router = createBrowserRouter([
         element: (
           <SuspenseWrapper>
             <VehiclesPage />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: 'vehicles/:id',
+        element: (
+          <SuspenseWrapper>
+            <VehicleDetailPage />
           </SuspenseWrapper>
         ),
       },
@@ -299,6 +343,19 @@ export const router = createBrowserRouter([
           <SuspenseWrapper>
             <WorkforcePage />
           </SuspenseWrapper>
+        ),
+      },
+      {
+        path: 'subscription',
+        element: (
+          <PermissionGate
+            permission={PERMISSIONS.TENANTS.READ}
+            fallback={<Navigate to="/403" replace />}
+          >
+            <SuspenseWrapper>
+              <SubscriptionPage />
+            </SuspenseWrapper>
+          </PermissionGate>
         ),
       },
       {
