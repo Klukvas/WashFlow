@@ -14,6 +14,17 @@ jest.mock('@prisma/client', () => ({
 
 import { PrismaService } from './prisma.service';
 
+function makeMockConfig(overrides: Record<string, string> = {}) {
+  const defaults: Record<string, string> = {
+    'database.url': 'postgresql://test:test@localhost:5432/test',
+    'nodeEnv': 'test',
+  };
+  const map = { ...defaults, ...overrides };
+  return {
+    get: jest.fn((key: string) => map[key]),
+  };
+}
+
 describe('PrismaService', () => {
   let service: PrismaService;
 
@@ -63,46 +74,40 @@ describe('PrismaService', () => {
   });
 
   describe('constructor', () => {
-    it('creates PrismaPg adapter with DATABASE_URL from env', () => {
-      const originalUrl = process.env.DATABASE_URL;
-      process.env.DATABASE_URL = 'https://test-db:5432/washflow';
+    it('creates PrismaPg adapter with database.url from config', () => {
+      const mockConfig = makeMockConfig({
+        'database.url': 'https://test-db:5432/washflow',
+      });
 
-      new PrismaService();
+      new PrismaService(mockConfig as any);
 
       expect(mockPrismaPg).toHaveBeenCalledWith({
         connectionString: 'https://test-db:5432/washflow',
       });
-      process.env.DATABASE_URL = originalUrl;
     });
 
     it('uses error-only logging in production', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+      const mockConfig = makeMockConfig({ 'nodeEnv': 'production' });
 
-      const svc = new PrismaService();
+      const svc = new PrismaService(mockConfig as any);
 
       expect((svc as any).opts?.log).toEqual(['error']);
-      process.env.NODE_ENV = originalEnv;
     });
 
     it('uses verbose logging in development', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+      const mockConfig = makeMockConfig({ 'nodeEnv': 'development' });
 
-      const svc = new PrismaService();
+      const svc = new PrismaService(mockConfig as any);
 
       expect((svc as any).opts?.log).toEqual(['info', 'warn', 'error']);
-      process.env.NODE_ENV = originalEnv;
     });
 
     it('uses error-only logging in test env', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'test';
+      const mockConfig = makeMockConfig({ 'nodeEnv': 'test' });
 
-      const svc = new PrismaService();
+      const svc = new PrismaService(mockConfig as any);
 
       expect((svc as any).opts?.log).toEqual(['error']);
-      process.env.NODE_ENV = originalEnv;
     });
   });
 });

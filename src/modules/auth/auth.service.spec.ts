@@ -34,6 +34,7 @@ const buildUser = (overrides: Record<string, unknown> = {}) => ({
   isActive: true,
   isSuperAdmin: false,
   deletedAt: null,
+  tokenVersion: 0,
   roleId: ROLE_ID,
   role: {
     id: ROLE_ID,
@@ -62,6 +63,7 @@ const JWT_PAYLOAD: JwtPayload = {
   isSuperAdmin: false,
   permissions: ['orders.read', 'orders.write'],
   type: 'refresh',
+  tokenVersion: 0,
 };
 
 // ---------------------------------------------------------------------------
@@ -153,9 +155,9 @@ describe('AuthService', () => {
 
         const result = await service.login(LOGIN_DTO);
 
-        expect(result.accessToken).toBe(ACCESS_TOKEN);
+        expect(result.response.accessToken).toBe(ACCESS_TOKEN);
         expect(result.refreshToken).toBe(REFRESH_TOKEN);
-        expect(result.user).toEqual({
+        expect(result.response.user).toEqual({
           id: user.id,
           email: user.email,
           firstName: user.firstName,
@@ -390,7 +392,7 @@ describe('AuthService', () => {
 
         const result = await service.refreshTokens(JWT_PAYLOAD);
 
-        expect(result.accessToken).toBe(ACCESS_TOKEN);
+        expect(result.response.accessToken).toBe(ACCESS_TOKEN);
         expect(result.refreshToken).toBe(REFRESH_TOKEN);
       });
 
@@ -400,7 +402,7 @@ describe('AuthService', () => {
 
         const result = await service.refreshTokens(JWT_PAYLOAD);
 
-        expect(result.user).toEqual({
+        expect(result.response.user).toEqual({
           id: user.id,
           email: user.email,
           firstName: user.firstName,
@@ -577,7 +579,10 @@ describe('AuthService', () => {
 
         expect(prisma.user.update).toHaveBeenCalledWith({
           where: { id: USER_ID },
-          data: { passwordHash: '$argon2id$new-hash' },
+          data: {
+            passwordHash: '$argon2id$new-hash',
+            tokenVersion: { increment: 1 },
+          },
         });
       });
 

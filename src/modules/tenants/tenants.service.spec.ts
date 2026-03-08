@@ -210,9 +210,11 @@ describe('TenantsService', () => {
 
     beforeEach(() => {
       // $transaction executes the callback with a mock tx client
+      // tx.tenant.findUnique returns null (slug available) by default
       prisma.$transaction.mockImplementation(async (cb: Function) => {
         const tx = {
           tenant: {
+            findUnique: jest.fn().mockResolvedValue(null),
             create: jest.fn().mockResolvedValue(tenantCreated),
           },
           subscription: {
@@ -224,16 +226,12 @@ describe('TenantsService', () => {
     });
 
     it('creates and returns a new tenant when the slug is available', async () => {
-      tenantsRepo.findBySlug.mockResolvedValue(null);
-
       const result = await service.create(makeCreateDto() as any);
 
       expect(result).toEqual(tenantCreated);
     });
 
     it('uses a transaction for atomic tenant + subscription creation', async () => {
-      tenantsRepo.findBySlug.mockResolvedValue(null);
-
       await service.create(makeCreateDto() as any);
 
       expect(prisma.$transaction).toHaveBeenCalledTimes(1);
@@ -241,12 +239,14 @@ describe('TenantsService', () => {
 
     it('creates tenant with name and slug inside the transaction', async () => {
       const dto = makeCreateDto();
-      tenantsRepo.findBySlug.mockResolvedValue(null);
 
       let capturedTx: any;
       prisma.$transaction.mockImplementation(async (cb: Function) => {
         capturedTx = {
-          tenant: { create: jest.fn().mockResolvedValue(tenantCreated) },
+          tenant: {
+            findUnique: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue(tenantCreated),
+          },
           subscription: { create: jest.fn().mockResolvedValue({}) },
         };
         return cb(capturedTx);
@@ -259,17 +259,17 @@ describe('TenantsService', () => {
       });
     });
 
-    it('checks slug uniqueness before creating', async () => {
-      const dto = makeCreateDto();
-      tenantsRepo.findBySlug.mockResolvedValue(null);
-
-      await service.create(dto as any);
-
-      expect(tenantsRepo.findBySlug).toHaveBeenCalledWith(dto.slug);
-    });
-
     it('throws ConflictException when the slug is already taken', async () => {
-      tenantsRepo.findBySlug.mockResolvedValue(makeTenant());
+      prisma.$transaction.mockImplementation(async (cb: Function) => {
+        const tx = {
+          tenant: {
+            findUnique: jest.fn().mockResolvedValue(makeTenant()),
+            create: jest.fn(),
+          },
+          subscription: { create: jest.fn() },
+        };
+        return cb(tx);
+      });
 
       await expect(service.create(makeCreateDto() as any)).rejects.toThrow(
         ConflictException,
@@ -277,30 +277,30 @@ describe('TenantsService', () => {
     });
 
     it('includes "Slug already in use" in the ConflictException message', async () => {
-      tenantsRepo.findBySlug.mockResolvedValue(makeTenant());
+      prisma.$transaction.mockImplementation(async (cb: Function) => {
+        const tx = {
+          tenant: {
+            findUnique: jest.fn().mockResolvedValue(makeTenant()),
+            create: jest.fn(),
+          },
+          subscription: { create: jest.fn() },
+        };
+        return cb(tx);
+      });
 
       await expect(service.create(makeCreateDto() as any)).rejects.toThrow(
         'Slug already in use',
       );
     });
 
-    it('does not start transaction when the slug is already taken', async () => {
-      tenantsRepo.findBySlug.mockResolvedValue(makeTenant());
-
-      await expect(service.create(makeCreateDto() as any)).rejects.toThrow(
-        ConflictException,
-      );
-
-      expect(prisma.$transaction).not.toHaveBeenCalled();
-    });
-
     it('auto-provisions a trial subscription with TRIAL_DEFAULTS', async () => {
-      tenantsRepo.findBySlug.mockResolvedValue(null);
-
       let capturedTx: any;
       prisma.$transaction.mockImplementation(async (cb: Function) => {
         capturedTx = {
-          tenant: { create: jest.fn().mockResolvedValue(tenantCreated) },
+          tenant: {
+            findUnique: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue(tenantCreated),
+          },
           subscription: { create: jest.fn().mockResolvedValue({}) },
         };
         return cb(capturedTx);
@@ -320,12 +320,13 @@ describe('TenantsService', () => {
     });
 
     it('sets trial end date to approximately 14 days from now', async () => {
-      tenantsRepo.findBySlug.mockResolvedValue(null);
-
       let capturedTx: any;
       prisma.$transaction.mockImplementation(async (cb: Function) => {
         capturedTx = {
-          tenant: { create: jest.fn().mockResolvedValue(tenantCreated) },
+          tenant: {
+            findUnique: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue(tenantCreated),
+          },
           subscription: { create: jest.fn().mockResolvedValue({}) },
         };
         return cb(capturedTx);
@@ -345,7 +346,6 @@ describe('TenantsService', () => {
     });
 
     it('propagates transaction errors', async () => {
-      tenantsRepo.findBySlug.mockResolvedValue(null);
       prisma.$transaction.mockRejectedValue(new Error('DB error'));
 
       await expect(service.create(makeCreateDto() as any)).rejects.toThrow(

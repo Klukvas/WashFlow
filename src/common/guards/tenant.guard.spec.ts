@@ -6,6 +6,8 @@ import {
 import { TenantGuard } from './tenant.guard';
 import { JwtPayload } from '../types/jwt-payload.type';
 
+const mockReflector = { getAllAndOverride: jest.fn().mockReturnValue(false) };
+
 function makeCtx(
   user: Partial<JwtPayload> | undefined,
   headers: Record<string, string> = {},
@@ -15,6 +17,8 @@ function makeCtx(
     switchToHttp: () => ({
       getRequest: () => request,
     }),
+    getHandler: () => jest.fn(),
+    getClass: () => jest.fn(),
   } as unknown as ExecutionContext;
 }
 
@@ -22,7 +26,8 @@ describe('TenantGuard', () => {
   let guard: TenantGuard;
 
   beforeEach(() => {
-    guard = new TenantGuard();
+    mockReflector.getAllAndOverride.mockReturnValue(false);
+    guard = new TenantGuard(mockReflector as any);
   });
 
   it('should throw ForbiddenException when no user is on the request', () => {
@@ -57,6 +62,8 @@ describe('TenantGuard', () => {
       };
       const ctx = {
         switchToHttp: () => ({ getRequest: () => request }),
+        getHandler: () => jest.fn(),
+        getClass: () => jest.fn(),
       } as unknown as ExecutionContext;
 
       guard.canActivate(ctx);
@@ -80,6 +87,8 @@ describe('TenantGuard', () => {
       const request = { user, headers: {} };
       const ctx = {
         switchToHttp: () => ({ getRequest: () => request }),
+        getHandler: () => jest.fn(),
+        getClass: () => jest.fn(),
       } as unknown as ExecutionContext;
 
       guard.canActivate(ctx);

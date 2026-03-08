@@ -124,9 +124,7 @@ describe('TenantPrismaService', () => {
       const args = { where: {} };
       await handler({ model: 'User', args, query });
 
-      expect(args.where).toEqual(
-        expect.objectContaining({ deletedAt: null }),
-      );
+      expect(args.where).toEqual(expect.objectContaining({ deletedAt: null }));
     });
 
     it('does NOT add deletedAt filter for non-soft-delete models', async () => {
@@ -158,9 +156,7 @@ describe('TenantPrismaService', () => {
       await handler({ model: 'User', args, query });
 
       expect(args.where).not.toHaveProperty('_includeDeleted');
-      expect(args.where).toEqual(
-        expect.objectContaining({ deletedAt: null }),
-      );
+      expect(args.where).toEqual(expect.objectContaining({ deletedAt: null }));
     });
 
     it('calls through to the original query', async () => {
@@ -202,9 +198,7 @@ describe('TenantPrismaService', () => {
       const args = { where: {} };
       await handler({ model: 'Client', args, query });
 
-      expect(args.where).toEqual(
-        expect.objectContaining({ deletedAt: null }),
-      );
+      expect(args.where).toEqual(expect.objectContaining({ deletedAt: null }));
     });
 
     it('does NOT inject tenantId for bypass model RolePermission', async () => {
@@ -223,97 +217,63 @@ describe('TenantPrismaService', () => {
   // =========================================================================
 
   describe('findUnique', () => {
-    it('returns null when result belongs to a different tenant', async () => {
-      const query = jest.fn().mockResolvedValue({
-        id: '1',
-        tenantId: OTHER_TENANT,
-      });
+    it('injects tenantId into where clause', async () => {
+      const query = jest
+        .fn()
+        .mockResolvedValue({ id: '1', tenantId: TENANT_ID });
       const handler = getHandler('findUnique');
+      const args = { where: { id: '1' } };
+      await handler({ model: 'User', args, query });
+      const calledArgs = query.mock.calls[0][0];
+      expect(calledArgs.where).toEqual(
+        expect.objectContaining({ tenantId: TENANT_ID, deletedAt: null }),
+      );
+    });
 
+    it('does NOT inject tenantId for bypass models', async () => {
+      const record = { id: '1' };
+      const query = jest.fn().mockResolvedValue(record);
+      const handler = getHandler('findUnique');
       const result = await handler({
-        model: 'User',
+        model: 'Permission',
         args: { where: { id: '1' } },
         query,
       });
-
-      expect(result).toBeNull();
-    });
-
-    it('returns the result when tenant matches', async () => {
-      const record = { id: '1', tenantId: TENANT_ID, deletedAt: null };
-      const query = jest.fn().mockResolvedValue(record);
-      const handler = getHandler('findUnique');
-
-      const result = await handler({
-        model: 'User',
-        args: { where: { id: '1' } },
-        query,
-      });
-
-      expect(result).toEqual(record);
-    });
-
-    it('returns null for soft-deleted records without _includeDeleted', async () => {
-      const record = {
-        id: '1',
-        tenantId: TENANT_ID,
-        deletedAt: new Date(),
-      };
-      const query = jest.fn().mockResolvedValue(record);
-      const handler = getHandler('findUnique');
-
-      const result = await handler({
-        model: 'Order',
-        args: { where: { id: '1' } },
-        query,
-      });
-
-      expect(result).toBeNull();
-    });
-
-    it('returns soft-deleted record when _includeDeleted is true', async () => {
-      const record = {
-        id: '1',
-        tenantId: TENANT_ID,
-        deletedAt: new Date(),
-      };
-      const query = jest.fn().mockResolvedValue(record);
-      const handler = getHandler('findUnique');
-
-      const result = await handler({
-        model: 'Order',
-        args: { where: { id: '1', _includeDeleted: true } },
-        query,
-      });
-
       expect(result).toEqual(record);
     });
 
     it('returns null when query returns null', async () => {
       const query = jest.fn().mockResolvedValue(null);
       const handler = getHandler('findUnique');
-
       const result = await handler({
         model: 'User',
         args: { where: { id: '1' } },
         query,
       });
-
       expect(result).toBeNull();
     });
 
-    it('does NOT check tenantId for bypass models', async () => {
-      const record = { id: '1' }; // no tenantId
-      const query = jest.fn().mockResolvedValue(record);
+    it('adds deletedAt: null for soft-delete models', async () => {
+      const query = jest.fn().mockResolvedValue(null);
       const handler = getHandler('findUnique');
+      const args = { where: { id: '1' } };
+      await handler({ model: 'User', args, query });
+      const calledArgs = query.mock.calls[0][0];
+      expect(calledArgs.where).toHaveProperty('deletedAt', null);
+    });
 
-      const result = await handler({
-        model: 'Permission',
-        args: { where: { id: '1' } },
-        query,
+    it('skips deletedAt filter when _includeDeleted is true', async () => {
+      const query = jest.fn().mockResolvedValue({
+        id: '1',
+        tenantId: TENANT_ID,
+        deletedAt: new Date(),
       });
-
-      expect(result).toEqual(record);
+      const handler = getHandler('findUnique');
+      const args = { where: { id: '1', _includeDeleted: true } };
+      await handler({ model: 'Order', args, query });
+      const calledArgs = query.mock.calls[0][0];
+      expect(calledArgs.where).not.toHaveProperty('deletedAt');
+      expect(calledArgs.where).not.toHaveProperty('_includeDeleted');
     });
   });
 
