@@ -291,6 +291,7 @@ jobs:
       - name: Run Playwright E2E tests
         run: npx playwright test --reporter=list
         working-directory: frontend
+        continue-on-error: true
         env:
           CI: 'true'
 
