@@ -184,7 +184,7 @@ jobs:
       - run: npx prisma generate
 
       - name: Reset database
-        run: npx prisma migrate reset --force
+        run: npx prisma db push --force-reset
 
       - name: Seed database
         run: npx prisma db seed
@@ -250,7 +250,7 @@ jobs:
       - run: npx prisma generate
 
       - name: Reset database
-        run: npx prisma migrate reset --force
+        run: npx prisma db push --force-reset
 
       - name: Seed database
         run: npx prisma db seed
