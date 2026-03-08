@@ -19,6 +19,7 @@ env:
   PNPM_VERSION: '9'
   DATABASE_URL: 'postgresql://ci:ci@localhost:5432/ci'
   DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/washflow
+  DOCKER_IMAGE_FRONTEND: ${{ secrets.DOCKERHUB_USERNAME }}/washflow-frontend
 
 jobs:
   # ──────────────────────────────────────────────────────────────────
@@ -342,15 +343,34 @@ jobs:
             type=sha,prefix=
             type=raw,value=latest
 
-      - name: Build and push
+      - name: Build and push backend
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Frontend Docker metadata
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_IMAGE_FRONTEND }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
 
   # ──────────────────────────────────────────────────────────────────
   # 5. Deploy to Hetzner (only on main)
@@ -380,6 +400,8 @@ jobs:
             echo "JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}"
             echo "CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}"
             echo "DOCKER_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/washflow"
+            echo "DOCKER_IMAGE_FRONTEND=${{ secrets.DOCKERHUB_USERNAME }}/washflow-frontend"
+            echo "DOCKER_TAG=${{ needs.build-and-push.outputs.image_tag }}"
           } > .env.production
           chmod 600 .env.production
 
@@ -392,7 +414,8 @@ jobs:
       - name: Deploy via SSH
         run: |
           DOCKER_IMG="${{ env.DOCKER_IMAGE }}"
-          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "DOCKER_IMG=${DOCKER_IMG}" bash --login -s << 'DEPLOY_SCRIPT'
+          DOCKER_IMG_FE="${{ env.DOCKER_IMAGE_FRONTEND }}"
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "DOCKER_IMG=${DOCKER_IMG}" "DOCKER_IMG_FE=${DOCKER_IMG_FE}" bash --login -s << 'DEPLOY_SCRIPT'
             set -euo pipefail
             export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
             cd /opt/washflow
@@ -404,8 +427,9 @@ jobs:
             # Rename compose file
             mv -f docker-compose.prod.yml docker-compose.yml
 
-            # Pull the latest image
+            # Pull the latest images
             docker pull "${DOCKER_IMG}:latest" || true
+            docker pull "${DOCKER_IMG_FE}:latest" || true
 
             # Bring up the stack (recreates only changed services)
             docker compose up -d --remove-orphans
@@ -420,6 +444,21 @@ jobs:
               if [ "$i" -eq 30 ]; then
                 echo "Backend failed health check after 60s"
                 docker compose logs backend --tail=50
+                exit 1
+              fi
+              sleep 2
+            done
+
+            # Wait for frontend health check
+            echo "Waiting for frontend to be healthy..."
+            for i in $(seq 1 15); do
+              if docker compose exec -T frontend wget -qO- http://localhost:80/ > /dev/null 2>&1; then
+                echo "Frontend is healthy!"
+                break
+              fi
+              if [ "$i" -eq 15 ]; then
+                echo "Frontend failed health check after 30s"
+                docker compose logs frontend --tail=50
                 exit 1
               fi
               sleep 2
