@@ -1,1 +1,1 @@
-export type { LoginRequest, AuthResponse, AuthUser, RefreshRequest } from '@/shared/types/auth';
+export type { LoginRequest, AuthResponse, AuthUser } from '@/shared/types/auth';

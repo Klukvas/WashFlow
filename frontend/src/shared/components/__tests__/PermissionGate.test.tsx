@@ -34,7 +34,6 @@ function setAuthState(user: AuthUser, permissions: string[]) {
   const token = makeJwt({ permissions });
   useAuthStore.setState({
     accessToken: token,
-    refreshToken: 'rt',
     user,
     permissions,
     isAuthenticated: true,
@@ -46,7 +45,6 @@ describe('PermissionGate', () => {
     localStorage.clear();
     useAuthStore.setState({
       accessToken: null,
-      refreshToken: null,
       user: null,
       permissions: [],
       isAuthenticated: false,
@@ -134,7 +132,6 @@ describe('PermissionGate', () => {
     const token = makeJwt({ permissions: [], isSuperAdmin: true });
     useAuthStore.setState({
       accessToken: token,
-      refreshToken: 'rt',
       user: superAdmin,
       permissions: [],
       isAuthenticated: true,
