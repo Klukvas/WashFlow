@@ -74,7 +74,7 @@ export function DataTable<T>({
   onLimitChange,
   onRowClick,
   emptyMessage,
-  getRowKey = (item: any) => item.id,
+  getRowKey = (item: T & { id: string }) => item.id,
 }: DataTableProps<T>) {
   const { t } = useTranslation('common');
 

@@ -18,7 +18,15 @@ const mockSearchParams = new URLSearchParams();
 vi.mock('react-router', () => ({
   useNavigate: () => mockNavigate,
   useSearchParams: () => [mockSearchParams],
-  Link: ({ to, children, ...rest }: any) => (
+  Link: ({
+    to,
+    children,
+    ...rest
+  }: {
+    to: string;
+    children: ReactNode;
+    [key: string]: unknown;
+  }) => (
     <a href={to} {...rest}>
       {children}
     </a>
@@ -71,8 +79,12 @@ describe('ResetPasswordPage', () => {
   it('renders password and confirm password inputs', () => {
     render(<ResetPasswordPage />, { wrapper: createWrapper() });
 
-    expect(screen.getByLabelText('changePassword.newPassword')).toBeInTheDocument();
-    expect(screen.getByLabelText('changePassword.confirmPassword')).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('changePassword.newPassword'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('changePassword.confirmPassword'),
+    ).toBeInTheDocument();
   });
 
   it('renders the page title and subtitle', () => {
@@ -86,13 +98,17 @@ describe('ResetPasswordPage', () => {
   it('renders the submit button', () => {
     render(<ResetPasswordPage />, { wrapper: createWrapper() });
 
-    expect(screen.getByRole('button', { name: 'resetPasswordPage.submit' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'resetPasswordPage.submit' }),
+    ).toBeInTheDocument();
   });
 
   it('"Back to login" link points to /login', () => {
     render(<ResetPasswordPage />, { wrapper: createWrapper() });
 
-    const backLink = screen.getByRole('link', { name: 'forgotPassword.backToLogin' });
+    const backLink = screen.getByRole('link', {
+      name: 'forgotPassword.backToLogin',
+    });
     expect(backLink).toHaveAttribute('href', '/login');
   });
 
@@ -108,11 +124,21 @@ describe('ResetPasswordPage', () => {
 
     render(<ResetPasswordPage />, { wrapper: createWrapper() });
 
-    await userEvent.type(screen.getByLabelText('changePassword.newPassword'), 'password123');
-    await userEvent.type(screen.getByLabelText('changePassword.confirmPassword'), 'different456');
-    await userEvent.click(screen.getByRole('button', { name: 'resetPasswordPage.submit' }));
+    await userEvent.type(
+      screen.getByLabelText('changePassword.newPassword'),
+      'password123',
+    );
+    await userEvent.type(
+      screen.getByLabelText('changePassword.confirmPassword'),
+      'different456',
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'resetPasswordPage.submit' }),
+    );
 
-    expect(screen.getByText('changePassword.passwordMismatch')).toBeInTheDocument();
+    expect(
+      screen.getByText('changePassword.passwordMismatch'),
+    ).toBeInTheDocument();
     expect(mockedResetPassword).not.toHaveBeenCalled();
   });
 
@@ -121,11 +147,21 @@ describe('ResetPasswordPage', () => {
 
     render(<ResetPasswordPage />, { wrapper: createWrapper() });
 
-    await userEvent.type(screen.getByLabelText('changePassword.newPassword'), 'password123');
-    await userEvent.type(screen.getByLabelText('changePassword.confirmPassword'), 'password123');
-    await userEvent.click(screen.getByRole('button', { name: 'resetPasswordPage.submit' }));
+    await userEvent.type(
+      screen.getByLabelText('changePassword.newPassword'),
+      'password123',
+    );
+    await userEvent.type(
+      screen.getByLabelText('changePassword.confirmPassword'),
+      'password123',
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'resetPasswordPage.submit' }),
+    );
 
-    expect(screen.getByText('resetPasswordPage.invalidToken')).toBeInTheDocument();
+    expect(
+      screen.getByText('resetPasswordPage.invalidToken'),
+    ).toBeInTheDocument();
     expect(mockedResetPassword).not.toHaveBeenCalled();
   });
 
@@ -135,9 +171,17 @@ describe('ResetPasswordPage', () => {
 
     render(<ResetPasswordPage />, { wrapper: createWrapper() });
 
-    await userEvent.type(screen.getByLabelText('changePassword.newPassword'), 'newpass123');
-    await userEvent.type(screen.getByLabelText('changePassword.confirmPassword'), 'newpass123');
-    await userEvent.click(screen.getByRole('button', { name: 'resetPasswordPage.submit' }));
+    await userEvent.type(
+      screen.getByLabelText('changePassword.newPassword'),
+      'newpass123',
+    );
+    await userEvent.type(
+      screen.getByLabelText('changePassword.confirmPassword'),
+      'newpass123',
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'resetPasswordPage.submit' }),
+    );
 
     await waitFor(() => {
       expect(mockedResetPassword).toHaveBeenCalledWith('abc123', 'newpass123');
@@ -150,12 +194,22 @@ describe('ResetPasswordPage', () => {
 
     render(<ResetPasswordPage />, { wrapper: createWrapper() });
 
-    await userEvent.type(screen.getByLabelText('changePassword.newPassword'), 'newpass123');
-    await userEvent.type(screen.getByLabelText('changePassword.confirmPassword'), 'newpass123');
-    await userEvent.click(screen.getByRole('button', { name: 'resetPasswordPage.submit' }));
+    await userEvent.type(
+      screen.getByLabelText('changePassword.newPassword'),
+      'newpass123',
+    );
+    await userEvent.type(
+      screen.getByLabelText('changePassword.confirmPassword'),
+      'newpass123',
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'resetPasswordPage.submit' }),
+    );
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/login', { state: { passwordReset: true } });
+      expect(mockNavigate).toHaveBeenCalledWith('/login', {
+        state: { passwordReset: true },
+      });
     });
   });
 
@@ -165,9 +219,17 @@ describe('ResetPasswordPage', () => {
 
     render(<ResetPasswordPage />, { wrapper: createWrapper() });
 
-    await userEvent.type(screen.getByLabelText('changePassword.newPassword'), 'newpass123');
-    await userEvent.type(screen.getByLabelText('changePassword.confirmPassword'), 'newpass123');
-    await userEvent.click(screen.getByRole('button', { name: 'resetPasswordPage.submit' }));
+    await userEvent.type(
+      screen.getByLabelText('changePassword.newPassword'),
+      'newpass123',
+    );
+    await userEvent.type(
+      screen.getByLabelText('changePassword.confirmPassword'),
+      'newpass123',
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'resetPasswordPage.submit' }),
+    );
 
     await waitFor(() => {
       expect(screen.getByText('resetPasswordPage.error')).toBeInTheDocument();
@@ -189,14 +251,24 @@ describe('ResetPasswordPage', () => {
 
     render(<ResetPasswordPage />, { wrapper: createWrapper() });
 
-    await userEvent.type(screen.getByLabelText('changePassword.newPassword'), 'newpass123');
-    await userEvent.type(screen.getByLabelText('changePassword.confirmPassword'), 'newpass123');
+    await userEvent.type(
+      screen.getByLabelText('changePassword.newPassword'),
+      'newpass123',
+    );
+    await userEvent.type(
+      screen.getByLabelText('changePassword.confirmPassword'),
+      'newpass123',
+    );
 
-    const button = screen.getByRole('button', { name: 'resetPasswordPage.submit' });
+    const button = screen.getByRole('button', {
+      name: 'resetPasswordPage.submit',
+    });
     await userEvent.click(button);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'resetPasswordPage.loading' })).toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: 'resetPasswordPage.loading' }),
+      ).toBeDisabled();
     });
 
     resolveRequest();
@@ -212,9 +284,17 @@ describe('ResetPasswordPage', () => {
 
     render(<ResetPasswordPage />, { wrapper: createWrapper() });
 
-    await userEvent.type(screen.getByLabelText('changePassword.newPassword'), 'newpass123');
-    await userEvent.type(screen.getByLabelText('changePassword.confirmPassword'), 'newpass123');
-    await userEvent.click(screen.getByRole('button', { name: 'resetPasswordPage.submit' }));
+    await userEvent.type(
+      screen.getByLabelText('changePassword.newPassword'),
+      'newpass123',
+    );
+    await userEvent.type(
+      screen.getByLabelText('changePassword.confirmPassword'),
+      'newpass123',
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'resetPasswordPage.submit' }),
+    );
 
     await waitFor(() => {
       expect(screen.getByText('resetPasswordPage.error')).toBeInTheDocument();
@@ -222,10 +302,14 @@ describe('ResetPasswordPage', () => {
 
     // Submit again — error should clear before the new attempt resolves
     mockedResetPassword.mockResolvedValueOnce(undefined);
-    await userEvent.click(screen.getByRole('button', { name: 'resetPasswordPage.submit' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'resetPasswordPage.submit' }),
+    );
 
     await waitFor(() => {
-      expect(screen.queryByText('resetPasswordPage.error')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('resetPasswordPage.error'),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -234,9 +318,17 @@ describe('ResetPasswordPage', () => {
 
     render(<ResetPasswordPage />, { wrapper: createWrapper() });
 
-    await userEvent.type(screen.getByLabelText('changePassword.newPassword'), 'password123');
-    await userEvent.type(screen.getByLabelText('changePassword.confirmPassword'), 'different456');
-    await userEvent.click(screen.getByRole('button', { name: 'resetPasswordPage.submit' }));
+    await userEvent.type(
+      screen.getByLabelText('changePassword.newPassword'),
+      'password123',
+    );
+    await userEvent.type(
+      screen.getByLabelText('changePassword.confirmPassword'),
+      'different456',
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'resetPasswordPage.submit' }),
+    );
 
     expect(mockNavigate).not.toHaveBeenCalled();
   });

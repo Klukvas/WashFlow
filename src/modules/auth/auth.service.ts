@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import type { StringValue } from 'ms';
 import * as crypto from 'crypto';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -346,7 +347,7 @@ export class AuthService {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: user.tenantId },
     });
-    if (!tenant || tenant.deletedAt) {
+    if (!tenant) {
       return;
     }
 
@@ -466,7 +467,8 @@ export class AuthService {
       { ...basePayload, type: 'access' as const },
       {
         secret: this.config.get<string>('jwt.accessSecret'),
-        expiresIn: this.config.get<string>('jwt.accessExpiration') ?? '15m',
+        expiresIn: (this.config.get<string>('jwt.accessExpiration') ??
+          '15m') as StringValue,
       },
     );
 
@@ -474,7 +476,8 @@ export class AuthService {
       { ...basePayload, type: 'refresh' as const },
       {
         secret: this.config.get<string>('jwt.refreshSecret'),
-        expiresIn: this.config.get<string>('jwt.refreshExpiration') ?? '7d',
+        expiresIn: (this.config.get<string>('jwt.refreshExpiration') ??
+          '7d') as StringValue,
       },
     );
 

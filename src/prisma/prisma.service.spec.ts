@@ -17,7 +17,7 @@ import { PrismaService } from './prisma.service';
 function makeMockConfig(overrides: Record<string, string> = {}) {
   const defaults: Record<string, string> = {
     'database.url': 'postgresql://test:test@localhost:5432/test',
-    'nodeEnv': 'test',
+    nodeEnv: 'test',
   };
   const map = { ...defaults, ...overrides };
   return {
@@ -87,7 +87,7 @@ describe('PrismaService', () => {
     });
 
     it('uses error-only logging in production', () => {
-      const mockConfig = makeMockConfig({ 'nodeEnv': 'production' });
+      const mockConfig = makeMockConfig({ nodeEnv: 'production' });
 
       const svc = new PrismaService(mockConfig as any);
 
@@ -95,7 +95,7 @@ describe('PrismaService', () => {
     });
 
     it('uses verbose logging in development', () => {
-      const mockConfig = makeMockConfig({ 'nodeEnv': 'development' });
+      const mockConfig = makeMockConfig({ nodeEnv: 'development' });
 
       const svc = new PrismaService(mockConfig as any);
 
@@ -103,7 +103,7 @@ describe('PrismaService', () => {
     });
 
     it('uses error-only logging in test env', () => {
-      const mockConfig = makeMockConfig({ 'nodeEnv': 'test' });
+      const mockConfig = makeMockConfig({ nodeEnv: 'test' });
 
       const svc = new PrismaService(mockConfig as any);
 

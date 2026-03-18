@@ -24,8 +24,9 @@ vi.mock('react-router', () => ({
 }));
 
 vi.mock('@/shared/stores/auth.store', () => ({
-  useAuthStore: (selector: (state: any) => unknown) =>
-    selector({ setAuth: vi.fn() }),
+  useAuthStore: (
+    selector: (state: { setAuth: ReturnType<typeof vi.fn> }) => unknown,
+  ) => selector({ setAuth: vi.fn() }),
 }));
 
 vi.mock('../../hooks/useLogin', () => ({
@@ -92,7 +93,9 @@ describe('LoginForm', () => {
     mockIsPending = true;
     render(<LoginForm />, { wrapper: createWrapper() });
 
-    expect(screen.getByTestId('login-submit')).toHaveTextContent('login.loading');
+    expect(screen.getByTestId('login-submit')).toHaveTextContent(
+      'login.loading',
+    );
   });
 
   it('shows error message when login fails', () => {

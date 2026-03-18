@@ -51,13 +51,15 @@ export function GlobalSearch() {
   }, []);
 
   useEffect(() => {
-    if (!debouncedQuery || debouncedQuery.length < 2) {
-      setResults([]);
-      return;
-    }
-
     const controller = new AbortController();
     const signal = controller.signal;
+
+    if (!debouncedQuery || debouncedQuery.length < 2) {
+      controller.abort();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setResults([]);
+      return () => controller.abort();
+    }
 
     async function search() {
       try {

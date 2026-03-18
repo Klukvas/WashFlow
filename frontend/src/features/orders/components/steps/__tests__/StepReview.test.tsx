@@ -18,7 +18,19 @@ vi.mock('@/shared/utils/format', () => ({
 }));
 
 vi.mock('@/shared/ui/button', () => ({
-  Button: ({ children, onClick, disabled, loading, ...props }: any) => (
+  Button: ({
+    children,
+    onClick,
+    disabled,
+    loading,
+    ...props
+  }: {
+    children: ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+    loading?: boolean;
+    [key: string]: unknown;
+  }) => (
     <button onClick={onClick} disabled={disabled || loading} {...props}>
       {children}
     </button>
@@ -26,7 +38,15 @@ vi.mock('@/shared/ui/button', () => ({
 }));
 
 vi.mock('@/shared/ui/input', () => ({
-  Input: ({ value, onChange, placeholder }: any) => (
+  Input: ({
+    value,
+    onChange,
+    placeholder,
+  }: {
+    value?: string;
+    onChange?: React.ChangeEventHandler<HTMLInputElement>;
+    placeholder?: string;
+  }) => (
     <input
       value={value}
       onChange={onChange}
@@ -37,12 +57,12 @@ vi.mock('@/shared/ui/input', () => ({
 }));
 
 vi.mock('@/shared/ui/label', () => ({
-  Label: ({ children }: any) => <label>{children}</label>,
+  Label: ({ children }: { children: ReactNode }) => <label>{children}</label>,
 }));
 
 vi.mock('@/shared/ui/card', () => ({
-  CardHeader: ({ children }: any) => <div>{children}</div>,
-  CardTitle: ({ children }: any) => <h3>{children}</h3>,
+  CardHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  CardTitle: ({ children }: { children: ReactNode }) => <h3>{children}</h3>,
 }));
 
 const fakeBranches = [{ id: 'b1', name: 'Main Branch' }];

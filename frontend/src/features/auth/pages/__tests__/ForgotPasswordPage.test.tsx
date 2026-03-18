@@ -13,7 +13,15 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('react-router', () => ({
-  Link: ({ to, children, ...rest }: any) => (
+  Link: ({
+    to,
+    children,
+    ...rest
+  }: {
+    to: string;
+    children: ReactNode;
+    [key: string]: unknown;
+  }) => (
     <a href={to} {...rest}>
       {children}
     </a>
@@ -57,8 +65,12 @@ describe('ForgotPasswordPage', () => {
   it('renders email input and submit button', () => {
     render(<ForgotPasswordPage />, { wrapper: createWrapper() });
 
-    expect(screen.getByRole('textbox', { name: /login\.email/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'forgotPassword.submit' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('textbox', { name: /login\.email/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'forgotPassword.submit' }),
+    ).toBeInTheDocument();
   });
 
   it('renders the page title and subtitle', () => {
@@ -79,7 +91,9 @@ describe('ForgotPasswordPage', () => {
   it('"Back to login" link in form points to /login', () => {
     render(<ForgotPasswordPage />, { wrapper: createWrapper() });
 
-    const backLink = screen.getByRole('link', { name: 'forgotPassword.backToLogin' });
+    const backLink = screen.getByRole('link', {
+      name: 'forgotPassword.backToLogin',
+    });
     expect(backLink).toHaveAttribute('href', '/login');
   });
 
@@ -92,7 +106,9 @@ describe('ForgotPasswordPage', () => {
       screen.getByRole('textbox', { name: /login\.email/i }),
       'test@example.com',
     );
-    await userEvent.click(screen.getByRole('button', { name: 'forgotPassword.submit' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'forgotPassword.submit' }),
+    );
 
     await waitFor(() => {
       expect(mockedForgotPassword).toHaveBeenCalledWith('test@example.com');
@@ -108,14 +124,20 @@ describe('ForgotPasswordPage', () => {
       screen.getByRole('textbox', { name: /login\.email/i }),
       'test@example.com',
     );
-    await userEvent.click(screen.getByRole('button', { name: 'forgotPassword.submit' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'forgotPassword.submit' }),
+    );
 
     await waitFor(() => {
       expect(screen.getByText('forgotPassword.success')).toBeInTheDocument();
     });
 
-    expect(screen.queryByRole('button', { name: 'forgotPassword.submit' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('textbox', { name: /login\.email/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'forgotPassword.submit' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('textbox', { name: /login\.email/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('"Back to login" link in success view points to /login', async () => {
@@ -127,13 +149,17 @@ describe('ForgotPasswordPage', () => {
       screen.getByRole('textbox', { name: /login\.email/i }),
       'test@example.com',
     );
-    await userEvent.click(screen.getByRole('button', { name: 'forgotPassword.submit' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'forgotPassword.submit' }),
+    );
 
     await waitFor(() => {
       expect(screen.getByText('forgotPassword.success')).toBeInTheDocument();
     });
 
-    const backLink = screen.getByRole('link', { name: 'forgotPassword.backToLogin' });
+    const backLink = screen.getByRole('link', {
+      name: 'forgotPassword.backToLogin',
+    });
     expect(backLink).toHaveAttribute('href', '/login');
   });
 
@@ -146,7 +172,9 @@ describe('ForgotPasswordPage', () => {
       screen.getByRole('textbox', { name: /login\.email/i }),
       'unknown@example.com',
     );
-    await userEvent.click(screen.getByRole('button', { name: 'forgotPassword.submit' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'forgotPassword.submit' }),
+    );
 
     await waitFor(() => {
       expect(screen.getByText('forgotPassword.success')).toBeInTheDocument();
@@ -169,11 +197,15 @@ describe('ForgotPasswordPage', () => {
       'test@example.com',
     );
 
-    const button = screen.getByRole('button', { name: 'forgotPassword.submit' });
+    const button = screen.getByRole('button', {
+      name: 'forgotPassword.submit',
+    });
     await userEvent.click(button);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'forgotPassword.loading' })).toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: 'forgotPassword.loading' }),
+      ).toBeDisabled();
     });
 
     resolveRequest();
@@ -192,7 +224,9 @@ describe('ForgotPasswordPage', () => {
       screen.getByRole('textbox', { name: /login\.email/i }),
       'test@example.com',
     );
-    await userEvent.click(screen.getByRole('button', { name: 'forgotPassword.submit' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'forgotPassword.submit' }),
+    );
 
     await waitFor(() => expect(mockedForgotPassword).toHaveBeenCalledTimes(1));
   });

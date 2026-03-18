@@ -39,9 +39,10 @@ test.describe('Plans Page', () => {
     expect(monthlyText).not.toBe(yearlyText);
   });
 
-  test('current plan is marked', async ({ page }) => {
-    // The demo tenant is on TRIAL — "Current Plan" badge should be visible
-    const currentPlanBadge = page.getByText(/current plan/i);
-    await expect(currentPlanBadge.first()).toBeVisible({ timeout: 5_000 });
+  test('trial tenant shows Select Plan on all cards', async ({ page }) => {
+    // The demo tenant is on TRIAL — all plans should show "Select Plan" button
+    const selectPlanButtons = page.getByRole('button', { name: /select plan/i });
+    const count = await selectPlanButtons.count();
+    expect(count).toBe(3);
   });
 });

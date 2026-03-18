@@ -75,6 +75,7 @@ export class UsersService {
     }
 
     const passwordHash = await argon2.hash(dto.password);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...rest } = dto;
 
     return this.usersRepo.create(tenantId, {
@@ -101,6 +102,7 @@ export class UsersService {
     }
 
     // Copy non-relational fields
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...rest } = raw;
     const merged = { ...rest, ...updateData };
 

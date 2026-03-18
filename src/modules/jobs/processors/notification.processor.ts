@@ -4,6 +4,11 @@ import { Job } from 'bullmq';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { EmailService } from '../../email/email.service';
 
+interface NotificationJobData {
+  orderId: string;
+  tenantId: string;
+}
+
 @Processor('notifications')
 export class NotificationProcessor extends WorkerHost {
   private readonly logger = new Logger(NotificationProcessor.name);
@@ -15,7 +20,7 @@ export class NotificationProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job): Promise<void> {
+  async process(job: Job<NotificationJobData>): Promise<void> {
     switch (job.name) {
       case 'order-confirmation':
         await this.handleOrderConfirmation(job.data);

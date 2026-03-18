@@ -42,9 +42,7 @@ describe('PaddleWebhookController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PaddleWebhookController],
-      providers: [
-        { provide: PaddleWebhookService, useValue: webhookService },
-      ],
+      providers: [{ provide: PaddleWebhookService, useValue: webhookService }],
     }).compile();
 
     controller = module.get<PaddleWebhookController>(PaddleWebhookController);

@@ -29,11 +29,7 @@ export class EmailService {
     this.resend = apiKey ? new Resend(apiKey) : null;
   }
 
-  private async send(
-    to: string,
-    subject: string,
-    html: string,
-  ): Promise<void> {
+  private async send(to: string, subject: string, html: string): Promise<void> {
     if (!this.resend) {
       this.logger.debug(
         `Email skipped (no API key): to=${to}, subject="${subject}"`,
@@ -74,13 +70,14 @@ export class EmailService {
     data: OrderConfirmationData,
   ): Promise<void> {
     const html = orderConfirmationTemplate(data);
-    await this.send(to, `Order #${data.orderNumber} Confirmed — WashFlow`, html);
+    await this.send(
+      to,
+      `Order #${data.orderNumber} Confirmed — WashFlow`,
+      html,
+    );
   }
 
-  async sendStatusUpdate(
-    to: string,
-    data: StatusUpdateData,
-  ): Promise<void> {
+  async sendStatusUpdate(to: string, data: StatusUpdateData): Promise<void> {
     const html = statusUpdateTemplate(data);
     await this.send(
       to,

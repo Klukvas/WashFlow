@@ -16,7 +16,17 @@ vi.mock('@/shared/utils/cn', () => ({
 }));
 
 vi.mock('@/shared/ui/button', () => ({
-  Button: ({ children, onClick, disabled, ...props }: any) => (
+  Button: ({
+    children,
+    onClick,
+    disabled,
+    ...props
+  }: {
+    children: ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+    [key: string]: unknown;
+  }) => (
     <button onClick={onClick} disabled={disabled} {...props}>
       {children}
     </button>
@@ -24,37 +34,13 @@ vi.mock('@/shared/ui/button', () => ({
 }));
 
 vi.mock('@/shared/ui/card', () => ({
-  CardHeader: ({ children }: any) => <div>{children}</div>,
-  CardTitle: ({ children }: any) => <h3>{children}</h3>,
+  CardHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  CardTitle: ({ children }: { children: ReactNode }) => <h3>{children}</h3>,
 }));
 
 vi.mock('lucide-react', () => ({
   Check: () => <span data-testid="check-icon" />,
 }));
-
-const fakeWorkers = [
-  {
-    id: 'w1',
-    isWorker: true,
-    user: { firstName: 'John', lastName: 'Doe' },
-    workStartTime: '09:00',
-    workEndTime: '17:00',
-  },
-  {
-    id: 'w2',
-    isWorker: true,
-    user: { firstName: 'Jane', lastName: 'Smith' },
-    workStartTime: '10:00',
-    workEndTime: '18:00',
-  },
-  {
-    id: 'w3',
-    isWorker: false,
-    user: { firstName: 'Admin', lastName: 'User' },
-    workStartTime: null,
-    workEndTime: null,
-  },
-];
 
 vi.mock('@/features/workforce/api/workforce.api', () => ({
   fetchProfiles: vi.fn().mockResolvedValue({

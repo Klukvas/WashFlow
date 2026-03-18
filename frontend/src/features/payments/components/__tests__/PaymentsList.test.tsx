@@ -4,7 +4,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { PaymentsList } from '../PaymentsList';
 
-let mockData: any[] | undefined = undefined;
+let mockData:
+  | {
+      id: string;
+      amount: number;
+      createdAt: string;
+      method: string;
+      status: string;
+    }[]
+  | undefined = undefined;
 let mockIsLoading = false;
 
 vi.mock('../../hooks/usePayments', () => ({
@@ -52,8 +60,20 @@ describe('PaymentsList', () => {
 
   it('renders payment rows with amount, datetime, method, status', () => {
     mockData = [
-      { id: 'p1', amount: 100, createdAt: '2026-01-15T10:00:00Z', method: 'CASH', status: 'PAID' },
-      { id: 'p2', amount: 50, createdAt: '2026-01-16T12:00:00Z', method: 'CARD', status: 'PENDING' },
+      {
+        id: 'p1',
+        amount: 100,
+        createdAt: '2026-01-15T10:00:00Z',
+        method: 'CASH',
+        status: 'PAID',
+      },
+      {
+        id: 'p2',
+        amount: 50,
+        createdAt: '2026-01-16T12:00:00Z',
+        method: 'CARD',
+        status: 'PENDING',
+      },
     ];
 
     render(<PaymentsList orderId="o1" />, { wrapper: createWrapper() });
@@ -68,7 +88,13 @@ describe('PaymentsList', () => {
 
   it('formats datetime', () => {
     mockData = [
-      { id: 'p1', amount: 100, createdAt: '2026-01-15', method: 'CASH', status: 'PAID' },
+      {
+        id: 'p1',
+        amount: 100,
+        createdAt: '2026-01-15',
+        method: 'CASH',
+        status: 'PAID',
+      },
     ];
 
     render(<PaymentsList orderId="o1" />, { wrapper: createWrapper() });

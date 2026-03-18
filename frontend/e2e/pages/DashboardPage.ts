@@ -12,17 +12,25 @@ export class DashboardPage {
     this.kpiCards = page.locator('.grid').first();
     this.statsCards = page.locator('.grid').nth(1);
     this.liveOperationsPanel = page.getByText('Live Operations').locator('..');
-    this.branchPerformanceTable = page.getByText('Branch Performance').locator('..');
-    this.employeePerformanceTable = page.getByText('Employee Performance').locator('..');
+    this.branchPerformanceTable = page
+      .getByText('Branch Performance')
+      .locator('..');
+    this.employeePerformanceTable = page
+      .getByText('Employee Performance')
+      .locator('..');
     this.alertsPanel = page.getByText('Alerts').first().locator('..');
   }
 
   async goto() {
-    await this.page.goto('/');
+    await this.page.goto('/dashboard');
     await this.page.waitForLoadState('networkidle');
   }
 
   async getKpiCardTexts() {
-    return this.page.locator('.grid').first().locator('[class*="CardContent"], [class*="p-4"]').allTextContents();
+    return this.page
+      .locator('.grid')
+      .first()
+      .locator('[class*="CardContent"], [class*="p-4"]')
+      .allTextContents();
   }
 }

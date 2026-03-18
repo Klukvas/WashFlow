@@ -36,13 +36,11 @@ test.describe('Vehicles list', () => {
     await vehiclesPage.createButton.click();
     await expect(page.locator('.fixed.inset-0.z-50')).toBeVisible();
 
-    // Select client via Combobox — click the input, wait for options, pick first
+    // Select client via Combobox — click the input, wait for dropdown, pick first
     const clientCombobox = page.locator('.fixed.inset-0.z-50 input').first();
     await clientCombobox.click();
     await page.waitForTimeout(500);
-    const firstOption = page
-      .locator('[role="listbox"] [role="option"]')
-      .first();
+    const firstOption = page.locator('.bg-popover button').first();
     await firstOption.click();
 
     // Fill make
@@ -76,12 +74,12 @@ test.describe('Vehicles list', () => {
       return;
     }
 
-    // Click the first row's delete button (Trash2 with aria-label)
+    // Click the first row's delete button
     const deleteBtn = page
       .locator('table tbody tr')
       .first()
-      .locator('button')
-      .filter({ has: page.locator('.text-destructive') });
+      .getByRole('button')
+      .last();
     await deleteBtn.click();
 
     // Confirm dialog

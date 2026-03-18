@@ -4,6 +4,8 @@ test.describe('Order Create Wizard', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/orders/create');
     await page.waitForLoadState('networkidle');
+    // Select client-first mode to enter wizard
+    await page.getByText(/client first/i).click();
   });
 
   test('step 0: shows branch selector and client search', async ({ page }) => {

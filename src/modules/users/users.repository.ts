@@ -9,6 +9,7 @@ import { applyBranchScope } from '../../common/utils/branch-scope.util';
 function stripSensitive<T extends Record<string, unknown>>(
   user: T,
 ): Omit<T, 'passwordHash'> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { passwordHash, ...safe } = user;
   return safe;
 }
@@ -28,9 +29,8 @@ export class UsersRepository {
   ) {
     const prisma = this.db(tenantId);
     const { skip, take, orderBy } = buildPaginationArgs(query);
-    const base: Prisma.UserWhereInput = query.includeDeleted
-      ? ({ _includeDeleted: true } as any)
-      : {};
+    const base: Prisma.UserWhereInput & { _includeDeleted?: boolean } =
+      query.includeDeleted ? { _includeDeleted: true } : {};
     const where = applyBranchScope(
       base as Record<string, unknown>,
       userBranchId,
@@ -99,7 +99,7 @@ export class UsersRepository {
 
   async findByIdIncludeDeleted(tenantId: string, id: string) {
     const user = await this.db(tenantId).user.findFirst({
-      where: { id, _includeDeleted: true } as any,
+      where: { id, _includeDeleted: true } as Prisma.UserWhereInput,
       include: { role: true, branch: true },
     });
     return user ? stripSensitive(user) : null;

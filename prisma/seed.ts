@@ -669,6 +669,7 @@ async function seedRealisticData(tenantId: string, adminUserId: string) {
       let email =
         `${firstName.toLowerCase()}.${lastName.toLowerCase()}@washflow.com`
           .replace(/і/g, 'i')
+          .replace(/и/g, 'y')
           .replace(/ї/g, 'yi')
           .replace(/є/g, 'ye')
           .replace(/а/g, 'a')

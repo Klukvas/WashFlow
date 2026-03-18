@@ -152,6 +152,7 @@ const HowToTopicPage = lazy(() =>
   })),
 );
 
+// eslint-disable-next-line react-refresh/only-export-components
 function SuspenseWrapper({ children }: { children: React.ReactNode }) {
   return (
     <ErrorBoundary>

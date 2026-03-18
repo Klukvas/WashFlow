@@ -14,7 +14,7 @@ test.describe('Error pages', () => {
     await page.waitForLoadState('networkidle');
 
     await page.getByRole('button', { name: /go to dashboard/i }).click();
-    await expect(page).toHaveURL('/', { timeout: 5_000 });
+    await expect(page).toHaveURL('/dashboard', { timeout: 5_000 });
   });
 
   test('404 page shows Page Not Found', async ({ page }) => {
@@ -30,7 +30,7 @@ test.describe('Error pages', () => {
     await page.waitForLoadState('networkidle');
 
     await page.getByRole('button', { name: /go to dashboard/i }).click();
-    await expect(page).toHaveURL('/', { timeout: 5_000 });
+    await expect(page).toHaveURL('/dashboard', { timeout: 5_000 });
   });
 
   test('unknown URL redirects to 404', async ({ page }) => {

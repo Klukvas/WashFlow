@@ -69,7 +69,7 @@ export class ServicesRepository {
 
   async findByIdIncludeDeleted(tenantId: string, id: string) {
     const row = await this.db(tenantId).service.findFirst({
-      where: { id, _includeDeleted: true } as any,
+      where: { id, _includeDeleted: true } as Prisma.ServiceWhereInput,
     });
     return row ? this.mapService(row) : row;
   }

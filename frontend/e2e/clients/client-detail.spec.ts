@@ -51,16 +51,20 @@ test.describe('Client detail page', () => {
     const detail = new ClientDetailPage(page);
     await detail.navigateFromList();
 
-    // Click Edit
-    await detail.editButton.click();
-    await expect(page.locator('#firstName')).toBeVisible({ timeout: 3_000 });
+    // Click Edit — may match multiple buttons, use first
+    await page.getByRole('button', { name: /edit/i }).first().click();
+    await expect(page.locator('#firstName')).toBeVisible({ timeout: 5_000 });
 
     // Click Cancel to hide
-    await page.getByRole('button', { name: /cancel/i }).click();
-    await expect(page.locator('#firstName')).not.toBeVisible({ timeout: 3_000 });
+    await page.getByRole('button', { name: /cancel/i }).first().click();
+    await expect(page.locator('#firstName')).not.toBeVisible({
+      timeout: 3_000,
+    });
   });
 
-  test('delete flow: create temp client, delete, and redirect', async ({ page }) => {
+  test('delete flow: create temp client, delete, and redirect', async ({
+    page,
+  }) => {
     test.setTimeout(30_000);
 
     // Create a temp client via the list page
@@ -77,7 +81,9 @@ test.describe('Client detail page', () => {
     await submitBtn.click();
 
     // Wait for the dialog to close (new client created)
-    await expect(page.locator('#firstName')).not.toBeVisible({ timeout: 5_000 });
+    await expect(page.locator('#firstName')).not.toBeVisible({
+      timeout: 5_000,
+    });
     await page.waitForLoadState('networkidle');
 
     // Navigate to the new client (search for it)

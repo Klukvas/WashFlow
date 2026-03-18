@@ -1,3 +1,4 @@
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -17,7 +18,21 @@ vi.mock('@/shared/utils/cn', () => ({
 }));
 
 vi.mock('@/shared/ui/button', () => ({
-  Button: ({ children, onClick, disabled, variant, size, ...props }: any) => (
+  Button: ({
+    children,
+    onClick,
+    disabled,
+    variant,
+    size,
+    ...props
+  }: {
+    children: ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+    variant?: string;
+    size?: string;
+    [key: string]: unknown;
+  }) => (
     <button
       onClick={onClick}
       disabled={disabled}
@@ -31,23 +46,45 @@ vi.mock('@/shared/ui/button', () => ({
 }));
 
 vi.mock('@/shared/ui/input', () => ({
-  Input: ({ value, onChange, placeholder, ...props }: any) => (
+  Input: ({
+    value,
+    onChange,
+    placeholder,
+    ...props
+  }: {
+    value?: string;
+    onChange?: React.ChangeEventHandler<HTMLInputElement>;
+    placeholder?: string;
+    [key: string]: unknown;
+  }) => (
     <input
       value={value}
       onChange={onChange}
       placeholder={placeholder}
       aria-label={placeholder}
-      {...props}
+      {...(props as React.InputHTMLAttributes<HTMLInputElement>)}
     />
   ),
 }));
 
 vi.mock('@/shared/ui/label', () => ({
-  Label: ({ children }: any) => <label>{children}</label>,
+  Label: ({ children }: { children: ReactNode }) => <label>{children}</label>,
 }));
 
 vi.mock('@/shared/ui/select', () => ({
-  Select: ({ options, value, onChange, placeholder, error }: any) => (
+  Select: ({
+    options,
+    value,
+    onChange,
+    placeholder,
+    error,
+  }: {
+    options?: { value: string; label: string }[];
+    value: string;
+    onChange: React.ChangeEventHandler<HTMLSelectElement>;
+    placeholder?: string;
+    error?: string;
+  }) => (
     <div>
       <select
         data-testid="branch-select"
@@ -56,7 +93,7 @@ vi.mock('@/shared/ui/select', () => ({
         aria-label={placeholder}
       >
         <option value="">{placeholder}</option>
-        {options?.map((o: any) => (
+        {options?.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
           </option>
@@ -68,10 +105,12 @@ vi.mock('@/shared/ui/select', () => ({
 }));
 
 vi.mock('@/shared/ui/dialog', () => ({
-  Dialog: ({ open, children }: any) =>
+  Dialog: ({ open, children }: { open: boolean; children: ReactNode }) =>
     open ? <div data-testid="dialog">{children}</div> : null,
-  DialogHeader: ({ children }: any) => <div>{children}</div>,
-  DialogTitle: ({ children }: any) => <h2>{children}</h2>,
+  DialogHeader: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
 }));
 
 vi.mock('lucide-react', () => ({
@@ -86,7 +125,13 @@ vi.mock('@/features/clients/hooks/useClients', () => ({
 }));
 
 vi.mock('@/features/clients/components/ClientForm', () => ({
-  ClientForm: ({ onSubmit, onCancel }: any) => (
+  ClientForm: ({
+    onSubmit,
+    onCancel,
+  }: {
+    onSubmit: (data: { firstName: string; phone: string }) => void;
+    onCancel: () => void;
+  }) => (
     <div data-testid="client-form">
       <button onClick={() => onSubmit({ firstName: 'New', phone: '123' })}>
         submit-client
@@ -95,11 +140,6 @@ vi.mock('@/features/clients/components/ClientForm', () => ({
     </div>
   ),
 }));
-
-const fakeClients = [
-  { id: 'c1', firstName: 'Alice', lastName: 'Johnson', phone: '+380501111111' },
-  { id: 'c2', firstName: 'Bob', lastName: 'Brown', phone: '+380502222222' },
-];
 
 vi.mock('@/shared/api/client', () => ({
   apiClient: {
@@ -139,7 +179,7 @@ function createWrapper() {
 const fakeBranches = [
   { id: 'b1', name: 'Branch One' },
   { id: 'b2', name: 'Branch Two' },
-] as any[];
+] as { id: string; name: string }[];
 
 describe('StepBranchClient', () => {
   const defaultProps = {

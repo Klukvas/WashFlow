@@ -54,7 +54,7 @@ export class IdempotencyRepository {
   ) {
     return tx.idempotencyKey.update({
       where: { tenantId_key: { tenantId, key } },
-      data: { statusCode, responseBody: responseBody as any },
+      data: { statusCode, responseBody: responseBody as Prisma.InputJsonValue },
     });
   }
 
@@ -77,7 +77,7 @@ export class IdempotencyRepository {
         method: data.method,
         path: data.path,
         statusCode: data.statusCode,
-        responseBody: data.responseBody as any,
+        responseBody: data.responseBody as Prisma.InputJsonValue,
         expiresAt: data.expiresAt,
       },
       update: {},

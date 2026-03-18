@@ -58,9 +58,9 @@ test.describe('Audit log page', () => {
       .first()
       .textContent();
 
-    // Try to click page 2 button
-    const page2Btn = page.getByRole('button', { name: '2' });
-    if (await page2Btn.isVisible()) {
+    // Try to click page 2 button (may not exist if not enough audit entries)
+    const page2Btn = page.getByRole('button', { name: '2', exact: true }).first();
+    if (await page2Btn.isVisible({ timeout: 2_000 }).catch(() => false)) {
       await page2Btn.click();
       await page.waitForLoadState('networkidle');
 

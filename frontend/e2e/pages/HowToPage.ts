@@ -6,9 +6,11 @@ export class HowToPage {
   readonly contentArea: Locator;
 
   constructor(private readonly page: Page) {
-    this.heading = page.getByRole('heading', { name: /how-to/i });
+    this.heading = page.getByRole('heading', { name: /how.to/i });
     this.topicLinks = page.locator('nav a[href^="/how-to/"]');
-    this.contentArea = page.locator('main .min-w-0.flex-1, main article').first();
+    this.contentArea = page
+      .locator('main .min-w-0.flex-1, main article')
+      .first();
   }
 
   async goto() {

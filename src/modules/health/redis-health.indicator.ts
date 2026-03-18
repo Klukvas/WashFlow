@@ -27,7 +27,7 @@ export class RedisHealthIndicator
     try {
       await this.redis.ping();
       return this.getStatus(key, true);
-    } catch (error) {
+    } catch {
       throw new HealthCheckError(
         'Redis health check failed',
         this.getStatus(key, false, { message: 'connection failed' }),

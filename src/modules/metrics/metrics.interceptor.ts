@@ -8,6 +8,10 @@ import { Observable, tap } from 'rxjs';
 import type { Request, Response } from 'express';
 import { MetricsService } from './metrics.service';
 
+interface ExpressRoute {
+  path?: string;
+}
+
 @Injectable()
 export class MetricsInterceptor implements NestInterceptor {
   constructor(private readonly metricsService: MetricsService) {}
@@ -21,7 +25,8 @@ export class MetricsInterceptor implements NestInterceptor {
       tap({
         next: () => {
           const res = ctx.getResponse<Response>();
-          const route = req.route?.path ?? 'unknown';
+          const route =
+            (req.route as ExpressRoute | undefined)?.path ?? 'unknown';
           const labels = {
             method: req.method,
             route,
@@ -32,7 +37,8 @@ export class MetricsInterceptor implements NestInterceptor {
         },
         error: () => {
           const res = ctx.getResponse<Response>();
-          const route = req.route?.path ?? 'unknown';
+          const route =
+            (req.route as ExpressRoute | undefined)?.path ?? 'unknown';
           const labels = {
             method: req.method,
             route,

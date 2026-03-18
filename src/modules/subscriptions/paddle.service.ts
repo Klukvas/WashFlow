@@ -142,11 +142,7 @@ export class PaddleService {
         billing_period?: { starts_at?: string };
       };
       currency_code?: string;
-    }>(
-      'POST',
-      `/subscriptions/${paddleSubscriptionId}/preview`,
-      body,
-    );
+    }>('POST', `/subscriptions/${paddleSubscriptionId}/preview`, body);
 
     return {
       immediateTransaction: result.immediate_transaction?.details?.totals?.total
@@ -168,7 +164,9 @@ export class PaddleService {
 
   async cancelSubscription(
     paddleSubscriptionId: string,
-    effectiveFrom: 'immediately' | 'next_billing_period' = 'next_billing_period',
+    effectiveFrom:
+      | 'immediately'
+      | 'next_billing_period' = 'next_billing_period',
   ): Promise<void> {
     await this.request<unknown>(
       'POST',

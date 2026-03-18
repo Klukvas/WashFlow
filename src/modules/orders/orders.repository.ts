@@ -38,9 +38,9 @@ export class OrdersRepository {
   ) {
     const { skip, take, orderBy } = buildPaginationArgs(query);
 
-    let where: Prisma.OrderWhereInput = {};
+    let where: Prisma.OrderWhereInput & { _includeDeleted?: boolean } = {};
     if (query.includeDeleted) {
-      (where as any)._includeDeleted = true;
+      where._includeDeleted = true;
     }
     if (query.status) where.status = query.status;
     if (query.clientId) where.clientId = query.clientId;
@@ -104,7 +104,7 @@ export class OrdersRepository {
 
   async findByIdIncludeDeleted(tenantId: string, id: string) {
     return this.db(tenantId).order.findFirst({
-      where: { id, _includeDeleted: true } as any,
+      where: { id, _includeDeleted: true } as Prisma.OrderWhereInput,
       include: this.defaultInclude,
     });
   }

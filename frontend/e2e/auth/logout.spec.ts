@@ -1,15 +1,21 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Logout', () => {
+  // Intercept the logout API call so the backend does NOT increment tokenVersion.
+  // This prevents invalidating the shared refresh token used by all other tests.
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/api/v1/auth/logout', (route) =>
+      route.fulfill({ status: 200, body: '{}' }),
+    );
+  });
+
   test('logout clears auth and redirects to landing', async ({ page }) => {
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
 
-    // Find and click sign out (usually in header or user menu)
-    const signOutButton = page.getByText(/sign out/i);
+    const signOutButton = page.getByRole('button', { name: /sign out/i });
     await signOutButton.click();
 
-    // Should redirect to landing page
     await expect(page).toHaveURL('/', { timeout: 10_000 });
   });
 
@@ -17,7 +23,7 @@ test.describe('Logout', () => {
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
 
-    const signOutButton = page.getByText(/sign out/i);
+    const signOutButton = page.getByRole('button', { name: /sign out/i });
     await signOutButton.click();
     await expect(page).toHaveURL('/', { timeout: 10_000 });
 
@@ -30,17 +36,18 @@ test.describe('Logout', () => {
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
 
-    const signOutButton = page.getByText(/sign out/i);
+    const signOutButton = page.getByRole('button', { name: /sign out/i });
     await signOutButton.click();
     await expect(page).toHaveURL('/', { timeout: 10_000 });
 
-    // Click Sign In on landing
-    await page.getByRole('button', { name: /sign in/i }).click();
+    // Wait for the auth modal to be visible (AppShell opens it on landing)
+    await page.locator('.fixed.inset-0.z-50').waitFor({ state: 'visible', timeout: 5_000 });
 
-    // Fill login form
-    await page.locator('#email').fill('admin@washflow.com');
-    await page.locator('#password').fill('admin123');
-    await page.locator('[data-testid="login-submit"]').click();
+    // Fill login form inside the modal
+    const modal = page.locator('.fixed.inset-0.z-50');
+    await modal.locator('#email').fill('admin@washflow.com');
+    await modal.locator('#password').fill('admin123');
+    await modal.locator('[data-testid="login-submit"]').click();
 
     await expect(page).toHaveURL(/\/(dashboard)?$/, { timeout: 10_000 });
   });

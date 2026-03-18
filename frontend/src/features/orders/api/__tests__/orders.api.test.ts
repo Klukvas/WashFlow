@@ -100,7 +100,9 @@ describe('orders.api', () => {
     });
 
     const result = await updateOrderStatus('o1', {
-      status: 'IN_PROGRESS' as any,
+      status: 'IN_PROGRESS' as Parameters<
+        typeof updateOrderStatus
+      >[1]['status'],
     });
 
     expect(apiClient.patch).toHaveBeenCalledWith('/orders/o1/status', {

@@ -5,7 +5,9 @@ import { SuperAdminGuard } from './superadmin.guard';
 // Helpers
 // ---------------------------------------------------------------------------
 
-const buildContext = (user: Record<string, unknown> | undefined): ExecutionContext =>
+const buildContext = (
+  user: Record<string, unknown> | undefined,
+): ExecutionContext =>
   ({
     switchToHttp: jest.fn().mockReturnValue({
       getRequest: jest.fn().mockReturnValue({ user }),

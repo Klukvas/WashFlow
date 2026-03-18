@@ -44,7 +44,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     const requestPath = request.path || request.url.split('?')[0];
 
-    if (status >= 500) {
+    if ((status as number) >= 500) {
       this.logger.error(
         `${request.method} ${requestPath} ${status}`,
         exception instanceof Error ? exception.stack : String(exception),

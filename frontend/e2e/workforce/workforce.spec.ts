@@ -72,7 +72,7 @@ test.describe('Workforce list', () => {
     const userInput = inputs.first();
     await userInput.click();
     await page.waitForTimeout(500);
-    const userOption = page.locator('[role="listbox"] [role="option"]').first();
+    const userOption = page.locator('.bg-popover button').first();
     if (await userOption.isVisible()) {
       await userOption.click();
     }
@@ -81,9 +81,7 @@ test.describe('Workforce list', () => {
     const branchInput = inputs.nth(1);
     await branchInput.click();
     await page.waitForTimeout(500);
-    const branchOption = page
-      .locator('[role="listbox"] [role="option"]')
-      .first();
+    const branchOption = page.locator('.bg-popover button').first();
     if (await branchOption.isVisible()) {
       await branchOption.click();
     }

@@ -2,11 +2,15 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 
+interface AnalyticsJobData {
+  tenantId: string;
+}
+
 @Processor('analytics')
 export class AnalyticsProcessor extends WorkerHost {
   private readonly logger = new Logger(AnalyticsProcessor.name);
 
-  async process(job: Job): Promise<void> {
+  process(job: Job<AnalyticsJobData>): Promise<void> {
     switch (job.name) {
       case 'order-created':
         this.logger.log(
@@ -22,5 +26,6 @@ export class AnalyticsProcessor extends WorkerHost {
       default:
         this.logger.warn(`Unknown analytics job: ${job.name}`);
     }
+    return Promise.resolve();
   }
 }

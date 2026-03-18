@@ -20,7 +20,15 @@ vi.mock('@/shared/utils/cn', () => ({
 }));
 
 vi.mock('@/shared/ui/button', () => ({
-  Button: ({ children, onClick, disabled }: any) => (
+  Button: ({
+    children,
+    onClick,
+    disabled,
+  }: {
+    children: ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+  }) => (
     <button onClick={onClick} disabled={disabled}>
       {children}
     </button>
@@ -28,13 +36,21 @@ vi.mock('@/shared/ui/button', () => ({
 }));
 
 vi.mock('@/shared/ui/label', () => ({
-  Label: ({ children }: any) => <label>{children}</label>,
+  Label: ({ children }: { children: ReactNode }) => <label>{children}</label>,
 }));
 
 vi.mock('@/shared/ui/select', () => ({
-  Select: ({ options, value, onChange }: any) => (
+  Select: ({
+    options,
+    value,
+    onChange,
+  }: {
+    options?: { value: string; label: string }[];
+    value: string;
+    onChange: React.ChangeEventHandler<HTMLSelectElement>;
+  }) => (
     <select data-testid="wp-select" value={value} onChange={onChange}>
-      {options?.map((o: any) => (
+      {options?.map((o) => (
         <option key={o.value} value={o.value}>
           {o.label}
         </option>
@@ -44,12 +60,18 @@ vi.mock('@/shared/ui/select', () => ({
 }));
 
 vi.mock('@/shared/ui/card', () => ({
-  CardHeader: ({ children }: any) => <div>{children}</div>,
-  CardTitle: ({ children }: any) => <h3>{children}</h3>,
+  CardHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  CardTitle: ({ children }: { children: ReactNode }) => <h3>{children}</h3>,
 }));
 
 vi.mock('@/shared/ui/date-picker', () => ({
-  DatePicker: ({ value, onChange }: any) => (
+  DatePicker: ({
+    value,
+    onChange,
+  }: {
+    value: string;
+    onChange: (v: string) => void;
+  }) => (
     <input
       type="date"
       data-testid="date-picker"
@@ -97,11 +119,6 @@ vi.mock('@/features/branches/hooks/useBranches', () => ({
     data: { workingDays: [1, 2, 3, 4, 5] },
   }),
 }));
-
-const fakeWorkPosts = [
-  { id: 'wp1', name: 'Post 1' },
-  { id: 'wp2', name: 'Post 2' },
-];
 
 vi.mock('@/shared/api/client', () => ({
   apiClient: {

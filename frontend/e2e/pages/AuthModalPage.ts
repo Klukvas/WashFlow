@@ -23,7 +23,9 @@ export class AuthModalPage {
     this.switchToRegisterLink = page.getByRole('button', {
       name: /register/i,
     });
-    this.switchToLoginLink = page.getByRole('button', { name: /sign in/i });
+    this.switchToLoginLink = page
+      .locator('[role="dialog"]')
+      .getByRole('button', { name: /sign in/i });
     this.forgotPasswordLink = page.getByRole('link', {
       name: /forgot password/i,
     });

@@ -7,7 +7,7 @@ export class VehiclesPage {
 
   constructor(private readonly page: Page) {
     this.heading = page.getByRole('heading', { name: /vehicles/i });
-    this.createButton = page.getByRole('button', { name: 'Create' });
+    this.createButton = page.getByRole('button', { name: /add vehicle/i });
     this.tableRows = page.locator('table tbody tr');
   }
 

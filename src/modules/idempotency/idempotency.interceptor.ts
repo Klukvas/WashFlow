@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
+import type { Request, Response } from 'express';
+import type { JwtPayload } from '../../common/types/jwt-payload.type.js';
 import { IdempotencyService } from './idempotency.service';
 
 @Injectable()
@@ -15,9 +17,13 @@ export class IdempotencyInterceptor implements NestInterceptor {
   async intercept(
     context: ExecutionContext,
     next: CallHandler,
-  ): Promise<Observable<any>> {
-    const request = context.switchToHttp().getRequest();
-    const response = context.switchToHttp().getResponse();
+  ): Promise<Observable<unknown>> {
+    const request = context
+      .switchToHttp()
+      .getRequest<
+        Request & { user?: JwtPayload; params?: Record<string, string> }
+      >();
+    const response = context.switchToHttp().getResponse<Response>();
     const idempotencyKey = request.headers['idempotency-key'] as
       | string
       | undefined;
@@ -31,7 +37,8 @@ export class IdempotencyInterceptor implements NestInterceptor {
     }
 
     const rawTenantId: string | undefined =
-      request.user?.tenantId || request.params?.tenantSlug;
+      request.user?.tenantId ??
+      (request.params as Record<string, string> | undefined)?.['tenantSlug'];
 
     if (!rawTenantId) {
       return next.handle();
@@ -52,8 +59,8 @@ export class IdempotencyInterceptor implements NestInterceptor {
     }
 
     return next.handle().pipe(
-      tap(async (data) => {
-        await this.idempotencyService.save(tenantKey, idempotencyKey, {
+      tap((data: unknown) => {
+        void this.idempotencyService.save(tenantKey, idempotencyKey, {
           method: request.method,
           path: request.path,
           statusCode: response.statusCode || 201,

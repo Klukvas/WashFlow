@@ -5,6 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import type { Request } from 'express';
 import { PERMISSIONS_KEY } from '../decorators/permissions.decorator.js';
 import { JwtPayload } from '../types/jwt-payload.type.js';
 
@@ -22,7 +23,9 @@ export class PermissionsGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
+    const request = context
+      .switchToHttp()
+      .getRequest<Request & { user: JwtPayload }>();
     const user: JwtPayload = request.user;
 
     if (!user) {

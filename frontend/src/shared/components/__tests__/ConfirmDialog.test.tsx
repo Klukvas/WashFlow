@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { ConfirmDialog } from '../ConfirmDialog';
 
 vi.mock('react-i18next', () => ({
@@ -10,19 +11,40 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('@/shared/ui/dialog', () => ({
-  Dialog: ({ open, children }: any) => (open ? <div data-testid="dialog">{children}</div> : null),
-  DialogHeader: ({ children }: any) => <div data-testid="dialog-header">{children}</div>,
-  DialogTitle: ({ children }: any) => <h2 data-testid="dialog-title">{children}</h2>,
-  DialogFooter: ({ children }: any) => <div data-testid="dialog-footer">{children}</div>,
+  Dialog: ({ open, children }: { open: boolean; children: ReactNode }) =>
+    open ? <div data-testid="dialog">{children}</div> : null,
+  DialogHeader: ({ children }: { children: ReactNode }) => (
+    <div data-testid="dialog-header">{children}</div>
+  ),
+  DialogTitle: ({ children }: { children: ReactNode }) => (
+    <h2 data-testid="dialog-title">{children}</h2>
+  ),
+  DialogFooter: ({ children }: { children: ReactNode }) => (
+    <div data-testid="dialog-footer">{children}</div>
+  ),
 }));
 
 vi.mock('@/shared/ui/button', () => ({
-  Button: ({ children, onClick, disabled, loading, variant, ...props }: any) => (
+  Button: ({
+    children,
+    onClick,
+    disabled,
+    loading,
+    variant,
+    ...props
+  }: {
+    children: ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+    loading?: boolean;
+    variant?: string;
+    [key: string]: unknown;
+  }) => (
     <button
       onClick={onClick}
       disabled={disabled || loading}
       data-variant={variant}
-      data-loading={loading}
+      data-loading={String(loading)}
       {...props}
     >
       {children}

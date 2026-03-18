@@ -25,10 +25,12 @@ test.describe('Login', () => {
     await loginPage.goto();
     await loginPage.login(EMAIL, PASSWORD);
 
-    await expect(page).toHaveURL('/', { timeout: 10_000 });
+    await expect(page).toHaveURL('/dashboard', { timeout: 10_000 });
   });
 
-  test('returns 401 on invalid credentials and stays on login', async ({ page }) => {
+  test('returns 401 on invalid credentials and stays on login', async ({
+    page,
+  }) => {
     const loginPage = new LoginPage(page);
     await loginPage.goto();
 

@@ -2,13 +2,13 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Dashboard', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
   });
 
   test('loads dashboard page', async ({ page }) => {
-    // Should not redirect away — stays on /
-    await expect(page).toHaveURL('/');
+    // Should not redirect away — stays on /dashboard
+    await expect(page).toHaveURL('/dashboard');
   });
 
   test('displays KPI cards', async ({ page }) => {

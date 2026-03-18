@@ -8,6 +8,7 @@ interface AuthState {
   isAuthenticated: boolean;
   setAuth: (accessToken: string, user: AuthUser) => void;
   setPermissions: (permissions: string[]) => void;
+  bootRefresh: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -45,11 +46,16 @@ function restoreUser(): AuthUser | null {
   }
 }
 
+const _initialUser = restoreUser();
+
 export const useAuthStore = create<AuthState>(() => ({
-  // No token in initial state — a silent refresh call on app boot will populate it.
-  user: restoreUser(),
+  // Token starts null — the 401 interceptor in apiClient will silently refresh on
+  // the first API call and populate it.  We derive isAuthenticated from the stored
+  // user profile so the router doesn't redirect to the landing page before the
+  // refresh has a chance to fire.
+  user: _initialUser,
   permissions: [],
-  isAuthenticated: false,
+  isAuthenticated: _initialUser !== null,
 
   setAuth: (accessToken, user) => {
     _accessToken = accessToken;
@@ -59,6 +65,37 @@ export const useAuthStore = create<AuthState>(() => ({
   },
 
   setPermissions: (permissions) => useAuthStore.setState({ permissions }),
+
+  /**
+   * Proactively refresh the access token using the HttpOnly refresh_token cookie.
+   * Called once on app boot so we have a valid token before any API call fires.
+   * If no refresh cookie exists (or it's expired/revoked), this silently logs out.
+   */
+  bootRefresh: async () => {
+    if (_accessToken) return; // already have a token
+    if (!_initialUser) return; // no stored session
+    try {
+      const { data } = await axios.post(
+        '/api/v1/auth/refresh',
+        {},
+        { withCredentials: true },
+      );
+      const { accessToken, user } = data.data;
+      _accessToken = accessToken;
+      const permissions = decodePermissions(accessToken);
+      useAuthStore.setState({ user, permissions, isAuthenticated: true });
+      localStorage.setItem('user', JSON.stringify(user));
+    } catch {
+      // Refresh failed — cookie expired or tokenVersion revoked
+      _accessToken = null;
+      localStorage.removeItem('user');
+      useAuthStore.setState({
+        user: null,
+        permissions: [],
+        isAuthenticated: false,
+      });
+    }
+  },
 
   logout: async () => {
     // Tell the backend to invalidate the tokenVersion and clear the HttpOnly cookie.

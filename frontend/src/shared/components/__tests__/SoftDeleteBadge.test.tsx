@@ -1,3 +1,4 @@
+import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { SoftDeleteBadge } from '../SoftDeleteBadge';
@@ -10,7 +11,13 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('@/shared/ui/badge', () => ({
-  Badge: ({ children, ...props }: any) => (
+  Badge: ({
+    children,
+    ...props
+  }: {
+    children?: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
     <span data-testid="badge" {...props}>
       {children}
     </span>

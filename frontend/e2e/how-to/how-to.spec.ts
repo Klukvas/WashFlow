@@ -22,8 +22,11 @@ test.describe('How-To pages', () => {
     await howToPage.gotoTopic('getting-started');
 
     // Find a link that is NOT getting-started and click it
-    const otherLink = howToPage.topicLinks
-      .filter({ hasNot: page.locator('[href="/how-to/getting-started"]') })
+    // Use aside to target desktop sidebar (mobile sidebar is hidden at lg viewport)
+    const otherLink = page
+      .locator(
+        'aside nav a[href^="/how-to/"]:not([href="/how-to/getting-started"])',
+      )
       .first();
     const href = await otherLink.getAttribute('href');
     await otherLink.click();
@@ -47,6 +50,8 @@ test.describe('How-To pages', () => {
     await howToPage.gotoTopic('flow-client-via-order');
 
     // Flow topics render numbered steps
-    await expect(page.getByText(/step/i).first()).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/step/i).first()).toBeVisible({
+      timeout: 5_000,
+    });
   });
 });

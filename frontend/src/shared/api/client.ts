@@ -54,7 +54,17 @@ apiClient.interceptors.response.use(
       _retry?: boolean;
     };
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Skip token refresh for auth endpoints — login/register 401s should
+    // propagate directly so the UI can show the error message.
+    const isAuthEndpoint = /\/auth\/(login|register)$/.test(
+      originalRequest.url ?? '',
+    );
+
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isAuthEndpoint
+    ) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({

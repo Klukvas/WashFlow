@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Sidebar navigation', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
   });
 
@@ -12,7 +12,7 @@ test.describe('Sidebar navigation', () => {
   });
 
   test('dashboard link is visible', async ({ page }) => {
-    const dashboardLink = page.locator('aside a[href="/"]');
+    const dashboardLink = page.locator('aside a[href="/dashboard"]');
     await expect(dashboardLink).toBeVisible();
   });
 

@@ -136,7 +136,16 @@ describe('client module', () => {
       const { apiClient } = await import('../client');
 
       // Get the request interceptor
-      const interceptors = (apiClient.interceptors.request as any).handlers;
+      const interceptors = (
+        apiClient.interceptors.request as unknown as {
+          handlers: {
+            fulfilled: (
+              config: InternalAxiosRequestConfig,
+            ) => InternalAxiosRequestConfig;
+            rejected: (error: unknown) => Promise<never>;
+          }[];
+        }
+      ).handlers;
       const requestInterceptor = interceptors[interceptors.length - 1];
 
       const config = {
@@ -152,7 +161,16 @@ describe('client module', () => {
 
       const { apiClient } = await import('../client');
 
-      const interceptors = (apiClient.interceptors.request as any).handlers;
+      const interceptors = (
+        apiClient.interceptors.request as unknown as {
+          handlers: {
+            fulfilled: (
+              config: InternalAxiosRequestConfig,
+            ) => InternalAxiosRequestConfig;
+            rejected: (error: unknown) => Promise<never>;
+          }[];
+        }
+      ).handlers;
       const requestInterceptor = interceptors[interceptors.length - 1];
 
       const config = {
@@ -166,7 +184,16 @@ describe('client module', () => {
     it('rejects errors in request interceptor', async () => {
       const { apiClient } = await import('../client');
 
-      const interceptors = (apiClient.interceptors.request as any).handlers;
+      const interceptors = (
+        apiClient.interceptors.request as unknown as {
+          handlers: {
+            fulfilled: (
+              config: InternalAxiosRequestConfig,
+            ) => InternalAxiosRequestConfig;
+            rejected: (error: unknown) => Promise<never>;
+          }[];
+        }
+      ).handlers;
       const requestInterceptor = interceptors[interceptors.length - 1];
 
       const error = new Error('request error');
@@ -180,7 +207,14 @@ describe('client module', () => {
     it('passes through successful responses', async () => {
       const { apiClient } = await import('../client');
 
-      const interceptors = (apiClient.interceptors.response as any).handlers;
+      const interceptors = (
+        apiClient.interceptors.response as unknown as {
+          handlers: {
+            fulfilled: (response: unknown) => unknown;
+            rejected: (error: unknown) => Promise<never>;
+          }[];
+        }
+      ).handlers;
       const responseInterceptor = interceptors[interceptors.length - 1];
 
       const response = { data: { success: true }, status: 200 };
@@ -191,7 +225,14 @@ describe('client module', () => {
     it('rejects non-401 errors without retry', async () => {
       const { apiClient } = await import('../client');
 
-      const interceptors = (apiClient.interceptors.response as any).handlers;
+      const interceptors = (
+        apiClient.interceptors.response as unknown as {
+          handlers: {
+            fulfilled: (response: unknown) => unknown;
+            rejected: (error: unknown) => Promise<never>;
+          }[];
+        }
+      ).handlers;
       const responseInterceptor = interceptors[interceptors.length - 1];
 
       const error = {
@@ -205,7 +246,14 @@ describe('client module', () => {
     it('rejects already-retried 401 errors', async () => {
       const { apiClient } = await import('../client');
 
-      const interceptors = (apiClient.interceptors.response as any).handlers;
+      const interceptors = (
+        apiClient.interceptors.response as unknown as {
+          handlers: {
+            fulfilled: (response: unknown) => unknown;
+            rejected: (error: unknown) => Promise<never>;
+          }[];
+        }
+      ).handlers;
       const responseInterceptor = interceptors[interceptors.length - 1];
 
       const error = {

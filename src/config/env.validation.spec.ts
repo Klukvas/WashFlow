@@ -50,17 +50,19 @@ describe('envSchema', () => {
   // =========================================================================
 
   describe('required fields', () => {
-    it.each(['DATABASE_URL', 'REDIS_URL', 'JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET'])(
-      'fails when %s is missing',
-      (field) => {
-        const env = { ...validEnv };
-        delete (env as any)[field];
+    it.each([
+      'DATABASE_URL',
+      'REDIS_URL',
+      'JWT_ACCESS_SECRET',
+      'JWT_REFRESH_SECRET',
+    ])('fails when %s is missing', (field) => {
+      const env = { ...validEnv };
+      delete (env as any)[field];
 
-        const result = envSchema.safeParse(env);
+      const result = envSchema.safeParse(env);
 
-        expect(result.success).toBe(false);
-      },
-    );
+      expect(result.success).toBe(false);
+    });
   });
 
   // =========================================================================
@@ -186,14 +188,11 @@ describe('envSchema', () => {
   // =========================================================================
 
   describe('NODE_ENV', () => {
-    it.each(['development', 'production', 'test'])(
-      'accepts "%s"',
-      (env) => {
-        const result = envSchema.safeParse({ ...validEnv, NODE_ENV: env });
+    it.each(['development', 'production', 'test'])('accepts "%s"', (env) => {
+      const result = envSchema.safeParse({ ...validEnv, NODE_ENV: env });
 
-        expect(result.success).toBe(true);
-      },
-    );
+      expect(result.success).toBe(true);
+    });
 
     it('rejects invalid NODE_ENV', () => {
       const result = envSchema.safeParse({

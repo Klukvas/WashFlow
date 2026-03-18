@@ -4,6 +4,7 @@ import {
   Injectable,
   ForbiddenException,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import type { JwtPayload } from '../types/jwt-payload.type.js';
 
 /**
@@ -13,8 +14,10 @@ import type { JwtPayload } from '../types/jwt-payload.type.js';
 @Injectable()
 export class SuperAdminGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
-    const user: JwtPayload = request.user;
+    const request = context
+      .switchToHttp()
+      .getRequest<Request & { user?: JwtPayload }>();
+    const user: JwtPayload | undefined = request.user;
 
     if (!user?.isSuperAdmin) {
       throw new ForbiddenException('Super-admin access required');

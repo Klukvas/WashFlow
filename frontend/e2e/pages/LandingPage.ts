@@ -10,17 +10,19 @@ export class LandingPage {
   readonly pricingSection: Locator;
 
   constructor(private readonly page: Page) {
-    this.signInButton = page.getByRole('button', { name: /sign in/i });
-    this.getStartedButton = page.getByRole('button', { name: /get started/i });
-    this.goToPlatformButton = page.getByRole('button', {
-      name: /go to platform/i,
-    });
+    this.signInButton = page
+      .locator('header')
+      .getByRole('button', { name: /sign in/i });
+    this.getStartedButton = page
+      .locator('header')
+      .getByRole('button', { name: /get started/i });
+    this.goToPlatformButton = page
+      .locator('header')
+      .getByRole('button', { name: /go to platform/i });
     this.heroHeading = page.locator('section h1').first();
-    this.heroCtaButton = page
-      .locator('section')
-      .first()
-      .getByRole('button', { name: /get started|start/i })
-      .first();
+    this.heroCtaButton = page.getByRole('button', {
+      name: /start free trial/i,
+    });
     this.featuresSection = page.locator('#features');
     this.pricingSection = page.locator('#pricing');
   }

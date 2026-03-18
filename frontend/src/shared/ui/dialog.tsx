@@ -76,7 +76,11 @@ export function Dialog({
         if (dialogRef.current) {
           const first =
             dialogRef.current.querySelector<HTMLElement>(FOCUSABLE_SELECTORS);
-          first ? first.focus() : dialogRef.current.focus();
+          if (first) {
+            first.focus();
+          } else {
+            dialogRef.current.focus();
+          }
         }
       });
     }

@@ -13,8 +13,8 @@ export class ScheduleViewPage {
   readonly selectBranchMessage: Locator;
 
   constructor(private readonly page: Page) {
-    this.scheduleTab = page.getByRole('button', { name: /schedule/i }).first();
-    this.ordersTab = page.getByRole('button', { name: /^orders$/i }).first();
+    this.scheduleTab = page.getByRole('tab', { name: /schedule/i });
+    this.ordersTab = page.getByRole('tab', { name: /orders/i });
     this.branchSelect = page.locator('select').first();
     this.datePicker = page.locator('input[type="date"]');
     this.workPostFilter = page.locator('select').nth(1);

@@ -20,7 +20,7 @@ test.describe('Order Status Transitions', () => {
     await bookedRow.first().click();
     await page.waitForLoadState('networkidle');
 
-    const detail = new OrderDetailPage(page);
+    new OrderDetailPage(page);
     const startButton = page.getByRole('button', { name: /^start$/i });
 
     if (await startButton.isVisible()) {

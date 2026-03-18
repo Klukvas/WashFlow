@@ -17,7 +17,9 @@ vi.mock('@/shared/utils/format', () => ({
 }));
 
 vi.mock('../StatusBadge', () => ({
-  StatusBadge: ({ status }: { status: string }) => <span data-testid="status-badge">{status}</span>,
+  StatusBadge: ({ status }: { status: string }) => (
+    <span data-testid="status-badge">{status}</span>
+  ),
 }));
 
 vi.mock('@/shared/components/SoftDeleteBadge', () => ({
@@ -37,10 +39,10 @@ const baseOrder: Order = {
   createdAt: '2026-01-01',
   updatedAt: '2026-01-01',
   deletedAt: null,
-  client: { id: 'c1', firstName: 'John', lastName: 'Doe' } as any,
-  vehicle: { licensePlate: 'AA1234BB' } as any,
-  branch: { id: 'b1', name: 'Main Branch' } as any,
-  services: [{ id: 's1' }, { id: 's2' }] as any,
+  client: { id: 'c1', firstName: 'John', lastName: 'Doe' } as Order['client'],
+  vehicle: { licensePlate: 'AA1234BB' } as Order['vehicle'],
+  branch: { id: 'b1', name: 'Main Branch' } as Order['branch'],
+  services: [{ id: 's1' }, { id: 's2' }] as Order['services'],
 };
 
 describe('OrderCard', () => {

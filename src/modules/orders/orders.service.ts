@@ -111,7 +111,9 @@ export class OrdersService {
             idempotencyKey,
           );
           if (cached.hit) {
-            return cached.cachedResponse!.body as any;
+            return cached.cachedResponse!.body as Awaited<
+              ReturnType<typeof tx.order.create>
+            >;
           }
           const acquired = await this.idempotencyService.acquireLockTx(tx, {
             tenantId,
@@ -321,10 +323,10 @@ export class OrdersService {
       return this.prisma.$transaction(async (tx) => {
         const { bufferTimeMinutes } = bookingSettings;
         const bufferedStart = new Date(
-          order.scheduledStart!.getTime() - bufferTimeMinutes * 60000,
+          order.scheduledStart.getTime() - bufferTimeMinutes * 60000,
         );
         const bufferedEnd = new Date(
-          order.scheduledEnd!.getTime() + bufferTimeMinutes * 60000,
+          order.scheduledEnd.getTime() + bufferTimeMinutes * 60000,
         );
 
         const conflicts = await tx.order.count({

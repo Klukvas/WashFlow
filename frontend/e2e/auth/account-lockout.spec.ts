@@ -3,24 +3,31 @@ import { test, expect } from '@playwright/test';
 // These tests run unauthenticated
 test.use({ storageState: { cookies: [], origins: [] } });
 
-const API_BASE = 'http://localhost:3000/api/v1';
+const API_BASE = 'http://localhost:3003/api/v1';
 
 test.describe('Account Lockout', () => {
   test('5 failed login attempts locks the account', async ({ page }) => {
     // Create a disposable user via the API to avoid locking admin
     const disposableEmail = `lockout-${Date.now()}@test.com`;
-    const registerResponse = await page.request.post(`${API_BASE}/auth/register`, {
-      data: {
-        email: disposableEmail,
-        password: 'ValidPass123',
+    const registerResponse = await page.request.post(
+      `${API_BASE}/auth/register`,
+      {
+        data: {
+          email: disposableEmail,
+          password: 'ValidPass123',
+        },
       },
-    });
+    );
 
     // Only proceed if registration succeeded
     if (!registerResponse.ok()) {
       test.skip(true, 'Could not create disposable user for lockout test');
       return;
     }
+
+    // Registration sets a refresh_token cookie — clear it so the 401 interceptor
+    // doesn't auto-refresh and redirect away from the login page.
+    await page.context().clearCookies();
 
     await page.goto('/login');
 
@@ -30,14 +37,24 @@ test.describe('Account Lockout', () => {
       await page.locator('#password').fill('WrongPass!!' + i);
       await page.locator('[data-testid="login-submit"]').click();
 
-      // Wait for response
-      await page.waitForTimeout(500);
+      // Wait for the login API response to complete before next attempt
+      await page
+        .waitForResponse((r) => r.url().includes('/auth/login'))
+        .catch(() => {});
+      // Wait for the button to be re-enabled (not loading)
+      await expect(page.locator('[data-testid="login-submit"]')).toBeEnabled({
+        timeout: 5_000,
+      });
     }
 
     // 6th attempt — should show lockout error
     await page.locator('#email').fill(disposableEmail);
     await page.locator('#password').fill('WrongPass!!5');
     await page.locator('[data-testid="login-submit"]').click();
+
+    await page
+      .waitForResponse((r) => r.url().includes('/auth/login'))
+      .catch(() => {});
 
     // Should remain on login page with error
     await expect(page).toHaveURL('/login');
@@ -52,14 +69,19 @@ test.describe('Account Lockout', () => {
     const disposableEmail = `lockout2-${Date.now()}@test.com`;
     const password = 'ValidPass123';
 
-    const registerResponse = await page.request.post(`${API_BASE}/auth/register`, {
-      data: { email: disposableEmail, password },
-    });
+    const registerResponse = await page.request.post(
+      `${API_BASE}/auth/register`,
+      {
+        data: { email: disposableEmail, password },
+      },
+    );
 
     if (!registerResponse.ok()) {
       test.skip(true, 'Could not create disposable user for lockout test');
       return;
     }
+
+    await page.context().clearCookies();
 
     await page.goto('/login');
 
@@ -68,13 +90,24 @@ test.describe('Account Lockout', () => {
       await page.locator('#email').fill(disposableEmail);
       await page.locator('#password').fill('WrongPass!!' + i);
       await page.locator('[data-testid="login-submit"]').click();
-      await page.waitForTimeout(500);
+
+      // Wait for the login API response to complete before next attempt
+      await page
+        .waitForResponse((r) => r.url().includes('/auth/login'))
+        .catch(() => {});
+      await expect(page.locator('[data-testid="login-submit"]')).toBeEnabled({
+        timeout: 5_000,
+      });
     }
 
     // Try with the correct password — should still fail
     await page.locator('#email').fill(disposableEmail);
     await page.locator('#password').fill(password);
     await page.locator('[data-testid="login-submit"]').click();
+
+    await page
+      .waitForResponse((r) => r.url().includes('/auth/login'))
+      .catch(() => {});
 
     await expect(page).toHaveURL('/login');
     await expect(page.locator('.text-destructive').first()).toBeVisible({

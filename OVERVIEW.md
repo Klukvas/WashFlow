@@ -28,7 +28,7 @@ Node.js 20+ | pnpm | PostgreSQL 16 | Redis 7
 pnpm install
 cp .env.example .env            # edit with your DB/Redis credentials
 npx prisma generate
-npx prisma db push
+npx prisma migrate deploy       # apply migrations
 npx prisma db seed              # prints Tenant ID (save it for login)
 ```
 
@@ -97,8 +97,11 @@ pnpm build && pnpm start:prod   # production build
 | `RESEND_API_KEY` | No | — | Resend API key (required for transactional emails) |
 | `EMAIL_FROM` | No | `WashFlow <noreply@washflow.app>` | Sender address for transactional emails |
 | `FRONTEND_URL` | No | `http://localhost:5173` | Frontend base URL (used in password reset links) |
+| `PADDLE_ADDON_PRICE_IDS` | No | — | JSON map of addon price IDs (e.g. `{"branches":"pri_abc","users":"pri_def"}`) — overrides defaults |
+| `CLEANUP_RETENTION_DAYS` | No | `30` | Days before soft-deleted records are hard-deleted by cleanup cron |
 | `SENTRY_DSN` | No | — | Sentry DSN for error tracking |
 | `VITE_SENTRY_DSN` | No | — | Sentry DSN for frontend |
+| `VITE_PADDLE_SANDBOX` | No | — | Set to `true` to use Paddle sandbox in frontend checkout |
 | `METRICS_TOKEN` | No | — | Bearer token protecting /metrics endpoint (leave empty to allow unauthenticated access) |
 | `SENTRY_TRACES_SAMPLE_RATE` | No | — | Sentry performance trace sampling rate (0–1) |
 | `GRAFANA_LOKI_HOST` | No | — | Grafana Cloud Loki push URL (e.g. `https://logs-prod-xxx.grafana.net`) |

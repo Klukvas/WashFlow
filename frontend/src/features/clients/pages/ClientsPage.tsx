@@ -158,7 +158,7 @@ export function ClientsPage() {
     const second = data.items.find((c) => c.id === ids[1]);
     if (!first || !second) return null;
     return { target: first, source: second };
-  }, [selectedIds, data?.items]);
+  }, [selectedIds, data]);
 
   const handleMergeClose = () => {
     setMergeOpen(false);

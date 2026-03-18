@@ -216,9 +216,9 @@ describe('AuthController', () => {
       const req = { cookies: {} };
       const res = makeMockRes();
 
-      await expect(
-        controller.refresh(req as any, res as any),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(controller.refresh(req as any, res as any)).rejects.toThrow(
+        UnauthorizedException,
+      );
       expect(mockAuthService.refreshTokens).not.toHaveBeenCalled();
     });
 
@@ -229,12 +229,14 @@ describe('AuthController', () => {
         type: 'access',
       });
 
-      const req = { cookies: { refresh_token: 'access-token-used-as-refresh' } };
+      const req = {
+        cookies: { refresh_token: 'access-token-used-as-refresh' },
+      };
       const res = makeMockRes();
 
-      await expect(
-        controller.refresh(req as any, res as any),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(controller.refresh(req as any, res as any)).rejects.toThrow(
+        UnauthorizedException,
+      );
       expect(mockAuthService.refreshTokens).not.toHaveBeenCalled();
     });
 
@@ -247,9 +249,9 @@ describe('AuthController', () => {
       const req = { cookies: { refresh_token: 'malformed-token' } };
       const res = makeMockRes();
 
-      await expect(
-        controller.refresh(req as any, res as any),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(controller.refresh(req as any, res as any)).rejects.toThrow(
+        UnauthorizedException,
+      );
       expect(mockAuthService.refreshTokens).not.toHaveBeenCalled();
     });
   });
@@ -276,10 +278,9 @@ describe('AuthController', () => {
       const res = makeMockRes();
       await controller.logout(userId, tenantId, res as any);
 
-      expect(res.clearCookie).toHaveBeenCalledWith(
-        'refresh_token',
-        { path: '/api/v1/auth' },
-      );
+      expect(res.clearCookie).toHaveBeenCalledWith('refresh_token', {
+        path: '/api/v1/auth',
+      });
     });
 
     it('clears the cookie even when authService.logout resolves with no value', async () => {

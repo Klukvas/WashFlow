@@ -26,7 +26,13 @@ vi.mock('@/shared/utils/cn', () => ({
 }));
 
 vi.mock('@/shared/components/PageHeader', () => ({
-  PageHeader: ({ title, actions }: any) => (
+  PageHeader: ({
+    title,
+    actions,
+  }: {
+    title: ReactNode;
+    actions?: ReactNode;
+  }) => (
     <div data-testid="page-header">
       <h1>{title}</h1>
       {actions}
@@ -35,16 +41,22 @@ vi.mock('@/shared/components/PageHeader', () => ({
 }));
 
 vi.mock('@/shared/components/PermissionGate', () => ({
-  PermissionGate: ({ children }: any) => <>{children}</>,
+  PermissionGate: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 vi.mock('@/shared/ui/button', () => ({
-  Button: ({ children, onClick, variant, size }: any) => (
-    <button
-      onClick={onClick}
-      data-variant={variant}
-      data-size={size}
-    >
+  Button: ({
+    children,
+    onClick,
+    variant,
+    size,
+  }: {
+    children: ReactNode;
+    onClick?: () => void;
+    variant?: string;
+    size?: string;
+  }) => (
+    <button onClick={onClick} data-variant={variant} data-size={size}>
       {children}
     </button>
   ),
@@ -142,9 +154,7 @@ describe('OrdersPage', () => {
 
       expect(screen.getByTestId('schedule-view')).toBeInTheDocument();
       expect(screen.queryByTestId('order-table')).not.toBeInTheDocument();
-      expect(
-        screen.queryByTestId('order-filters'),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('order-filters')).not.toBeInTheDocument();
     });
 
     it('switches back to Orders tab', () => {

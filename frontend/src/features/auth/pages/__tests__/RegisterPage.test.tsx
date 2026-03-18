@@ -14,7 +14,15 @@ vi.mock('react-router', () => ({
   Navigate: ({ to }: { to: string }) => (
     <div data-testid="navigate" data-to={to} />
   ),
-  Link: ({ to, children, ...rest }: any) => (
+  Link: ({
+    to,
+    children,
+    ...rest
+  }: {
+    to: string;
+    children: ReactNode;
+    [key: string]: unknown;
+  }) => (
     <a href={to} {...rest}>
       {children}
     </a>
@@ -47,8 +55,9 @@ describe('RegisterPage', () => {
   });
 
   it('renders the registration card when user is not authenticated', () => {
-    mockedUseAuthStore.mockImplementation((selector: any) =>
-      selector({ isAuthenticated: false }),
+    mockedUseAuthStore.mockImplementation(
+      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
+        selector({ isAuthenticated: false }),
     );
 
     render(<RegisterPage />);
@@ -59,8 +68,9 @@ describe('RegisterPage', () => {
   });
 
   it('renders the RegisterForm component', () => {
-    mockedUseAuthStore.mockImplementation((selector: any) =>
-      selector({ isAuthenticated: false }),
+    mockedUseAuthStore.mockImplementation(
+      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
+        selector({ isAuthenticated: false }),
     );
 
     render(<RegisterPage />);
@@ -69,8 +79,9 @@ describe('RegisterPage', () => {
   });
 
   it('renders ThemeToggle and LanguageSwitcher', () => {
-    mockedUseAuthStore.mockImplementation((selector: any) =>
-      selector({ isAuthenticated: false }),
+    mockedUseAuthStore.mockImplementation(
+      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
+        selector({ isAuthenticated: false }),
     );
 
     render(<RegisterPage />);
@@ -80,8 +91,9 @@ describe('RegisterPage', () => {
   });
 
   it('renders WashFlow as a link to the root path', () => {
-    mockedUseAuthStore.mockImplementation((selector: any) =>
-      selector({ isAuthenticated: false }),
+    mockedUseAuthStore.mockImplementation(
+      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
+        selector({ isAuthenticated: false }),
     );
 
     render(<RegisterPage />);
@@ -91,8 +103,9 @@ describe('RegisterPage', () => {
   });
 
   it('renders the "has account" text with a sign-in link', () => {
-    mockedUseAuthStore.mockImplementation((selector: any) =>
-      selector({ isAuthenticated: false }),
+    mockedUseAuthStore.mockImplementation(
+      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
+        selector({ isAuthenticated: false }),
     );
 
     render(<RegisterPage />);
@@ -104,8 +117,9 @@ describe('RegisterPage', () => {
   });
 
   it('redirects to /dashboard when authenticated', () => {
-    mockedUseAuthStore.mockImplementation((selector: any) =>
-      selector({ isAuthenticated: true }),
+    mockedUseAuthStore.mockImplementation(
+      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
+        selector({ isAuthenticated: true }),
     );
 
     render(<RegisterPage />);
@@ -115,8 +129,9 @@ describe('RegisterPage', () => {
   });
 
   it('does not render Navigate when user is not authenticated', () => {
-    mockedUseAuthStore.mockImplementation((selector: any) =>
-      selector({ isAuthenticated: false }),
+    mockedUseAuthStore.mockImplementation(
+      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
+        selector({ isAuthenticated: false }),
     );
 
     render(<RegisterPage />);
@@ -125,8 +140,9 @@ describe('RegisterPage', () => {
   });
 
   it('does not render the registration card when user is authenticated', () => {
-    mockedUseAuthStore.mockImplementation((selector: any) =>
-      selector({ isAuthenticated: true }),
+    mockedUseAuthStore.mockImplementation(
+      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
+        selector({ isAuthenticated: true }),
     );
 
     render(<RegisterPage />);

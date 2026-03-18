@@ -24,7 +24,13 @@ vi.mock('@/shared/utils/cn', () => ({
 }));
 
 vi.mock('@/shared/components/PageHeader', () => ({
-  PageHeader: ({ title, actions }: any) => (
+  PageHeader: ({
+    title,
+    actions,
+  }: {
+    title: ReactNode;
+    actions?: ReactNode;
+  }) => (
     <div data-testid="page-header">
       <h1>{title}</h1>
       {actions}
@@ -33,8 +39,16 @@ vi.mock('@/shared/components/PageHeader', () => ({
 }));
 
 vi.mock('@/shared/ui/card', () => ({
-  Card: ({ children }: any) => <div data-testid="card">{children}</div>,
-  CardContent: ({ children, className }: any) => (
+  Card: ({ children }: { children: ReactNode }) => (
+    <div data-testid="card">{children}</div>
+  ),
+  CardContent: ({
+    children,
+    className,
+  }: {
+    children: ReactNode;
+    className?: string;
+  }) => (
     <div data-testid="card-content" className={className}>
       {children}
     </div>
@@ -42,7 +56,17 @@ vi.mock('@/shared/ui/card', () => ({
 }));
 
 vi.mock('@/shared/ui/button', () => ({
-  Button: ({ children, onClick, disabled, variant }: any) => (
+  Button: ({
+    children,
+    onClick,
+    disabled,
+    variant,
+  }: {
+    children: ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+    variant?: string;
+  }) => (
     <button onClick={onClick} disabled={disabled} data-variant={variant}>
       {children}
     </button>
@@ -50,14 +74,24 @@ vi.mock('@/shared/ui/button', () => ({
 }));
 
 vi.mock('@/shared/ui/label', () => ({
-  Label: ({ children }: any) => <label>{children}</label>,
+  Label: ({ children }: { children: ReactNode }) => <label>{children}</label>,
 }));
 
 vi.mock('@/shared/ui/select', () => ({
-  Select: ({ options, value, onChange, placeholder }: any) => (
+  Select: ({
+    options,
+    value,
+    onChange,
+    placeholder,
+  }: {
+    options?: { value: string; label: string }[];
+    value: string;
+    onChange: React.ChangeEventHandler<HTMLSelectElement>;
+    placeholder?: string;
+  }) => (
     <select data-testid="select" value={value} onChange={onChange}>
       {placeholder && <option value="">{placeholder}</option>}
-      {options?.map((o: any) => (
+      {options?.map((o) => (
         <option key={o.value} value={o.value}>
           {o.label}
         </option>
@@ -83,7 +117,7 @@ vi.mock('../../hooks/useOrders', () => ({
 
 // Mock step components to simplify page-level tests
 vi.mock('../../components/steps/StepBranchClient', () => ({
-  StepBranchClient: (props: any) => (
+  StepBranchClient: (props: { onNext: () => void }) => (
     <div data-testid="step-branch-client">
       <button onClick={props.onNext}>next-branch-client</button>
     </div>
@@ -91,7 +125,7 @@ vi.mock('../../components/steps/StepBranchClient', () => ({
 }));
 
 vi.mock('../../components/steps/StepVehicle', () => ({
-  StepVehicle: (props: any) => (
+  StepVehicle: (props: { onNext: () => void; onBack: () => void }) => (
     <div data-testid="step-vehicle">
       <button onClick={props.onNext}>next-vehicle</button>
       <button onClick={props.onBack}>back-vehicle</button>
@@ -100,7 +134,7 @@ vi.mock('../../components/steps/StepVehicle', () => ({
 }));
 
 vi.mock('../../components/steps/StepServices', () => ({
-  StepServices: (props: any) => (
+  StepServices: (props: { onNext: () => void; onBack: () => void }) => (
     <div data-testid="step-services">
       <button onClick={props.onNext}>next-services</button>
       <button onClick={props.onBack}>back-services</button>
@@ -109,7 +143,7 @@ vi.mock('../../components/steps/StepServices', () => ({
 }));
 
 vi.mock('../../components/steps/StepWorker', () => ({
-  StepWorker: (props: any) => (
+  StepWorker: (props: { onNext: () => void; onBack: () => void }) => (
     <div data-testid="step-worker">
       <button onClick={props.onNext}>next-worker</button>
       <button onClick={props.onBack}>back-worker</button>
@@ -118,7 +152,7 @@ vi.mock('../../components/steps/StepWorker', () => ({
 }));
 
 vi.mock('../../components/steps/StepTimeSlot', () => ({
-  StepTimeSlot: (props: any) => (
+  StepTimeSlot: (props: { onNext: () => void; onBack: () => void }) => (
     <div data-testid="step-timeslot">
       <button onClick={props.onNext}>next-timeslot</button>
       <button onClick={props.onBack}>back-timeslot</button>
@@ -127,7 +161,7 @@ vi.mock('../../components/steps/StepTimeSlot', () => ({
 }));
 
 vi.mock('../../components/steps/StepReview', () => ({
-  StepReview: (props: any) => (
+  StepReview: (props: { onConfirm: () => void; onBack: () => void }) => (
     <div data-testid="step-review">
       <button onClick={props.onConfirm}>confirm-review</button>
       <button onClick={props.onBack}>back-review</button>

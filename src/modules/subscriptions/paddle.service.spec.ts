@@ -244,9 +244,7 @@ describe('PaddleService', () => {
 
   describe('updateSubscription()', () => {
     it('makes a PATCH request to /subscriptions/{id}', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue(
-        buildFetchResponse({}),
-      );
+      (global.fetch as jest.Mock).mockResolvedValue(buildFetchResponse({}));
 
       await service.updateSubscription(PADDLE_SUB_ID, {
         items: [{ priceId: 'pri_biz_monthly', quantity: 1 }],
@@ -258,9 +256,7 @@ describe('PaddleService', () => {
     });
 
     it('includes proration_billing_mode when provided', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue(
-        buildFetchResponse({}),
-      );
+      (global.fetch as jest.Mock).mockResolvedValue(buildFetchResponse({}));
 
       await service.updateSubscription(PADDLE_SUB_ID, {
         items: [{ priceId: 'pri_biz_monthly', quantity: 1 }],
@@ -273,9 +269,7 @@ describe('PaddleService', () => {
     });
 
     it('maps items with priceId to price_id', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue(
-        buildFetchResponse({}),
-      );
+      (global.fetch as jest.Mock).mockResolvedValue(buildFetchResponse({}));
 
       await service.updateSubscription(PADDLE_SUB_ID, {
         items: [{ priceId: 'pri_enterprise_yearly', quantity: 1 }],
@@ -309,9 +303,7 @@ describe('PaddleService', () => {
       });
 
       const [url, options] = (global.fetch as jest.Mock).mock.calls[0];
-      expect(url).toBe(
-        `${SANDBOX_URL}/subscriptions/${PADDLE_SUB_ID}/preview`,
-      );
+      expect(url).toBe(`${SANDBOX_URL}/subscriptions/${PADDLE_SUB_ID}/preview`);
       expect(options.method).toBe('POST');
     });
 
@@ -381,23 +373,17 @@ describe('PaddleService', () => {
 
   describe('cancelSubscription()', () => {
     it('makes a POST request to /subscriptions/{id}/cancel', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue(
-        buildFetchResponse({}),
-      );
+      (global.fetch as jest.Mock).mockResolvedValue(buildFetchResponse({}));
 
       await service.cancelSubscription(PADDLE_SUB_ID);
 
       const [url, options] = (global.fetch as jest.Mock).mock.calls[0];
-      expect(url).toBe(
-        `${SANDBOX_URL}/subscriptions/${PADDLE_SUB_ID}/cancel`,
-      );
+      expect(url).toBe(`${SANDBOX_URL}/subscriptions/${PADDLE_SUB_ID}/cancel`);
       expect(options.method).toBe('POST');
     });
 
     it('sends effective_from as next_billing_period by default', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue(
-        buildFetchResponse({}),
-      );
+      (global.fetch as jest.Mock).mockResolvedValue(buildFetchResponse({}));
 
       await service.cancelSubscription(PADDLE_SUB_ID);
 
@@ -407,9 +393,7 @@ describe('PaddleService', () => {
     });
 
     it('sends effective_from as immediately when specified', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue(
-        buildFetchResponse({}),
-      );
+      (global.fetch as jest.Mock).mockResolvedValue(buildFetchResponse({}));
 
       await service.cancelSubscription(PADDLE_SUB_ID, 'immediately');
 

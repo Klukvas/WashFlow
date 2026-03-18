@@ -15,9 +15,9 @@ export class VehiclesRepository {
   async findAll(tenantId: string, query: VehicleQueryDto) {
     const { skip, take, orderBy } = buildPaginationArgs(query);
 
-    const where: Prisma.VehicleWhereInput = {};
+    const where: Prisma.VehicleWhereInput & { _includeDeleted?: boolean } = {};
     if (query.includeDeleted) {
-      (where as any)._includeDeleted = true;
+      where._includeDeleted = true;
     }
     if (query.clientId) where.clientId = query.clientId;
     if (query.search) {
@@ -80,7 +80,7 @@ export class VehiclesRepository {
 
   async findByIdIncludeDeleted(tenantId: string, id: string) {
     return this.db(tenantId).vehicle.findFirst({
-      where: { id, _includeDeleted: true } as any,
+      where: { id, _includeDeleted: true } as Prisma.VehicleWhereInput,
       include: { client: true },
     });
   }

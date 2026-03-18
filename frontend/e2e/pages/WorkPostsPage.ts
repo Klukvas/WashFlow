@@ -7,7 +7,7 @@ export class WorkPostsPage {
 
   constructor(private readonly page: Page) {
     this.heading = page.getByRole('heading', { name: /work posts/i });
-    this.createButton = page.getByRole('button', { name: 'Create' });
+    this.createButton = page.getByRole('button', { name: /add work post/i });
     this.tableRows = page.locator('table tbody tr');
   }
 

@@ -11,7 +11,7 @@ export class UpdateOrderStatusDto {
   @IsEnum(OrderStatus)
   status: OrderStatus;
 
-  @ValidateIf((o) => o.status === 'CANCELLED')
+  @ValidateIf((o: UpdateOrderStatusDto) => o.status === 'CANCELLED')
   @IsOptional()
   @IsString()
   @MaxLength(1000)

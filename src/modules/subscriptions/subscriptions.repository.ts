@@ -44,10 +44,7 @@ export class SubscriptionsRepository {
     });
   }
 
-  async update(
-    tenantId: string,
-    data: Prisma.SubscriptionUpdateInput,
-  ) {
+  async update(tenantId: string, data: Prisma.SubscriptionUpdateInput) {
     return this.prisma.subscription.update({
       where: { tenantId },
       data,
@@ -217,7 +214,7 @@ export class SubscriptionsRepository {
         return tx.service.count({ where });
       default: {
         const _exhaustive: never = resource;
-        throw new Error(`Unknown resource: ${_exhaustive}`);
+        throw new Error(`Unknown resource: ${String(_exhaustive)}`);
       }
     }
   }
@@ -242,7 +239,7 @@ export class SubscriptionsRepository {
         return subscription.maxServices;
       default: {
         const _exhaustive: never = resource;
-        throw new Error(`Unknown resource: ${_exhaustive}`);
+        throw new Error(`Unknown resource: ${String(_exhaustive)}`);
       }
     }
   }

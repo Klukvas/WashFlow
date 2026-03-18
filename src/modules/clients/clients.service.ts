@@ -8,6 +8,7 @@ import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { MergeClientDto } from './dto/merge-client.dto';
 import { ClientQueryDto } from './dto/client-query.dto';
+import { Prisma } from '@prisma/client';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { EventDispatcherService } from '../../common/events/event-dispatcher.service';
 import { EventType } from '../../common/events/event-types';
@@ -98,7 +99,7 @@ export class ClientsService {
     if (!target) throw new NotFoundException('Target client not found');
 
     const tenantDb = this.tenantPrisma.forTenant(tenantId);
-    const merged = await tenantDb.$transaction(async (tx: any) => {
+    const merged = await tenantDb.$transaction(async (tx) => {
       // Verify both clients belong to this tenant inside the transaction
       const [txSource, txTarget] = await Promise.all([
         tx.client.findFirst({
@@ -113,9 +114,14 @@ export class ClientsService {
       if (!txTarget)
         throw new NotFoundException('Target client not found in tenant');
 
-      return this.clientsRepo.merge(tx, sourceClientId, targetClientId, {
-        ...fieldOverrides,
-      });
+      return this.clientsRepo.merge(
+        tx as Prisma.TransactionClient,
+        sourceClientId,
+        targetClientId,
+        {
+          ...fieldOverrides,
+        },
+      );
     });
 
     this.eventDispatcher.dispatch(

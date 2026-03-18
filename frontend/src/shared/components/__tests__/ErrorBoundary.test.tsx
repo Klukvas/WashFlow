@@ -7,10 +7,12 @@ vi.mock('@sentry/react', () => ({
 }));
 
 vi.mock('lucide-react', () => ({
-  AlertTriangle: (props: any) => (
+  AlertTriangle: (props: Record<string, unknown>) => (
     <svg data-testid="alert-triangle-icon" {...props} />
   ),
-  RotateCcw: (props: any) => <svg data-testid="rotate-ccw-icon" {...props} />,
+  RotateCcw: (props: Record<string, unknown>) => (
+    <svg data-testid="rotate-ccw-icon" {...props} />
+  ),
 }));
 
 function ThrowingChild({ shouldThrow }: { shouldThrow: boolean }) {

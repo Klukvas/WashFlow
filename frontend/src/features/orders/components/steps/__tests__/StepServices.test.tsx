@@ -21,7 +21,17 @@ vi.mock('@/shared/utils/cn', () => ({
 }));
 
 vi.mock('@/shared/ui/button', () => ({
-  Button: ({ children, onClick, disabled, ...props }: any) => (
+  Button: ({
+    children,
+    onClick,
+    disabled,
+    ...props
+  }: {
+    children: ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+    [key: string]: unknown;
+  }) => (
     <button onClick={onClick} disabled={disabled} {...props}>
       {children}
     </button>
@@ -29,12 +39,24 @@ vi.mock('@/shared/ui/button', () => ({
 }));
 
 vi.mock('@/shared/ui/card', () => ({
-  CardHeader: ({ children, className }: any) => (
+  CardHeader: ({
+    children,
+    className,
+  }: {
+    children: ReactNode;
+    className?: string;
+  }) => (
     <div data-testid="card-header" className={className}>
       {children}
     </div>
   ),
-  CardTitle: ({ children, className }: any) => (
+  CardTitle: ({
+    children,
+    className,
+  }: {
+    children: ReactNode;
+    className?: string;
+  }) => (
     <h3 data-testid="card-title" className={className}>
       {children}
     </h3>

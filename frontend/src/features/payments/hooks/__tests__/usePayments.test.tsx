@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
+import type { Payment } from '@/shared/types/models';
 import { usePayments, useCreatePayment } from '../usePayments';
 
 vi.mock('../../api/payments.api', () => ({
@@ -10,6 +11,7 @@ vi.mock('../../api/payments.api', () => ({
 }));
 
 import { fetchPayments, createPayment } from '../../api/payments.api';
+import type { CreatePaymentPayload } from '../../api/payments.api';
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -31,8 +33,8 @@ beforeEach(() => {
 
 describe('usePayments', () => {
   it('calls fetchPayments with orderId', async () => {
-    const data = [{ id: 'p1', amount: 100 }];
-    vi.mocked(fetchPayments).mockResolvedValueOnce(data as any);
+    const data = [{ id: 'p1', amount: 100 }] as unknown as Payment[];
+    vi.mocked(fetchPayments).mockResolvedValueOnce(data);
 
     const { result } = renderHook(() => usePayments('order-1'), {
       wrapper: createWrapper(),
@@ -64,15 +66,16 @@ describe('usePayments', () => {
 
 describe('useCreatePayment', () => {
   it('calls createPayment with orderId and payload', async () => {
-    const payment = { id: 'p1', amount: 50 };
-    vi.mocked(createPayment).mockResolvedValueOnce(payment as any);
+    const payment = { id: 'p1', amount: 50 } as unknown as Payment;
+    vi.mocked(createPayment).mockResolvedValueOnce(payment);
 
     const { result } = renderHook(() => useCreatePayment('order-1'), {
       wrapper: createWrapper(),
     });
 
+    const payload: CreatePaymentPayload = { amount: 50, method: 'CASH' };
     await act(async () => {
-      result.current.mutate({ amount: 50, method: 'CASH' as any });
+      result.current.mutate(payload);
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -80,7 +83,7 @@ describe('useCreatePayment', () => {
   });
 
   it('invalidates payments and orders queries on success', async () => {
-    vi.mocked(createPayment).mockResolvedValueOnce({ id: 'p1' } as any);
+    vi.mocked(createPayment).mockResolvedValueOnce({ id: 'p1' } as unknown as Payment);
 
     const queryClient = new QueryClient({
       defaultOptions: { mutations: { retry: false } },
@@ -97,8 +100,9 @@ describe('useCreatePayment', () => {
       wrapper: Wrapper,
     });
 
+    const payload: CreatePaymentPayload = { amount: 50, method: 'CASH' };
     await act(async () => {
-      result.current.mutate({ amount: 50, method: 'CASH' as any });
+      result.current.mutate(payload);
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -114,8 +118,9 @@ describe('useCreatePayment', () => {
       wrapper: createWrapper(),
     });
 
+    const payload: CreatePaymentPayload = { amount: 50, method: 'CASH' };
     await act(async () => {
-      result.current.mutate({ amount: 50, method: 'CASH' as any });
+      result.current.mutate(payload);
     });
 
     await waitFor(() => expect(result.current.isError).toBe(true));

@@ -3,6 +3,11 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { PrismaService } from '../../../prisma/prisma.service';
 
+interface BookingConfirmationJobData {
+  orderId: string;
+  tenantId: string;
+}
+
 @Processor('booking-confirmations')
 export class BookingConfirmationProcessor extends WorkerHost {
   private readonly logger = new Logger(BookingConfirmationProcessor.name);
@@ -11,7 +16,7 @@ export class BookingConfirmationProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job): Promise<void> {
+  async process(job: Job<BookingConfirmationJobData>): Promise<void> {
     if (job.name === 'confirmation-timeout') {
       await this.handleConfirmationTimeout(job.data);
     }

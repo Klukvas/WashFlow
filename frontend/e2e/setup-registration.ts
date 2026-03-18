@@ -8,7 +8,10 @@ setup('register fresh user', async ({ page }) => {
   await page.goto('/');
 
   // Click "Get Started" on landing header to open register modal
-  await page.getByRole('button', { name: /get started/i }).click();
+  await page
+    .locator('header')
+    .getByRole('button', { name: /get started/i })
+    .click();
 
   // Fill registration form inside the modal
   await page.locator('#email').fill(uniqueEmail);

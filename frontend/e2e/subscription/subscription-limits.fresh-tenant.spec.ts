@@ -1,10 +1,14 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
-const API_BASE = 'http://localhost:3000/api/v1';
+const API_BASE = 'http://localhost:3003/api/v1';
 
-/** Helper to get auth token from page's localStorage */
-async function getAccessToken(page: any): Promise<string> {
-  return page.evaluate(() => localStorage.getItem('accessToken') ?? '');
+async function getAccessToken(page: Page): Promise<string> {
+  const res = await page.request.post(
+    'http://localhost:3003/api/v1/auth/refresh',
+  );
+  if (!res.ok()) return '';
+  const body = await res.json();
+  return body.data?.accessToken ?? body.accessToken ?? '';
 }
 
 test.describe('Subscription Limits (Fresh Tenant)', () => {

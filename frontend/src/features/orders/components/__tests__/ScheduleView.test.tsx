@@ -1,3 +1,4 @@
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -75,7 +76,17 @@ vi.mock('@/features/work-posts/hooks/useWorkPosts', () => ({
 }));
 
 vi.mock('@/shared/ui/select', () => ({
-  Select: ({ options, value, onChange, placeholder }: any) => (
+  Select: ({
+    options,
+    value,
+    onChange,
+    placeholder,
+  }: {
+    options?: { value: string; label: string }[];
+    value: string;
+    onChange: React.ChangeEventHandler<HTMLSelectElement>;
+    placeholder?: string;
+  }) => (
     <select
       data-testid="select"
       value={value}
@@ -83,7 +94,7 @@ vi.mock('@/shared/ui/select', () => ({
       aria-label={placeholder}
     >
       {placeholder && <option value="">{placeholder}</option>}
-      {options?.map((o: any) => (
+      {options?.map((o) => (
         <option key={o.value} value={o.value}>
           {o.label}
         </option>
@@ -93,11 +104,17 @@ vi.mock('@/shared/ui/select', () => ({
 }));
 
 vi.mock('@/shared/ui/label', () => ({
-  Label: ({ children }: any) => <label>{children}</label>,
+  Label: ({ children }: { children: ReactNode }) => <label>{children}</label>,
 }));
 
 vi.mock('@/shared/ui/date-picker', () => ({
-  DatePicker: ({ value, onChange }: any) => (
+  DatePicker: ({
+    value,
+    onChange,
+  }: {
+    value: string;
+    onChange: (v: string) => void;
+  }) => (
     <input
       type="date"
       data-testid="date-picker"
@@ -128,9 +145,7 @@ describe('ScheduleView', () => {
   it('shows "select branch first" message when no branch is selected', () => {
     render(<ScheduleView />, { wrapper: createWrapper() });
 
-    expect(
-      screen.getByText('schedule.selectBranchFirst'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('schedule.selectBranchFirst')).toBeInTheDocument();
   });
 
   it('renders branch selector', () => {

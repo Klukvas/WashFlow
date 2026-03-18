@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -45,7 +46,7 @@ export class RolesRepository {
 
   async create(tenantId: string, data: { name: string; description?: string }) {
     const role = await this.db(tenantId).role.create({
-      data: data as any,
+      data: data as Prisma.RoleUncheckedCreateInput,
       include: RolesRepository.permissionsInclude,
     });
     return this.flattenPermissions(role);
@@ -73,7 +74,7 @@ export class RolesRepository {
 
   async findByIdIncludeDeleted(tenantId: string, id: string) {
     const role = await this.db(tenantId).role.findFirst({
-      where: { id, _includeDeleted: true } as any,
+      where: { id, _includeDeleted: true } as Prisma.RoleWhereInput,
       include: RolesRepository.permissionsInclude,
     });
     return role ? this.flattenPermissions(role) : null;

@@ -8,9 +8,11 @@ export class ClientsPage {
 
   constructor(private readonly page: Page) {
     this.heading = page.getByRole('heading', { name: /clients/i });
-    this.addClientButton = page.getByRole('button', { name: 'Create' });
+    this.addClientButton = page.getByRole('button', { name: /create/i });
     this.tableRows = page.locator('table tbody tr');
-    this.searchInput = page.getByPlaceholder(/search/i);
+    this.searchInput = page.locator('main').getByPlaceholder('Search', {
+      exact: true,
+    });
   }
 
   async goto() {

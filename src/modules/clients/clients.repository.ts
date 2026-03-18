@@ -20,9 +20,9 @@ export class ClientsRepository {
   async findAll(tenantId: string, query: ClientQueryDto) {
     const { skip, take, orderBy } = buildPaginationArgs(query);
 
-    const where: Prisma.ClientWhereInput = {};
+    const where: Prisma.ClientWhereInput & { _includeDeleted?: boolean } = {};
     if (query.includeDeleted) {
-      (where as any)._includeDeleted = true;
+      where._includeDeleted = true;
     }
     if (query.search) {
       where.OR = [
@@ -81,7 +81,7 @@ export class ClientsRepository {
 
   async findByIdIncludeDeleted(tenantId: string, id: string) {
     return this.db(tenantId).client.findFirst({
-      where: { id, _includeDeleted: true } as any,
+      where: { id, _includeDeleted: true } as Prisma.ClientWhereInput,
       include: { vehicles: true },
     });
   }
@@ -103,10 +103,16 @@ export class ClientsRepository {
     // 1. Get vehicles from both clients (include soft-deleted)
     const [sourceVehicles, targetVehicles] = await Promise.all([
       tx.vehicle.findMany({
-        where: { clientId: sourceId, _includeDeleted: true } as any,
+        where: {
+          clientId: sourceId,
+          _includeDeleted: true,
+        } as Prisma.VehicleWhereInput,
       }),
       tx.vehicle.findMany({
-        where: { clientId: targetId, _includeDeleted: true } as any,
+        where: {
+          clientId: targetId,
+          _includeDeleted: true,
+        } as Prisma.VehicleWhereInput,
       }),
     ]);
 

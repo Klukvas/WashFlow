@@ -441,7 +441,7 @@ export class SubscriptionsService {
     }
   }
 
-  private getPriceId(tier: PlanTier | string, interval: string): string {
+  private getPriceId(tier: string, interval: string): string {
     const key = `${String(tier).toLowerCase()}_${String(interval).toLowerCase()}`;
 
     // Config overrides take priority over defaults
@@ -476,11 +476,11 @@ export class SubscriptionsService {
    */
   private buildAllPaddleItems(
     subscription: {
-      planTier: PlanTier | string;
+      planTier: string;
       billingInterval?: string | null;
       addons: Array<{ resource: string; quantity: number }>;
     },
-    overrideTier?: PlanTier | string,
+    overrideTier?: string,
     overrideInterval?: string,
   ): Array<{ priceId: string; quantity: number }> {
     const tier = overrideTier ?? subscription.planTier;

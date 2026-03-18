@@ -3,10 +3,14 @@ import {
   ExecutionContext,
   ForbiddenException,
 } from '@nestjs/common';
+import type { Request } from 'express';
+import type { JwtPayload } from '../types/jwt-payload.type.js';
 
 export const CurrentTenant = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): string => {
-    const request = ctx.switchToHttp().getRequest();
+    const request = ctx
+      .switchToHttp()
+      .getRequest<Request & { user?: JwtPayload }>();
     const tenantId: string | undefined = request.user?.tenantId;
     if (!tenantId) {
       throw new ForbiddenException(

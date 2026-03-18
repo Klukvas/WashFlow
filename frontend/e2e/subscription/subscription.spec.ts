@@ -19,10 +19,10 @@ test.describe('Subscription page', () => {
   });
 
   test('shows subscription link in sidebar for admin', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
 
-    const subscriptionLink = page.locator('nav a[href="/subscription"]');
+    const subscriptionLink = page.locator('aside a[href="/subscription"]');
     await expect(subscriptionLink).toBeVisible();
   });
 

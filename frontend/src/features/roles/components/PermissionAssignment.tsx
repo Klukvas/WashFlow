@@ -17,7 +17,9 @@ interface PermissionGroup {
   permissions: Permission[];
 }
 
-function groupPermissionsByModule(permissions: Permission[]): PermissionGroup[] {
+function groupPermissionsByModule(
+  permissions: Permission[],
+): PermissionGroup[] {
   const grouped = permissions.reduce<Record<string, Permission[]>>(
     (acc, permission) => {
       const { module } = permission;
@@ -55,6 +57,7 @@ export function PermissionAssignment({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIds(new Set(currentIds));
   }, [currentIds]);
 
@@ -83,23 +86,20 @@ export function PermissionAssignment({
     });
   }, []);
 
-  const handleToggleModule = useCallback(
-    (permissions: Permission[]) => {
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        const allSelected = permissions.every((p) => next.has(p.id));
+  const handleToggleModule = useCallback((permissions: Permission[]) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      const allSelected = permissions.every((p) => next.has(p.id));
 
-        if (allSelected) {
-          permissions.forEach((p) => next.delete(p.id));
-        } else {
-          permissions.forEach((p) => next.add(p.id));
-        }
+      if (allSelected) {
+        permissions.forEach((p) => next.delete(p.id));
+      } else {
+        permissions.forEach((p) => next.add(p.id));
+      }
 
-        return next;
-      });
-    },
-    [],
-  );
+      return next;
+    });
+  }, []);
 
   const handleSave = () => {
     assign({
@@ -166,7 +166,9 @@ export function PermissionAssignment({
                     className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
                   />
                   <CardTitle className="text-base capitalize">
-                    {t(`permissions.modules.${module}`, { defaultValue: module })}
+                    {t(`permissions.modules.${module}`, {
+                      defaultValue: module,
+                    })}
                   </CardTitle>
                 </div>
               </CardHeader>

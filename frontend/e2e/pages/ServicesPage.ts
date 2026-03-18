@@ -7,7 +7,7 @@ export class ServicesPage {
 
   constructor(private readonly page: Page) {
     this.heading = page.getByRole('heading', { name: /services/i });
-    this.createButton = page.getByRole('button', { name: 'Create' });
+    this.createButton = page.getByRole('button', { name: /add service/i });
     this.tableRows = page.locator('table tbody tr');
   }
 

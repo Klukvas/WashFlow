@@ -7,7 +7,7 @@ import { RegisterForm } from '../RegisterForm';
 
 const mockMutate = vi.fn();
 let mockIsPending = false;
-let mockError: any = null;
+let mockError: { response?: { status: number } } | Error | null = null;
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -21,8 +21,9 @@ vi.mock('react-router', () => ({
 }));
 
 vi.mock('@/shared/stores/auth.store', () => ({
-  useAuthStore: (selector: (state: any) => unknown) =>
-    selector({ setAuth: vi.fn() }),
+  useAuthStore: (
+    selector: (state: { setAuth: ReturnType<typeof vi.fn> }) => unknown,
+  ) => selector({ setAuth: vi.fn() }),
 }));
 
 vi.mock('../../hooks/useRegister', () => ({
@@ -59,7 +60,9 @@ describe('RegisterForm', () => {
     expect(screen.getByLabelText('register.lastName')).toBeInTheDocument();
     expect(screen.getByLabelText('register.email')).toBeInTheDocument();
     expect(screen.getByLabelText('register.password')).toBeInTheDocument();
-    expect(screen.getByLabelText('register.confirmPassword')).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('register.confirmPassword'),
+    ).toBeInTheDocument();
   });
 
   it('shows validation errors on empty submit', async () => {
@@ -80,9 +83,15 @@ describe('RegisterForm', () => {
     await user.type(screen.getByLabelText('register.companyName'), 'WashCo');
     await user.type(screen.getByLabelText('register.firstName'), 'John');
     await user.type(screen.getByLabelText('register.lastName'), 'Doe');
-    await user.type(screen.getByLabelText('register.email'), 'john@example.com');
+    await user.type(
+      screen.getByLabelText('register.email'),
+      'john@example.com',
+    );
     await user.type(screen.getByLabelText('register.password'), 'password123');
-    await user.type(screen.getByLabelText('register.confirmPassword'), 'differentpwd');
+    await user.type(
+      screen.getByLabelText('register.confirmPassword'),
+      'differentpwd',
+    );
     await user.click(screen.getByTestId('register-submit'));
 
     await waitFor(() => {
@@ -97,9 +106,15 @@ describe('RegisterForm', () => {
     await user.type(screen.getByLabelText('register.companyName'), 'WashCo');
     await user.type(screen.getByLabelText('register.firstName'), 'John');
     await user.type(screen.getByLabelText('register.lastName'), 'Doe');
-    await user.type(screen.getByLabelText('register.email'), 'john@example.com');
+    await user.type(
+      screen.getByLabelText('register.email'),
+      'john@example.com',
+    );
     await user.type(screen.getByLabelText('register.password'), 'password123');
-    await user.type(screen.getByLabelText('register.confirmPassword'), 'password123');
+    await user.type(
+      screen.getByLabelText('register.confirmPassword'),
+      'password123',
+    );
     await user.click(screen.getByTestId('register-submit'));
 
     await waitFor(() => {
@@ -117,7 +132,9 @@ describe('RegisterForm', () => {
     mockIsPending = true;
     render(<RegisterForm />, { wrapper: createWrapper() });
 
-    expect(screen.getByTestId('register-submit')).toHaveTextContent('register.loading');
+    expect(screen.getByTestId('register-submit')).toHaveTextContent(
+      'register.loading',
+    );
   });
 
   it('shows generic error on failure', () => {

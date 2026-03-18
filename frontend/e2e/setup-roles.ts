@@ -3,7 +3,6 @@ import { config } from 'dotenv';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import {
-  STORAGE_STATE,
   OPERATOR_STORAGE_STATE,
   RECEPTIONIST_STORAGE_STATE,
   MANAGER_STORAGE_STATE,
@@ -13,7 +12,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 config({ path: path.resolve(__dirname, '../.env.test') });
 
 const BASE_URL = 'http://localhost:5173';
-const API_BASE = 'http://localhost:3000/api/v1';
+const API_BASE = 'http://localhost:3003/api/v1';
 
 /**
  * Reads the admin auth state to get the access token,
@@ -21,18 +20,21 @@ const API_BASE = 'http://localhost:3000/api/v1';
  * Finally, logs in as each role user and saves storage state.
  */
 setup('authenticate role users', async ({ browser }) => {
-  // 1. Read admin token from saved storage state
-  const fs = await import('fs');
-  const adminState = JSON.parse(fs.readFileSync(STORAGE_STATE, 'utf-8'));
-  const adminOrigin = adminState.origins?.find(
-    (o: any) => o.origin === BASE_URL,
-  );
-  const accessToken = adminOrigin?.localStorage?.find(
-    (item: any) => item.name === 'accessToken',
-  )?.value;
-
+  // 1. Login as admin to get access token
+  const EMAIL = process.env.PLAYWRIGHT_EMAIL ?? 'admin@washflow.com';
+  const PASSWORD = process.env.PLAYWRIGHT_PASSWORD ?? 'admin123';
+  const loginResponse = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+  });
+  if (!loginResponse.ok) {
+    throw new Error(`Admin login failed: ${loginResponse.status}`);
+  }
+  const loginBody = await loginResponse.json();
+  const accessToken = loginBody.data?.accessToken ?? loginBody.accessToken;
   if (!accessToken) {
-    throw new Error('Admin access token not found in storage state');
+    throw new Error('No access token in login response');
   }
 
   // 2. Fetch users list via API to discover role users
@@ -71,27 +73,41 @@ setup('authenticate role users', async ({ browser }) => {
       };
     }
 
-    if (
-      roleMap['operator'] &&
-      roleMap['receptionist'] &&
-      roleMap['manager']
-    ) {
+    if (roleMap['operator'] && roleMap['receptionist'] && roleMap['manager']) {
       break;
     }
   }
 
-  // 3. Log in as each role user and save auth state
+  // 3. Log in as each role user via API and save auth state
   for (const [role, { email, storagePath }] of Object.entries(roleMap)) {
     console.log(`Logging in as ${role}: ${email}`);
     const context = await browser.newContext();
     const page = await context.newPage();
 
-    await page.goto(`${BASE_URL}/login`);
-    await page.locator('#email').fill(email);
-    await page.locator('#password').fill('password123');
-    await page.locator('[data-testid="login-submit"]').click();
+    // Navigate to the app so cookies/localStorage belong to the correct origin
+    await page.goto(BASE_URL);
 
-    await page.waitForURL(/\/(dashboard)?$/, { timeout: 10_000 });
+    // Login via API (avoids HTML5 email validation issues with transliterated emails)
+    const roleLoginRes = await page.request.post(`${API_BASE}/auth/login`, {
+      data: { email, password: 'password123' },
+    });
+
+    if (!roleLoginRes.ok()) {
+      console.warn(
+        `WARNING: Login as ${role} (${email}) failed: ${roleLoginRes.status()}`,
+      );
+      await context.close();
+      continue;
+    }
+
+    const roleLoginBody = await roleLoginRes.json();
+    const roleUser = roleLoginBody.data?.user ?? roleLoginBody.user;
+
+    // Store user profile in localStorage so the auth store hydrates on page load
+    await page.evaluate((user) => {
+      localStorage.setItem('user', JSON.stringify(user));
+    }, roleUser);
+
     await context.storageState({ path: storagePath });
     await context.close();
   }

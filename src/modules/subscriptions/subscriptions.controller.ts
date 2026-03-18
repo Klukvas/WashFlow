@@ -56,20 +56,14 @@ export class SubscriptionUsageController {
   @Post('change-plan')
   @Permissions('tenants.update')
   @HttpCode(HttpStatus.OK)
-  changePlan(
-    @CurrentTenant() tenantId: string,
-    @Body() dto: ChangePlanDto,
-  ) {
+  changePlan(@CurrentTenant() tenantId: string, @Body() dto: ChangePlanDto) {
     return this.subscriptionsService.changePlan(tenantId, dto);
   }
 
   @Post('addons')
   @Permissions('tenants.update')
   @HttpCode(HttpStatus.OK)
-  manageAddon(
-    @CurrentTenant() tenantId: string,
-    @Body() dto: ManageAddonDto,
-  ) {
+  manageAddon(@CurrentTenant() tenantId: string, @Body() dto: ManageAddonDto) {
     return this.subscriptionsService.manageAddon(tenantId, dto);
   }
 

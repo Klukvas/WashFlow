@@ -11,6 +11,18 @@ import { ConfigService } from '@nestjs/config';
 import { Server, Socket } from 'socket.io';
 import { JwtPayload } from '../../common/types/jwt-payload.type';
 
+interface SocketData {
+  user?: JwtPayload;
+  token?: string;
+}
+
+type AuthSocket = Socket<
+  Record<string, never>,
+  Record<string, never>,
+  Record<string, never>,
+  SocketData
+>;
+
 function buildCorsOrigin(
   config: ConfigService,
 ):
@@ -74,11 +86,13 @@ export class RealtimeGateway
     }
   }
 
-  async handleConnection(client: Socket) {
+  handleConnection(client: AuthSocket) {
     try {
       const token =
-        client.handshake.auth?.token ||
-        client.handshake.headers?.authorization?.split(' ')[1];
+        ((client.handshake.auth as Record<string, unknown>)?.['token'] as
+          | string
+          | undefined) ||
+        client.handshake.headers?.['authorization']?.split(' ')[1];
 
       if (!token) {
         client.disconnect(true);
@@ -96,7 +110,7 @@ export class RealtimeGateway
       }
 
       // Join tenant room
-      client.join(`tenant:${payload.tenantId}`);
+      void client.join(`tenant:${payload.tenantId}`);
 
       // Store user data on socket
       client.data.user = payload;
@@ -113,7 +127,7 @@ export class RealtimeGateway
     }
   }
 
-  handleDisconnect(client: Socket) {
+  handleDisconnect(client: AuthSocket) {
     this.logger.debug(`Client disconnected: ${client.id}`);
   }
 
@@ -132,7 +146,7 @@ export class RealtimeGateway
     if (!sockets) return;
 
     for (const [, socket] of sockets) {
-      const token = socket.data?.token as string | undefined;
+      const token = (socket as AuthSocket).data?.token;
       if (!token) continue;
 
       try {

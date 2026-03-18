@@ -1,3 +1,4 @@
+import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -11,9 +12,23 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('@/shared/ui/select', () => ({
-  Select: ({ placeholder, value, onChange, options }: any) => (
-    <select data-testid={`select-${placeholder}`} value={value} onChange={onChange}>
-      {options?.map((o: any) => (
+  Select: ({
+    placeholder,
+    value,
+    onChange,
+    options,
+  }: {
+    placeholder?: string;
+    value: string;
+    onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+    options?: { value: string; label: string }[];
+  }) => (
+    <select
+      data-testid={`select-${placeholder}`}
+      value={value}
+      onChange={onChange}
+    >
+      {options?.map((o) => (
         <option key={o.value} value={o.value}>
           {o.label}
         </option>
@@ -23,7 +38,15 @@ vi.mock('@/shared/ui/select', () => ({
 }));
 
 vi.mock('@/shared/ui/date-picker', () => ({
-  DatePicker: ({ placeholder, value, onChange }: any) => (
+  DatePicker: ({
+    placeholder,
+    value,
+    onChange,
+  }: {
+    placeholder?: string;
+    value: string;
+    onChange: (v: string) => void;
+  }) => (
     <input
       data-testid={`date-${placeholder}`}
       value={value}
@@ -33,7 +56,13 @@ vi.mock('@/shared/ui/date-picker', () => ({
 }));
 
 vi.mock('@/shared/components/IncludeDeletedToggle', () => ({
-  IncludeDeletedToggle: ({ checked, onChange }: any) => (
+  IncludeDeletedToggle: ({
+    checked,
+    onChange,
+  }: {
+    checked: boolean;
+    onChange: (v: boolean) => void;
+  }) => (
     <input
       type="checkbox"
       data-testid="include-deleted"
@@ -48,7 +77,7 @@ const defaultProps = {
   branches: [
     { id: 'b1', name: 'Branch 1' },
     { id: 'b2', name: 'Branch 2' },
-  ] as any[],
+  ] as { id: string; name: string }[],
   onChange: vi.fn(),
   onReset: vi.fn(),
 };
@@ -66,7 +95,9 @@ describe('OrderFilters', () => {
 
   it('hides branch filter when hideBranchFilter=true', () => {
     render(<OrderFilters {...defaultProps} hideBranchFilter={true} />);
-    expect(screen.queryByTestId('select-filters.branch')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('select-filters.branch'),
+    ).not.toBeInTheDocument();
   });
 
   it('reset button calls onReset', async () => {

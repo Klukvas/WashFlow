@@ -42,7 +42,10 @@ describe('payments.api', () => {
       data: { data: mockPayment },
     });
 
-    const payload = { amount: 500, method: 'CASH' as any };
+    const payload = {
+      amount: 500,
+      method: 'CASH' as Parameters<typeof createPayment>[1]['method'],
+    };
     const result = await createPayment('o1', payload);
 
     expect(apiClient.post).toHaveBeenCalledWith(

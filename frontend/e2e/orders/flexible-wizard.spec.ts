@@ -64,9 +64,7 @@ test.describe('Flexible Order Wizard', () => {
     await expect(page.getByPlaceholder(/search client/i)).toBeVisible();
   });
 
-  test('time-first first step shows branch selector only', async ({
-    page,
-  }) => {
+  test('time-first first step shows branch selector only', async ({ page }) => {
     await wizard.selectMode('time-first');
 
     // Should show branch selector
@@ -190,7 +188,8 @@ test.describe('Flexible Order Wizard', () => {
     await page.waitForLoadState('networkidle');
 
     // Now click Back — should go to branch step
-    await page.getByRole('button', { name: /back/i }).click();
+    // Two Back buttons exist: one in the header breadcrumb, one in step footer
+    await page.getByRole('button', { name: /back/i }).last().click();
     await expect(branchSelect).toBeVisible();
   });
 });

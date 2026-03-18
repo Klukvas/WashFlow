@@ -473,7 +473,10 @@ export class PaddleWebhookService implements OnModuleDestroy {
 
     // Fallback: parse from custom_data on the subscription itself
     const customData = data.custom_data as Record<string, string> | undefined;
-    if (customData?.planTier && validTiers.has(customData.planTier as PlanTier)) {
+    if (
+      customData?.planTier &&
+      validTiers.has(customData.planTier as PlanTier)
+    ) {
       return customData.planTier as PlanTier;
     }
 

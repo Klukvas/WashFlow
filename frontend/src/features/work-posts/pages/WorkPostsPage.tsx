@@ -39,6 +39,7 @@ export function WorkPostsPage() {
 
   useEffect(() => {
     if (isBranchScoped) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBranchId(userBranchId ?? '');
     }
   }, [userBranchId, isBranchScoped]);
@@ -144,7 +145,11 @@ export function WorkPostsPage() {
                 label: b.name,
               }))}
               {...register('branchId')}
-              error={errors.branchId?.message ? t(errors.branchId.message) : undefined}
+              error={
+                errors.branchId?.message
+                  ? t(errors.branchId.message)
+                  : undefined
+              }
             />
           </div>
           <div>

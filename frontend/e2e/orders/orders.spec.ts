@@ -37,13 +37,14 @@ test.describe('Orders list', () => {
 });
 
 test.describe('Create Order wizard', () => {
-  test('shows 6-step wizard', async ({ page }) => {
+  test('shows mode selector', async ({ page }) => {
     await page.goto('/orders/create');
     await page.waitForLoadState('networkidle');
 
-    // Step indicators: 6 numbered circles
-    const stepCircles = page.locator('.flex.h-8.w-8');
-    await expect(stepCircles).toHaveCount(6);
+    // Mode selector should show 3 mode cards
+    await expect(page.getByText(/client first/i)).toBeVisible();
+    await expect(page.getByText(/time first/i)).toBeVisible();
+    await expect(page.getByText(/start from service/i)).toBeVisible();
   });
 
   test('next button disabled until branch + client selected', async ({
@@ -51,6 +52,9 @@ test.describe('Create Order wizard', () => {
   }) => {
     await page.goto('/orders/create');
     await page.waitForLoadState('networkidle');
+
+    // Select client-first mode
+    await page.getByText(/client first/i).click();
 
     const nextButton = page.getByRole('button', { name: /next/i });
     await expect(nextButton).toBeDisabled();

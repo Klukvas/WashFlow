@@ -23,11 +23,20 @@ export class BranchesRepository {
     userBranchId: string | null = null,
   ) {
     const { skip, take, orderBy } = buildPaginationArgs(query);
-    const base = query.includeDeleted ? ({ _includeDeleted: true } as any) : {};
+    const base: Record<string, unknown> = query.includeDeleted
+      ? { _includeDeleted: true }
+      : {};
     const where = applyBranchScope(base, userBranchId, 'id');
     const [items, total] = await Promise.all([
-      this.db(tenantId).branch.findMany({ where, skip, take, orderBy }),
-      this.db(tenantId).branch.count({ where }),
+      this.db(tenantId).branch.findMany({
+        where: where as Prisma.BranchWhereInput,
+        skip,
+        take,
+        orderBy,
+      }),
+      this.db(tenantId).branch.count({
+        where: where as Prisma.BranchWhereInput,
+      }),
     ]);
     return { items, total };
   }
@@ -35,7 +44,7 @@ export class BranchesRepository {
   async findActive(tenantId: string, userBranchId: string | null = null) {
     const where = applyBranchScope({ isActive: true }, userBranchId, 'id');
     return this.db(tenantId).branch.findMany({
-      where,
+      where: where as Prisma.BranchWhereInput,
       orderBy: { name: 'asc' },
     });
   }
@@ -58,33 +67,35 @@ export class BranchesRepository {
     tenantId: string,
     data: { name: string; address?: string; phone?: string },
   ) {
-    return this.db(tenantId).branch.create({ data: data as any });
+    return this.db(tenantId).branch.create({
+      data: data as Prisma.BranchUncheckedCreateInput,
+    });
   }
 
   async update(tenantId: string, id: string, data: Prisma.BranchUpdateInput) {
     return this.db(tenantId).branch.update({
-      where: { id } as any,
-      data: data as any,
+      where: { id } as Prisma.BranchWhereUniqueInput,
+      data,
     });
   }
 
   async softDelete(tenantId: string, id: string) {
     return this.db(tenantId).branch.update({
-      where: { id } as any,
+      where: { id } as Prisma.BranchWhereUniqueInput,
       data: { deletedAt: new Date() },
     });
   }
 
   async findByIdIncludeDeleted(tenantId: string, id: string) {
     return this.db(tenantId).branch.findFirst({
-      where: { id, _includeDeleted: true } as any,
+      where: { id, _includeDeleted: true } as Prisma.BranchWhereInput,
       include: { workPosts: true },
     });
   }
 
   async restore(tenantId: string, id: string) {
     return this.db(tenantId).branch.update({
-      where: { id } as any,
+      where: { id } as Prisma.BranchWhereUniqueInput,
       data: { deletedAt: null },
       include: { workPosts: true },
     });
@@ -103,8 +114,12 @@ export class BranchesRepository {
   ) {
     return this.prisma.bookingSettings.upsert({
       where: { tenantId_branchId: { tenantId, branchId } },
-      update: data,
-      create: { tenantId, branchId, ...data } as any,
+      update: data as Prisma.BookingSettingsUpdateInput,
+      create: {
+        tenantId,
+        branchId,
+        ...data,
+      } as Prisma.BookingSettingsUncheckedCreateInput,
     });
   }
 }

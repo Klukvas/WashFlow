@@ -68,7 +68,9 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const token: string | undefined = req.cookies?.[REFRESH_COOKIE];
+    const token: string | undefined = (
+      req.cookies as Record<string, string> | undefined
+    )?.[REFRESH_COOKIE];
     if (!token) {
       throw new UnauthorizedException('No refresh token');
     }

@@ -16,7 +16,21 @@ vi.mock('@/shared/utils/cn', () => ({
 }));
 
 vi.mock('@/shared/ui/button', () => ({
-  Button: ({ children, onClick, disabled, variant, size, ...props }: any) => (
+  Button: ({
+    children,
+    onClick,
+    disabled,
+    variant,
+    size,
+    ...props
+  }: {
+    children: ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+    variant?: string;
+    size?: string;
+    [key: string]: unknown;
+  }) => (
     <button
       onClick={onClick}
       disabled={disabled}
@@ -30,29 +44,39 @@ vi.mock('@/shared/ui/button', () => ({
 }));
 
 vi.mock('@/shared/ui/input', () => ({
-  Input: ({ error, ...props }: any) => (
+  Input: ({
+    error,
+    ...props
+  }: {
+    error?: string;
+    [key: string]: unknown;
+  }) => (
     <div>
-      <input {...props} />
+      <input {...(props as React.InputHTMLAttributes<HTMLInputElement>)} />
       {error && <span data-testid="field-error">{error}</span>}
     </div>
   ),
 }));
 
 vi.mock('@/shared/ui/label', () => ({
-  Label: ({ children }: any) => <label>{children}</label>,
+  Label: ({ children }: { children: ReactNode }) => <label>{children}</label>,
 }));
 
 vi.mock('@/shared/ui/card', () => ({
-  CardHeader: ({ children }: any) => <div>{children}</div>,
-  CardTitle: ({ children }: any) => <h3>{children}</h3>,
+  CardHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  CardTitle: ({ children }: { children: ReactNode }) => <h3>{children}</h3>,
 }));
 
 vi.mock('@/shared/ui/dialog', () => ({
-  Dialog: ({ open, children }: any) =>
+  Dialog: ({ open, children }: { open: boolean; children: ReactNode }) =>
     open ? <div data-testid="vehicle-dialog">{children}</div> : null,
-  DialogHeader: ({ children }: any) => <div>{children}</div>,
-  DialogTitle: ({ children }: any) => <h2>{children}</h2>,
-  DialogFooter: ({ children }: any) => <div>{children}</div>,
+  DialogHeader: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
+  DialogFooter: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
 }));
 
 vi.mock('lucide-react', () => ({
@@ -66,23 +90,6 @@ vi.mock('@/features/vehicles/hooks/useVehicles', () => ({
     isPending: false,
   }),
 }));
-
-const fakeVehicles = [
-  {
-    id: 'v1',
-    licensePlate: 'AA1234BB',
-    make: 'Toyota',
-    model: 'Camry',
-    year: 2022,
-  },
-  {
-    id: 'v2',
-    licensePlate: 'CC5678DD',
-    make: 'Honda',
-    model: 'Civic',
-    year: 2021,
-  },
-];
 
 vi.mock('@/shared/api/client', () => ({
   apiClient: {

@@ -17,6 +17,23 @@ export interface ResponseEnvelope<T> {
   };
 }
 
+interface PaginatedResponse {
+  items: unknown;
+  total: number;
+  page?: number;
+  limit?: number;
+  totalPages?: number;
+}
+
+function isPaginatedResponse(value: unknown): value is PaginatedResponse {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    'items' in value &&
+    'total' in value
+  );
+}
+
 @Injectable()
 export class TransformInterceptor<T> implements NestInterceptor<
   T,
@@ -27,13 +44,8 @@ export class TransformInterceptor<T> implements NestInterceptor<
     next: CallHandler,
   ): Observable<ResponseEnvelope<T>> {
     return next.handle().pipe(
-      map((response) => {
-        if (
-          response &&
-          typeof response === 'object' &&
-          'items' in response &&
-          'total' in response
-        ) {
+      map((response: unknown) => {
+        if (isPaginatedResponse(response)) {
           return {
             data: response.items as T,
             meta: {

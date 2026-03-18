@@ -107,9 +107,7 @@ describe('TenantGuard', () => {
         tenantId: 'tenant-original',
       };
       const ctx = makeCtx(user, { 'x-tenant-id': 'not-a-uuid' });
-      await expect(guard.canActivate(ctx)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(guard.canActivate(ctx)).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when tenant UUID does not exist in DB', async () => {
@@ -123,9 +121,7 @@ describe('TenantGuard', () => {
 
       mockPrisma.tenant.findUnique.mockResolvedValue(null);
 
-      await expect(guard.canActivate(ctx)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(guard.canActivate(ctx)).rejects.toThrow(BadRequestException);
       await expect(guard.canActivate(ctx)).rejects.toThrow('Tenant not found');
     });
 

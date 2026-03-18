@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ModuleRef } from '@nestjs/core';
+import type { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
 import { JwtPayload } from '../types/jwt-payload.type.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -38,8 +39,10 @@ export class TenantGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
-    const user: JwtPayload = request.user;
+    const request = context
+      .switchToHttp()
+      .getRequest<Request & { user?: JwtPayload }>();
+    const user: JwtPayload | undefined = request.user;
 
     if (!user) {
       throw new ForbiddenException('No authenticated user found');
@@ -65,7 +68,10 @@ export class TenantGuard implements CanActivate {
           throw new BadRequestException('Tenant not found');
         }
 
-        request.user = { ...user, tenantId: headerTenantId };
+        (request as Request & { user: JwtPayload }).user = {
+          ...user,
+          tenantId: headerTenantId,
+        };
 
         this.getEventDispatcher()?.dispatch(
           new SuperAdminTenantAccessEvent(headerTenantId, {
