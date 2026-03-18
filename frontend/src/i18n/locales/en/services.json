@@ -20,5 +20,10 @@
     "description": "Optional description",
     "duration": "Minutes",
     "price": "0.00"
+  },
+  "validation": {
+    "nameRequired": "Name is required",
+    "durationMin": "Must be at least 1 minute",
+    "priceNonNegative": "Price must be non-negative"
   }
 }

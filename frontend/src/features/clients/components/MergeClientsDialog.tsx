@@ -58,6 +58,9 @@ export function MergeClientsDialog({
   const startStep = initialSource ? 2 : 1;
   const [step, setStep] = useState(startStep);
 
+  // Swap state: tracks whether source and target have been swapped
+  const [isSwapped, setIsSwapped] = useState(false);
+
   // Step 2 state (field picker)
   const [fieldSelections, setFieldSelections] = useState<
     Record<MergeableField, 'target' | 'source'>
@@ -78,16 +81,24 @@ export function MergeClientsDialog({
 
   const { mutate: mergeMut, isPending: merging } = useMergeClients();
 
-  const source = selectedSource;
+  // Pre-filter search results once to avoid double filtering in render
+  const filteredResults = useMemo(
+    () => searchResults?.items.filter((c) => c.id !== targetClient.id) ?? [],
+    [searchResults?.items, targetClient.id],
+  );
+
+  // Resolve actual source and target based on swap state
+  const source = isSwapped ? targetClient : selectedSource;
+  const displayTarget = isSwapped ? selectedSource : targetClient;
 
   // Build field overrides from selections
   const fieldOverrides = useMemo(() => {
-    if (!source) return null;
+    if (!source || !displayTarget) return null;
     const overrides: Record<string, string | undefined> = {};
     for (const field of MERGEABLE_FIELDS) {
       const value =
         fieldSelections[field] === 'target'
-          ? targetClient[field]
+          ? displayTarget[field]
           : source[field];
       overrides[field] = value ?? undefined;
     }
@@ -98,12 +109,13 @@ export function MergeClientsDialog({
       email?: string;
       notes?: string;
     };
-  }, [fieldSelections, targetClient, source]);
+  }, [fieldSelections, displayTarget, source]);
 
   // Vehicle dedup analysis
   const vehicleAnalysis = useMemo(() => {
-    if (!source) return { all: [], duplicates: new Set<string>() };
-    const targetVehicles = targetClient.vehicles ?? [];
+    if (!source || !displayTarget)
+      return { all: [], duplicates: new Set<string>() };
+    const targetVehicles = displayTarget.vehicles ?? [];
     const sourceVehicles = source.vehicles ?? [];
 
     const targetPlates = new Set(
@@ -123,7 +135,7 @@ export function MergeClientsDialog({
       targetVehicles,
       sourceVehicles,
     };
-  }, [targetClient, source]);
+  }, [displayTarget, source]);
 
   const handleFieldSelect = (
     field: MergeableField,
@@ -134,24 +146,23 @@ export function MergeClientsDialog({
 
   const handleSwap = () => {
     if (!source) return;
-    setSelectedSource(targetClient);
-    // Note: we can't swap targetClient (it's a prop),
-    // but we can swap field defaults
-    setFieldSelections({
-      firstName: 'source',
-      lastName: 'source',
-      phone: 'source',
-      email: 'source',
-      notes: 'source',
+    setIsSwapped((prev) => !prev);
+    // Flip all field selections so the UI continues showing the same values
+    setFieldSelections((prev) => {
+      const flipped = {} as Record<MergeableField, 'target' | 'source'>;
+      for (const field of MERGEABLE_FIELDS) {
+        flipped[field] = prev[field] === 'target' ? 'source' : 'target';
+      }
+      return flipped;
     });
   };
 
   const handleConfirm = () => {
-    if (!source || !fieldOverrides) return;
+    if (!source || !displayTarget || !fieldOverrides) return;
     mergeMut(
       {
         sourceClientId: source.id,
-        targetClientId: targetClient.id,
+        targetClientId: displayTarget.id,
         fieldOverrides,
       },
       {
@@ -166,6 +177,7 @@ export function MergeClientsDialog({
     setSearch('');
     setSelectedSource(initialSource ?? null);
     setStep(startStep);
+    setIsSwapped(false);
     setFieldSelections({
       firstName: 'target',
       lastName: 'target',
@@ -204,44 +216,44 @@ export function MergeClientsDialog({
           </div>
           <div className="max-h-60 space-y-1 overflow-y-auto">
             {searching && (
-              <p className="py-4 text-center text-sm text-muted-foreground">
-                ...
+              <p
+                role="status"
+                aria-live="polite"
+                className="py-4 text-center text-sm text-muted-foreground"
+              >
+                {tc('status.loading')}
               </p>
             )}
-            {searchResults?.items
-              .filter((c) => c.id !== targetClient.id)
-              .map((client) => (
-                <button
-                  key={client.id}
-                  type="button"
-                  className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-accent"
-                  onClick={() => {
-                    setSelectedSource(client);
-                    setStep(2);
-                  }}
-                >
-                  <div>
-                    <span className="font-medium">{clientName(client)}</span>
-                    {client.phone && (
-                      <span className="ml-2 text-muted-foreground">
-                        {client.phone}
-                      </span>
-                    )}
-                  </div>
-                  {client.email && (
-                    <span className="text-xs text-muted-foreground">
-                      {client.email}
+            {filteredResults.map((client) => (
+              <button
+                key={client.id}
+                type="button"
+                className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-accent"
+                onClick={() => {
+                  setSelectedSource(client);
+                  setStep(2);
+                }}
+              >
+                <div>
+                  <span className="font-medium">{clientName(client)}</span>
+                  {client.phone && (
+                    <span className="ml-2 text-muted-foreground">
+                      {client.phone}
                     </span>
                   )}
-                </button>
-              ))}
-            {searchResults &&
-              searchResults.items.filter((c) => c.id !== targetClient.id)
-                .length === 0 && (
-                <p className="py-4 text-center text-sm text-muted-foreground">
-                  {tc('status.noResults')}
-                </p>
-              )}
+                </div>
+                {client.email && (
+                  <span className="text-xs text-muted-foreground">
+                    {client.email}
+                  </span>
+                )}
+              </button>
+            ))}
+            {searchResults && filteredResults.length === 0 && (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                {tc('status.noResults')}
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={handleClose}>
@@ -279,7 +291,7 @@ export function MergeClientsDialog({
           {/* Client names */}
           <div className="grid grid-cols-[1fr,auto,1fr] items-center gap-2">
             <div className="text-center text-sm font-semibold">
-              {clientName(targetClient)}
+              {displayTarget && clientName(displayTarget)}
             </div>
             <div />
             <div className="text-center text-sm font-semibold">
@@ -290,7 +302,9 @@ export function MergeClientsDialog({
           {/* Field picker rows */}
           <div className="space-y-2">
             {MERGEABLE_FIELDS.map((field) => {
-              const targetVal = targetClient[field] ?? '—';
+              const targetVal = displayTarget
+                ? (displayTarget[field] ?? '—')
+                : '—';
               const sourceVal = source[field] ?? '—';
               return (
                 <div
@@ -367,12 +381,12 @@ export function MergeClientsDialog({
       )}
 
       {/* Step 3: Confirm */}
-      {step === 3 && source && fieldOverrides && (
+      {step === 3 && source && displayTarget && fieldOverrides && (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
             {t('merge.confirmMessage', {
               source: clientName(source),
-              target: clientName(targetClient),
+              target: clientName(displayTarget),
             })}
           </p>
 

@@ -50,6 +50,7 @@
     "max120": "Maximum 120 minutes",
     "min1": "Minimum 1 day",
     "max365": "Maximum 365 days",
-    "atLeastOneDay": "Select at least one day"
+    "atLeastOneDay": "Select at least one day",
+    "endAfterStart": "End time must be after start time"
   }
 }

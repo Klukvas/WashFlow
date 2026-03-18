@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   fetchRoles,
   fetchRole,
@@ -40,6 +41,9 @@ export function useCreateRole() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ROLES_KEY });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to create role');
+    },
   });
 }
 
@@ -52,6 +56,9 @@ export function useUpdateRole() {
       queryClient.invalidateQueries({ queryKey: ROLES_KEY });
       queryClient.invalidateQueries({ queryKey: [...ROLES_KEY, variables.id] });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update role');
+    },
   });
 }
 
@@ -61,6 +68,9 @@ export function useDeleteRole() {
     mutationFn: (id: string) => deleteRole(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ROLES_KEY });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete role');
     },
   });
 }
@@ -73,6 +83,9 @@ export function useRestoreRole() {
       queryClient.invalidateQueries({ queryKey: ROLES_KEY });
       queryClient.invalidateQueries({ queryKey: [...ROLES_KEY, id] });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to restore role');
+    },
   });
 }
 
@@ -83,6 +96,9 @@ export function useAssignPermissions() {
       assignPermissions(id, payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [...ROLES_KEY, variables.id] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to assign permissions');
     },
   });
 }

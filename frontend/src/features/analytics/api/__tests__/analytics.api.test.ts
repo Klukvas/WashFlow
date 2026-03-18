@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fetchDashboard, fetchRevenue, fetchServiceStats } from '../analytics.api';
+import { fetchRevenue, fetchServiceStats } from '../analytics.api';
+import { fetchDashboardStats as fetchDashboard } from '@/features/dashboard/api/dashboard.api';
 
 vi.mock('@/shared/api/client', () => ({
   apiClient: {
@@ -41,7 +42,10 @@ describe('analytics.api', () => {
       data: { data: mockData },
     });
 
-    const result = await fetchRevenue({ dateFrom: '2026-03-01', dateTo: '2026-03-07' });
+    const result = await fetchRevenue({
+      dateFrom: '2026-03-01',
+      dateTo: '2026-03-07',
+    });
 
     expect(apiClient.get).toHaveBeenCalledWith('/analytics/revenue', {
       params: { dateFrom: '2026-03-01', dateTo: '2026-03-07' },

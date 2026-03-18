@@ -102,6 +102,7 @@ export interface Vehicle {
   model: string | null;
   color: string | null;
   year: number | null;
+  photoUrl: string | null;
   client?: Client;
   createdAt: string;
   updatedAt: string;

@@ -45,7 +45,7 @@ export function ClientsPage() {
     [params, debouncedSearch],
   );
 
-  const { data, isLoading } = useClients(queryParams);
+  const { data, isLoading, isError } = useClients(queryParams);
   const { mutate: createMut, isPending: creating } = useCreateClient();
 
   const toggleSelect = useCallback((clientId: string) => {
@@ -60,23 +60,8 @@ export function ClientsPage() {
     });
   }, []);
 
-  const columns = useMemo<Column<Client>[]>(
+  const staticColumns = useMemo<Column<Client>[]>(
     () => [
-      {
-        key: 'select',
-        header: '',
-        render: (client) => (
-          <input
-            type="checkbox"
-            className="h-4 w-4 rounded border-gray-300"
-            checked={selectedIds.has(client.id)}
-            disabled={!selectedIds.has(client.id) && selectedIds.size >= 2}
-            onChange={() => toggleSelect(client.id)}
-            onClick={(e) => e.stopPropagation()}
-          />
-        ),
-        className: 'w-10',
-      },
       {
         key: 'name',
         header: t('fields.name'),
@@ -125,8 +110,26 @@ export function ClientsPage() {
         className: 'hidden lg:table-cell',
       },
     ],
-    [t, selectedIds, toggleSelect],
+    [t],
   );
+
+  const selectColumn: Column<Client> = {
+    key: 'select',
+    header: '',
+    render: (client) => (
+      <input
+        type="checkbox"
+        className="h-4 w-4 rounded border-gray-300"
+        checked={selectedIds.has(client.id)}
+        disabled={!selectedIds.has(client.id) && selectedIds.size >= 2}
+        onChange={() => toggleSelect(client.id)}
+        onClick={(e) => e.stopPropagation()}
+      />
+    ),
+    className: 'w-10',
+  };
+
+  const columns: Column<Client>[] = [selectColumn, ...staticColumns];
 
   const handleRowClick = (client: Client) => {
     navigate(`/clients/${client.id}`);
@@ -202,21 +205,27 @@ export function ClientsPage() {
         />
       </div>
 
-      <DataTable<Client>
-        columns={columns}
-        data={data?.items ?? []}
-        loading={isLoading}
-        page={params.page ?? 1}
-        totalPages={data?.meta.totalPages ?? 1}
-        total={data?.meta.total ?? 0}
-        limit={params.limit ?? 20}
-        onPageChange={(page) => setParams((prev) => ({ ...prev, page }))}
-        onLimitChange={(limit) =>
-          setParams((prev) => ({ ...prev, limit, page: 1 }))
-        }
-        onRowClick={handleRowClick}
-        emptyMessage={t('status.noResults')}
-      />
+      {isError ? (
+        <div className="flex items-center justify-center p-8">
+          <p className="text-sm text-destructive">{t('errors.loadFailed')}</p>
+        </div>
+      ) : (
+        <DataTable<Client>
+          columns={columns}
+          data={data?.items ?? []}
+          loading={isLoading}
+          page={params.page ?? 1}
+          totalPages={data?.meta.totalPages ?? 1}
+          total={data?.meta.total ?? 0}
+          limit={params.limit ?? 20}
+          onPageChange={(page) => setParams((prev) => ({ ...prev, page }))}
+          onLimitChange={(limit) =>
+            setParams((prev) => ({ ...prev, limit, page: 1 }))
+          }
+          onRowClick={handleRowClick}
+          emptyMessage={t('status.noResults')}
+        />
+      )}
 
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)}>
         <DialogHeader>

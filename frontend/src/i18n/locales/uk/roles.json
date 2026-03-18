@@ -11,5 +11,33 @@
   "placeholders": {
     "name": "Назва ролі",
     "description": "Опис ролі (необов'язково)"
+  },
+  "permissions": {
+    "title": "Дозволи",
+    "description": "{{selected}} з {{total}} дозволів обрано",
+    "noPermissions": "Дозволи недоступні",
+    "modules": {
+      "tenants": "Тенанти",
+      "branches": "Філіали",
+      "users": "Користувачі",
+      "roles": "Ролі",
+      "clients": "Клієнти",
+      "vehicles": "Транспортні засоби",
+      "services": "Послуги",
+      "work-posts": "Робочі пости",
+      "orders": "Замовлення",
+      "scheduling": "Розклад",
+      "payments": "Платежі",
+      "analytics": "Аналітика",
+      "audit": "Аудит",
+      "workforce": "Персонал"
+    },
+    "actions": {
+      "create": "Створення",
+      "read": "Перегляд",
+      "update": "Редагування",
+      "delete": "Видалення",
+      "view": "Перегляд"
+    }
   }
 }

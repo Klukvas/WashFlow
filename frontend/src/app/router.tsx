@@ -21,6 +21,16 @@ const RegisterPage = lazy(() =>
     default: m.RegisterPage,
   })),
 );
+const ForgotPasswordPage = lazy(() =>
+  import('@/features/auth/pages/ForgotPasswordPage').then((m) => ({
+    default: m.ForgotPasswordPage,
+  })),
+);
+const ResetPasswordPage = lazy(() =>
+  import('@/features/auth/pages/ResetPasswordPage').then((m) => ({
+    default: m.ResetPasswordPage,
+  })),
+);
 const DashboardPage = lazy(() =>
   import('@/features/dashboard/pages/DashboardPage').then((m) => ({
     default: m.DashboardPage,
@@ -116,6 +126,11 @@ const SubscriptionPage = lazy(() =>
     default: m.SubscriptionPage,
   })),
 );
+const PlansPage = lazy(() =>
+  import('@/features/subscription/pages/PlansPage').then((m) => ({
+    default: m.PlansPage,
+  })),
+);
 const PublicLandingPage = lazy(() =>
   import('@/features/public-booking/pages/PublicLandingPage').then((m) => ({
     default: m.PublicLandingPage,
@@ -164,6 +179,22 @@ export const router = createBrowserRouter([
     element: (
       <SuspenseWrapper>
         <RegisterPage />
+      </SuspenseWrapper>
+    ),
+  },
+  {
+    path: '/forgot-password',
+    element: (
+      <SuspenseWrapper>
+        <ForgotPasswordPage />
+      </SuspenseWrapper>
+    ),
+  },
+  {
+    path: '/reset-password',
+    element: (
+      <SuspenseWrapper>
+        <ResetPasswordPage />
       </SuspenseWrapper>
     ),
   },
@@ -354,6 +385,19 @@ export const router = createBrowserRouter([
           >
             <SuspenseWrapper>
               <SubscriptionPage />
+            </SuspenseWrapper>
+          </PermissionGate>
+        ),
+      },
+      {
+        path: 'subscription/plans',
+        element: (
+          <PermissionGate
+            permission={PERMISSIONS.TENANTS.READ}
+            fallback={<Navigate to="/403" replace />}
+          >
+            <SuspenseWrapper>
+              <PlansPage />
             </SuspenseWrapper>
           </PermissionGate>
         ),

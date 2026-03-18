@@ -39,3 +39,14 @@ export async function resetUserPassword(
 ): Promise<void> {
   await apiClient.patch(`/users/${userId}/reset-password`, { newPassword });
 }
+
+export async function forgotPassword(email: string): Promise<void> {
+  await apiClient.post('/auth/forgot-password', { email });
+}
+
+export async function resetPassword(
+  token: string,
+  newPassword: string,
+): Promise<void> {
+  await apiClient.post('/auth/reset-password', { token, newPassword });
+}

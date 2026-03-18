@@ -58,7 +58,11 @@ export function VehiclesPage() {
   const [clientSearch, setClientSearch] = useState('');
   const debouncedClientSearch = useDebounce(clientSearch, 300);
 
-  const { data, isLoading } = useVehicles({ page, limit: 20, includeDeleted });
+  const { data, isLoading, isError } = useVehicles({
+    page,
+    limit: 20,
+    includeDeleted,
+  });
   const { mutate: createMut, isPending: creating } = useCreateVehicle();
   const { mutate: deleteMut, isPending: deleting } = useDeleteVehicle();
   const { mutate: restoreMut } = useRestoreVehicle();
@@ -87,7 +91,7 @@ export function VehiclesPage() {
     control,
     formState: { errors },
   } = useForm<VehicleFormData>({
-    resolver: zodResolver(vehicleSchema) as any,
+    resolver: zodResolver(vehicleSchema),
   });
 
   const columns: Column<Vehicle>[] = useMemo(
@@ -160,7 +164,7 @@ export function VehiclesPage() {
         ),
       },
     ],
-    [t, restoreMut],
+    [t, tc, restoreMut],
   );
 
   const onSubmit = useCallback(
@@ -202,17 +206,23 @@ export function VehiclesPage() {
         />
       </div>
 
-      <DataTable
-        columns={columns}
-        data={data?.items ?? []}
-        loading={isLoading}
-        page={page}
-        totalPages={data?.meta.totalPages ?? 1}
-        total={data?.meta.total ?? 0}
-        limit={20}
-        onPageChange={setPage}
-        onRowClick={(v) => navigate(`/vehicles/${v.id}`)}
-      />
+      {isError ? (
+        <div className="flex items-center justify-center p-8">
+          <p className="text-sm text-destructive">{tc('errors.loadFailed')}</p>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={data?.items ?? []}
+          loading={isLoading}
+          page={page}
+          totalPages={data?.meta.totalPages ?? 1}
+          total={data?.meta.total ?? 0}
+          limit={20}
+          onPageChange={setPage}
+          onRowClick={(v) => navigate(`/vehicles/${v.id}`)}
+        />
+      )}
 
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)}>
         <DialogHeader>
@@ -220,7 +230,7 @@ export function VehiclesPage() {
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <div>
-            <Label>{t('client')}</Label>
+            <Label htmlFor="v-clientId">{t('client')}</Label>
             <Controller
               name="clientId"
               control={control}
@@ -239,26 +249,31 @@ export function VehiclesPage() {
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <Label>{t('makeRequired')}</Label>
-              <Input {...register('make')} error={errors.make?.message} />
+              <Label htmlFor="v-make">{t('makeRequired')}</Label>
+              <Input
+                id="v-make"
+                {...register('make')}
+                error={errors.make?.message}
+              />
             </div>
             <div>
-              <Label>{t('model')}</Label>
-              <Input {...register('model')} />
+              <Label htmlFor="v-model">{t('model')}</Label>
+              <Input id="v-model" {...register('model')} />
             </div>
           </div>
           <div>
-            <Label>{t('licensePlate')}</Label>
-            <Input {...register('licensePlate')} />
+            <Label htmlFor="v-licensePlate">{t('licensePlate')}</Label>
+            <Input id="v-licensePlate" {...register('licensePlate')} />
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <Label>{t('color')}</Label>
-              <Input {...register('color')} />
+              <Label htmlFor="v-color">{t('color')}</Label>
+              <Input id="v-color" {...register('color')} />
             </div>
             <div>
-              <Label>{t('year')}</Label>
+              <Label htmlFor="v-year">{t('year')}</Label>
               <Input
+                id="v-year"
                 type="number"
                 {...register('year')}
                 error={errors.year?.message}

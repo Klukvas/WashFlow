@@ -2,6 +2,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import { useLogin } from '../hooks/useLogin';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
@@ -14,7 +15,11 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-export function LoginForm() {
+interface LoginFormProps {
+  onSwitchToRegister?: () => void;
+}
+
+export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
   const { t } = useTranslation('auth');
   const { mutate, isPending, error } = useLogin();
 
@@ -35,7 +40,7 @@ export function LoginForm() {
         <Input
           id="email"
           type="email"
-          placeholder="admin@example.com"
+          placeholder="email@example.com"
           error={errors.email?.message}
           {...register('email')}
         />
@@ -61,6 +66,28 @@ export function LoginForm() {
       >
         {isPending ? t('login.loading') : t('login.submit')}
       </Button>
+
+      <div className="text-center">
+        <Link
+          to="/forgot-password"
+          className="text-sm text-muted-foreground hover:underline"
+        >
+          {t('login.forgotPassword')}
+        </Link>
+      </div>
+
+      {onSwitchToRegister && (
+        <div className="text-center text-sm">
+          <span className="text-muted-foreground">{t('login.noAccount')}</span>{' '}
+          <button
+            type="button"
+            onClick={onSwitchToRegister}
+            className="font-medium text-primary hover:underline"
+          >
+            {t('login.registerLink')}
+          </button>
+        </div>
+      )}
     </form>
   );
 }

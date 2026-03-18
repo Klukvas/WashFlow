@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   fetchOrders,
   fetchOrder,
@@ -38,6 +39,9 @@ export function useCreateOrder() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['availability'] });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to create order');
+    },
   });
 }
 
@@ -55,6 +59,9 @@ export function useUpdateOrderStatus() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['availability'] });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update order status');
+    },
   });
 }
 
@@ -66,6 +73,9 @@ export function useDeleteOrder() {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['availability'] });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete order');
+    },
   });
 }
 
@@ -76,6 +86,9 @@ export function useRestoreOrder() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['availability'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to restore order');
     },
   });
 }

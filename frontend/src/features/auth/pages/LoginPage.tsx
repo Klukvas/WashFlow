@@ -12,11 +12,18 @@ import {
 import { ThemeToggle } from '@/shared/components/ThemeToggle';
 import { LanguageSwitcher } from '@/shared/components/LanguageSwitcher';
 
+function getSafeRedirect(from: string | null | undefined): string {
+  if (!from || !from.startsWith('/') || from.startsWith('//')) {
+    return '/dashboard';
+  }
+  return from;
+}
+
 export function LoginPage() {
   const { t } = useTranslation('auth');
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const location = useLocation();
-  const from = (location.state as { from?: string })?.from ?? '/dashboard';
+  const from = getSafeRedirect((location.state as { from?: string })?.from);
 
   if (isAuthenticated) {
     return <Navigate to={from} replace />;

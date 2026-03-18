@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   fetchVehicles,
   fetchVehicle,
@@ -31,6 +32,9 @@ export function useCreateVehicle() {
   return useMutation({
     mutationFn: (payload: CreateVehiclePayload) => createVehicle(payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['vehicles'] }),
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to create vehicle');
+    },
   });
 }
 
@@ -46,6 +50,9 @@ export function useUpdateVehicle() {
       qc.invalidateQueries({ queryKey: ['vehicles'] });
       qc.invalidateQueries({ queryKey: ['vehicles', 'detail', id] });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update vehicle');
+    },
   });
 }
 
@@ -57,6 +64,9 @@ export function useDeleteVehicle() {
       qc.invalidateQueries({ queryKey: ['vehicles'] });
       qc.invalidateQueries({ queryKey: ['vehicles', 'detail', id] });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete vehicle');
+    },
   });
 }
 
@@ -67,6 +77,9 @@ export function useRestoreVehicle() {
     onSuccess: (_data, id) => {
       qc.invalidateQueries({ queryKey: ['vehicles'] });
       qc.invalidateQueries({ queryKey: ['vehicles', 'detail', id] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to restore vehicle');
     },
   });
 }

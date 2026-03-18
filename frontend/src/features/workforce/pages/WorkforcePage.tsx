@@ -80,7 +80,7 @@ export function WorkforcePage() {
   const deactivateMutation = useDeactivateProfile();
 
   const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileSchema) as any,
+    resolver: zodResolver(profileSchema),
     defaultValues: {
       userId: '',
       branchId: '',
@@ -254,7 +254,7 @@ export function WorkforcePage() {
                   size="icon"
                   aria-label={tc('status.active')}
                   onClick={() =>
-                    updateMutation.mutateAsync({
+                    updateMutation.mutate({
                       id: p.id,
                       payload: { active: true },
                     })
@@ -390,10 +390,11 @@ export function WorkforcePage() {
         })}
         confirmLabel={t('deactivateConfirm')}
         variant="destructive"
-        onConfirm={async () => {
+        onConfirm={() => {
           if (deactivateTarget) {
-            await deactivateMutation.mutateAsync(deactivateTarget.id);
-            setDeactivateTarget(null);
+            deactivateMutation.mutate(deactivateTarget.id, {
+              onSuccess: () => setDeactivateTarget(null),
+            });
           }
         }}
       />

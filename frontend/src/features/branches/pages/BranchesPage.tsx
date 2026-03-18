@@ -31,7 +31,7 @@ export function BranchesPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
 
-  const { data, isLoading } = useBranches(params);
+  const { data, isLoading, isError } = useBranches(params);
   const { mutate: createMut, isPending: creating } = useCreateBranch();
 
   const handleCreate = (formData: BranchFormData) => {
@@ -126,18 +126,24 @@ export function BranchesPage() {
         }
       />
 
-      <DataTable<Branch>
-        columns={columns}
-        data={data?.items ?? []}
-        loading={isLoading}
-        page={params.page ?? 1}
-        totalPages={data?.meta.totalPages ?? 1}
-        total={data?.meta.total ?? 0}
-        limit={params.limit ?? 20}
-        onPageChange={(page) => setParams((prev) => ({ ...prev, page }))}
-        onRowClick={handleRowClick}
-        emptyMessage={t('emptyList')}
-      />
+      {isError ? (
+        <div className="flex items-center justify-center p-8">
+          <p className="text-sm text-destructive">{tc('errors.loadFailed')}</p>
+        </div>
+      ) : (
+        <DataTable<Branch>
+          columns={columns}
+          data={data?.items ?? []}
+          loading={isLoading}
+          page={params.page ?? 1}
+          totalPages={data?.meta.totalPages ?? 1}
+          total={data?.meta.total ?? 0}
+          limit={params.limit ?? 20}
+          onPageChange={(page) => setParams((prev) => ({ ...prev, page }))}
+          onRowClick={handleRowClick}
+          emptyMessage={t('emptyList')}
+        />
+      )}
 
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)}>
         <DialogHeader>

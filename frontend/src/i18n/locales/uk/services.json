@@ -20,5 +20,10 @@
     "description": "Необов'язковий опис",
     "duration": "Хвилини",
     "price": "0.00"
+  },
+  "validation": {
+    "nameRequired": "Назва обов'язкова",
+    "durationMin": "Має бути не менше 1 хвилини",
+    "priceNonNegative": "Ціна не може бути від'ємною"
   }
 }

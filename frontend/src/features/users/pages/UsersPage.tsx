@@ -48,7 +48,7 @@ export function UsersPage() {
     null,
   );
 
-  const { data, isLoading } = useUsers(params);
+  const { data, isLoading, isError } = useUsers(params);
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser();
   const deleteMutation = useDeleteUser();
@@ -205,7 +205,7 @@ export function UsersPage() {
         ),
       },
     ],
-    [t, tAuth, handleOpenEdit],
+    [t, tAuth, handleOpenEdit, currentUser],
   );
 
   return (
@@ -229,17 +229,23 @@ export function UsersPage() {
         />
       </div>
 
-      <DataTable<User>
-        columns={columns}
-        data={data?.items ?? []}
-        loading={isLoading}
-        page={params.page ?? 1}
-        totalPages={data?.meta.totalPages ?? 1}
-        total={data?.meta.total ?? 0}
-        limit={params.limit ?? 20}
-        onPageChange={handlePageChange}
-        onLimitChange={handleLimitChange}
-      />
+      {isError ? (
+        <div className="flex items-center justify-center p-8">
+          <p className="text-sm text-destructive">{t('errors.loadFailed')}</p>
+        </div>
+      ) : (
+        <DataTable<User>
+          columns={columns}
+          data={data?.items ?? []}
+          loading={isLoading}
+          page={params.page ?? 1}
+          totalPages={data?.meta.totalPages ?? 1}
+          total={data?.meta.total ?? 0}
+          limit={params.limit ?? 20}
+          onPageChange={handlePageChange}
+          onLimitChange={handleLimitChange}
+        />
+      )}
 
       <Dialog open={formDialogOpen} onClose={handleCloseForm}>
         <DialogHeader>

@@ -34,7 +34,7 @@ export function AuditPage() {
     sortOrder: 'desc',
   });
 
-  const { data, isLoading } = useAuditLogs(filters);
+  const { data, isLoading, isError } = useAuditLogs(filters);
 
   const columns: Column<AuditLog>[] = useMemo(
     () => [
@@ -155,16 +155,22 @@ export function AuditPage() {
         </Button>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={data?.items ?? []}
-        loading={isLoading}
-        page={filters.page ?? 1}
-        totalPages={data?.meta.totalPages ?? 1}
-        total={data?.meta.total ?? 0}
-        limit={filters.limit ?? 20}
-        onPageChange={(page) => setFilters((p) => ({ ...p, page }))}
-      />
+      {isError ? (
+        <div className="flex items-center justify-center p-8">
+          <p className="text-sm text-destructive">{tc('errors.loadFailed')}</p>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={data?.items ?? []}
+          loading={isLoading}
+          page={filters.page ?? 1}
+          totalPages={data?.meta.totalPages ?? 1}
+          total={data?.meta.total ?? 0}
+          limit={filters.limit ?? 20}
+          onPageChange={(page) => setFilters((p) => ({ ...p, page }))}
+        />
+      )}
     </div>
   );
 }

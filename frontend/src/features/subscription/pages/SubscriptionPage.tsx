@@ -1,5 +1,6 @@
-import type { ElementType } from 'react';
+import { useState, type ElementType } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router';
 import {
   Users,
   Building2,
@@ -7,12 +8,23 @@ import {
   Wrench,
   AlertCircle,
   Clock,
+  ArrowUpRight,
 } from 'lucide-react';
-import { useSubscriptionUsage } from '../hooks/useSubscription';
+import {
+  useSubscriptionUsage,
+  usePlanCatalog,
+  useManageAddon,
+  useCancelSubscription,
+} from '../hooks/useSubscription';
+import { AddonManager } from '../components/AddonManager';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+import { Badge } from '@/shared/ui/badge';
+import { Button } from '@/shared/ui/button';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { cn } from '@/shared/utils/cn';
+import type { PlanTier } from '../api/subscription.api';
 
 interface ResourceCardProps {
   icon: ElementType;
@@ -137,6 +149,21 @@ function TrialBanner({ trialEndsAt }: { trialEndsAt: string }) {
   );
 }
 
+const PLAN_TIER_COLORS: Record<PlanTier, string> = {
+  TRIAL: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
+  STARTER: 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
+  BUSINESS: 'bg-purple-500/10 text-purple-700 dark:text-purple-400',
+  ENTERPRISE: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  ACTIVE: 'bg-green-500/10 text-green-700',
+  TRIALING: 'bg-yellow-500/10 text-yellow-700',
+  PAST_DUE: 'bg-red-500/10 text-red-700',
+  PAUSED: 'bg-gray-500/10 text-gray-700',
+  CANCELLED: 'bg-red-500/10 text-red-700',
+};
+
 function SubscriptionSkeleton() {
   return (
     <div>
@@ -156,7 +183,12 @@ function SubscriptionSkeleton() {
 
 export function SubscriptionPage() {
   const { t } = useTranslation('subscription');
+  const navigate = useNavigate();
   const { data, isLoading, isError } = useSubscriptionUsage();
+  const { data: catalog } = usePlanCatalog();
+  const manageAddonMutation = useManageAddon();
+  const cancelMutation = useCancelSubscription();
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   if (isLoading) {
     return <SubscriptionSkeleton />;
@@ -177,13 +209,56 @@ export function SubscriptionPage() {
   }
 
   const { usage, subscription } = data;
+  const canManageAddons =
+    subscription &&
+    subscription.planTier !== 'TRIAL' &&
+    subscription.planTier !== 'ENTERPRISE' &&
+    subscription.status !== 'CANCELLED';
 
   return (
-    <div>
-      <PageHeader title={t('title')} description={t('description')} />
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <PageHeader title={t('title')} description={t('description')} />
+        <div className="flex items-center gap-2">
+          {subscription && (
+            <>
+              <Badge className={PLAN_TIER_COLORS[subscription.planTier] ?? ''}>
+                {subscription.planTier}
+              </Badge>
+              <Badge className={STATUS_COLORS[subscription.status] ?? ''}>
+                {t(`status.${subscription.status}`)}
+              </Badge>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Trial banner */}
       {subscription?.isTrial && subscription.trialEndsAt && (
         <TrialBanner trialEndsAt={subscription.trialEndsAt} />
       )}
+
+      {/* Upgrade CTA for trial / starter users */}
+      {subscription &&
+        (subscription.planTier === 'TRIAL' ||
+          subscription.planTier === 'STARTER') && (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="flex items-center justify-between pt-6">
+              <div>
+                <p className="font-medium">{t('upgrade.title')}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t('upgrade.description')}
+                </p>
+              </div>
+              <Button onClick={() => navigate('/subscription/plans')}>
+                {t('upgrade.button')}
+                <ArrowUpRight className="ml-1 h-4 w-4" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+      {/* Resource usage cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <ResourceCard
           icon={Users}
@@ -210,6 +285,71 @@ export function SubscriptionPage() {
           max={usage.services.max}
         />
       </div>
+
+      {/* Add-on management */}
+      {canManageAddons && catalog && (
+        <AddonManager
+          addons={catalog.addons}
+          currentAddons={subscription.addons}
+          onUpdate={(resource, quantity) =>
+            manageAddonMutation.mutate({ resource, quantity })
+          }
+          isLoading={manageAddonMutation.isPending}
+        />
+      )}
+
+      {/* Cancel subscription */}
+      {subscription &&
+        subscription.status === 'ACTIVE' &&
+        !subscription.isTrial && (
+          <Card>
+            <CardContent className="flex items-center justify-between pt-6">
+              <div>
+                <p className="text-sm font-medium">{t('cancel.title')}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t('cancel.description')}
+                </p>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowCancelConfirm(true)}
+                disabled={cancelMutation.isPending}
+              >
+                {t('cancel.button')}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+      <ConfirmDialog
+        open={showCancelConfirm}
+        onClose={() => setShowCancelConfirm(false)}
+        onConfirm={() => {
+          cancelMutation.mutate(undefined, {
+            onSettled: () => setShowCancelConfirm(false),
+          });
+        }}
+        title={t('cancel.confirmTitle')}
+        message={t('cancel.confirmMessage')}
+        variant="destructive"
+        loading={cancelMutation.isPending}
+      />
+
+      {/* Cancellation info */}
+      {subscription?.cancelEffectiveAt && (
+        <Card className="border-yellow-500/50">
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">
+              {t('cancel.activeUntil', {
+                date: new Date(
+                  subscription.cancelEffectiveAt,
+                ).toLocaleDateString(),
+              })}
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

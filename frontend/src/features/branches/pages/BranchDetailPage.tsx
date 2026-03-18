@@ -7,10 +7,10 @@ import {
   useUpdateBranch,
   useDeleteBranch,
   useRestoreBranch,
-  useWorkPosts,
   useBranchBookingSettings,
   useUpdateBranchBookingSettings,
 } from '../hooks/useBranches';
+import { useWorkPosts } from '@/features/work-posts/hooks/useWorkPosts';
 import { BranchForm, type BranchFormData } from '../components/BranchForm';
 import {
   BookingSettingsForm,
@@ -29,9 +29,7 @@ import { Skeleton } from '@/shared/ui/skeleton';
 import { PERMISSIONS } from '@/shared/constants/permissions';
 import { formatDateTime } from '@/shared/utils/format';
 import type { WorkPost } from '@/shared/types/models';
-
-const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
-const DAY_NUMBERS = [1, 2, 3, 4, 5, 6, 0] as const;
+import { DAY_KEYS, DAY_NUMBERS } from '../constants';
 
 function buildWorkPostColumns(tc: (key: string) => string): Column<WorkPost>[] {
   return [

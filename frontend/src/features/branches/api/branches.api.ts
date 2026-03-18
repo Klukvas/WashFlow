@@ -9,6 +9,8 @@ import type {
   PaginatedResponse,
 } from '@/shared/types/api';
 import type { BookingSettings, Branch, WorkPost } from '@/shared/types/models';
+import type { WorkPostQueryParams } from '@/features/work-posts/api/work-posts.api';
+export type { WorkPostQueryParams } from '@/features/work-posts/api/work-posts.api';
 
 export interface BranchQueryParams {
   page?: number;
@@ -76,12 +78,6 @@ export async function restoreBranch(id: string): Promise<Branch> {
     `/branches/${id}/restore`,
   );
   return data.data;
-}
-
-export interface WorkPostQueryParams {
-  branchId: string;
-  page?: number;
-  limit?: number;
 }
 
 export async function fetchWorkPosts(

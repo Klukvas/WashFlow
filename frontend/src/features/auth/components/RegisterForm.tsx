@@ -10,9 +10,9 @@ import type { AxiosError } from 'axios';
 
 const registerSchema = z
   .object({
-    companyName: z.string().min(2),
-    firstName: z.string().min(1),
-    lastName: z.string().min(1),
+    companyName: z.string().max(100).optional(),
+    firstName: z.string().max(100).optional(),
+    lastName: z.string().max(100).optional(),
     email: z.string().email(),
     password: z.string().min(8),
     confirmPassword: z.string().min(8),
@@ -23,7 +23,11 @@ const registerSchema = z
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 
-export function RegisterForm() {
+interface RegisterFormProps {
+  onSwitchToLogin?: () => void;
+}
+
+export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
   const { t } = useTranslation('auth');
   const { mutate, isPending, error } = useRegister();
 
@@ -40,8 +44,7 @@ export function RegisterForm() {
     mutate(payload);
   };
 
-  const isConflict =
-    (error as AxiosError | null)?.response?.status === 409;
+  const isConflict = (error as AxiosError | null)?.response?.status === 409;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -49,28 +52,30 @@ export function RegisterForm() {
         <Label htmlFor="companyName">{t('register.companyName')}</Label>
         <Input
           id="companyName"
+          type="text"
           error={errors.companyName?.message}
           {...reg('companyName')}
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="firstName">{t('register.firstName')}</Label>
-          <Input
-            id="firstName"
-            error={errors.firstName?.message}
-            {...reg('firstName')}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="lastName">{t('register.lastName')}</Label>
-          <Input
-            id="lastName"
-            error={errors.lastName?.message}
-            {...reg('lastName')}
-          />
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="firstName">{t('register.firstName')}</Label>
+        <Input
+          id="firstName"
+          type="text"
+          error={errors.firstName?.message}
+          {...reg('firstName')}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="lastName">{t('register.lastName')}</Label>
+        <Input
+          id="lastName"
+          type="text"
+          error={errors.lastName?.message}
+          {...reg('lastName')}
+        />
       </div>
 
       <div className="space-y-2">
@@ -99,9 +104,7 @@ export function RegisterForm() {
           id="confirmPassword"
           type="password"
           error={
-            errors.confirmPassword
-              ? t('register.passwordMismatch')
-              : undefined
+            errors.confirmPassword ? t('register.passwordMismatch') : undefined
           }
           {...reg('confirmPassword')}
         />
@@ -121,6 +124,21 @@ export function RegisterForm() {
       >
         {isPending ? t('register.loading') : t('register.submit')}
       </Button>
+
+      {onSwitchToLogin && (
+        <div className="text-center text-sm">
+          <span className="text-muted-foreground">
+            {t('register.hasAccount')}
+          </span>{' '}
+          <button
+            type="button"
+            onClick={onSwitchToLogin}
+            className="font-medium text-primary hover:underline"
+          >
+            {t('register.signIn')}
+          </button>
+        </div>
+      )}
     </form>
   );
 }

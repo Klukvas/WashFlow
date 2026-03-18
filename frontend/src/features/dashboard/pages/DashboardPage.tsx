@@ -22,22 +22,78 @@ import {
 } from '../hooks/useDashboard';
 
 const RevenueChart = lazy(() => import('../components/RevenueChart'));
-const OnlineBookingChart = lazy(() => import('../components/OnlineBookingChart'));
+const OnlineBookingChart = lazy(
+  () => import('../components/OnlineBookingChart'),
+);
 
 export function DashboardPage() {
   const { t } = useTranslation('dashboard');
   const { t: tNav } = useTranslation('nav');
+  const { t: tc } = useTranslation('common');
   const { branchId } = useBranchScope();
   const branchParams = branchId ? { branchId } : undefined;
 
-  const { data: stats, isLoading: statsLoading } = useDashboardStats(branchParams);
-  const { data: revenueData, isLoading: revenueLoading } = useRevenueData(branchParams);
-  const { data: kpiData, isLoading: kpiLoading } = useKpiData(branchParams);
-  const { data: liveData, isLoading: liveLoading } = useLiveOperations(branchParams);
-  const { data: branchData, isLoading: branchLoading } = useBranchPerformance(branchParams);
-  const { data: employeeData, isLoading: employeeLoading } = useEmployeePerformance(branchParams);
-  const { data: alertsData, isLoading: alertsLoading } = useAlerts(branchParams);
-  const { data: bookingData, isLoading: bookingLoading } = useOnlineBookingStats(branchParams);
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    isError: statsError,
+  } = useDashboardStats(branchParams);
+  const {
+    data: revenueData,
+    isLoading: revenueLoading,
+    isError: revenueError,
+  } = useRevenueData(branchParams);
+  const {
+    data: kpiData,
+    isLoading: kpiLoading,
+    isError: kpiError,
+  } = useKpiData(branchParams);
+  const {
+    data: liveData,
+    isLoading: liveLoading,
+    isError: liveError,
+  } = useLiveOperations(branchParams);
+  const {
+    data: branchData,
+    isLoading: branchLoading,
+    isError: branchError,
+  } = useBranchPerformance(branchParams);
+  const {
+    data: employeeData,
+    isLoading: employeeLoading,
+    isError: employeeError,
+  } = useEmployeePerformance(branchParams);
+  const {
+    data: alertsData,
+    isLoading: alertsLoading,
+    isError: alertsError,
+  } = useAlerts(branchParams);
+  const {
+    data: bookingData,
+    isLoading: bookingLoading,
+    isError: bookingError,
+  } = useOnlineBookingStats(branchParams);
+
+  const hasError =
+    statsError ||
+    revenueError ||
+    kpiError ||
+    liveError ||
+    branchError ||
+    employeeError ||
+    alertsError ||
+    bookingError;
+
+  if (hasError) {
+    return (
+      <div>
+        <PageHeader title={tNav('dashboard')} />
+        <div className="flex items-center justify-center p-8">
+          <p className="text-sm text-destructive">{tc('errors.loadFailed')}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -60,7 +116,10 @@ export function DashboardPage() {
             </CardHeader>
             <CardContent>
               <Suspense fallback={<Skeleton className="h-64" />}>
-                <RevenueChart data={revenueData ?? []} loading={revenueLoading} />
+                <RevenueChart
+                  data={revenueData ?? []}
+                  loading={revenueLoading}
+                />
               </Suspense>
             </CardContent>
           </Card>
@@ -70,7 +129,10 @@ export function DashboardPage() {
         <BranchPerformanceTable data={branchData} loading={branchLoading} />
 
         {/* Employee performance */}
-        <EmployeePerformanceTable data={employeeData} loading={employeeLoading} />
+        <EmployeePerformanceTable
+          data={employeeData}
+          loading={employeeLoading}
+        />
 
         {/* Alerts + Online booking */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

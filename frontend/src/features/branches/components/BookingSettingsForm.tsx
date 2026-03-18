@@ -8,30 +8,36 @@ import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { Switch } from '@/shared/ui/switch';
 import type { BookingSettings } from '@/shared/types/models';
+import { DAY_KEYS } from '../constants';
 
 const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-const bookingSettingsSchema = z.object({
-  workingHoursStart: z.string().regex(timeRegex, 'validation.invalidTime'),
-  workingHoursEnd: z.string().regex(timeRegex, 'validation.invalidTime'),
-  slotDurationMinutes: z.coerce
-    .number()
-    .int()
-    .min(5, 'validation.min5')
-    .max(480, 'validation.max480'),
-  bufferTimeMinutes: z.coerce
-    .number()
-    .int()
-    .min(0, 'validation.min0')
-    .max(120, 'validation.max120'),
-  maxAdvanceBookingDays: z.coerce
-    .number()
-    .int()
-    .min(1, 'validation.min1')
-    .max(365, 'validation.max365'),
-  allowOnlineBooking: z.boolean(),
-  workingDays: z.array(z.number()).min(1, 'validation.atLeastOneDay'),
-});
+const bookingSettingsSchema = z
+  .object({
+    workingHoursStart: z.string().regex(timeRegex, 'validation.invalidTime'),
+    workingHoursEnd: z.string().regex(timeRegex, 'validation.invalidTime'),
+    slotDurationMinutes: z.coerce
+      .number()
+      .int()
+      .min(5, 'validation.min5')
+      .max(480, 'validation.max480'),
+    bufferTimeMinutes: z.coerce
+      .number()
+      .int()
+      .min(0, 'validation.min0')
+      .max(120, 'validation.max120'),
+    maxAdvanceBookingDays: z.coerce
+      .number()
+      .int()
+      .min(1, 'validation.min1')
+      .max(365, 'validation.max365'),
+    allowOnlineBooking: z.boolean(),
+    workingDays: z.array(z.number()).min(1, 'validation.atLeastOneDay'),
+  })
+  .refine((data) => data.workingHoursEnd > data.workingHoursStart, {
+    message: 'validation.endAfterStart',
+    path: ['workingHoursEnd'],
+  });
 
 export type BookingSettingsFormData = z.infer<typeof bookingSettingsSchema>;
 
@@ -43,7 +49,6 @@ interface BookingSettingsFormProps {
 }
 
 const ALL_DAYS = [1, 2, 3, 4, 5, 6, 0] as const;
-const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 
 export function BookingSettingsForm({
   settings,
@@ -61,8 +66,7 @@ export function BookingSettingsForm({
     control,
     formState: { errors, isDirty },
   } = useForm<BookingSettingsFormData>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(bookingSettingsSchema) as any,
+    resolver: zodResolver(bookingSettingsSchema),
     defaultValues: {
       workingHoursStart: settings?.workingHoursStart ?? '08:00',
       workingHoursEnd: settings?.workingHoursEnd ?? '20:00',

@@ -50,6 +50,7 @@
     "title": "Статистика онлайн-бронювань",
     "onlineRate": "Частка онлайн",
     "total": "Всього замовлень",
+    "noData": "Дані про бронювання відсутні",
     "sources": {
       "INTERNAL": "Внутрішнє",
       "WEB": "Веб",
@@ -58,6 +59,17 @@
     }
   },
   "revenue": {
-    "title": "Огляд виручки"
+    "title": "Огляд виручки",
+    "noData": "Дані про виручку відсутні"
+  },
+  "statsCards": {
+    "totalOrders": "Всього замовлень",
+    "todayOrders": "{{count}} сьогодні",
+    "revenue": "Виручка",
+    "todayRevenue": "{{value}} сьогодні",
+    "activeClients": "Активні клієнти",
+    "allTime": "За весь час",
+    "completionRate": "Відсоток виконання",
+    "thisPeriod": "За цей період"
   }
 }

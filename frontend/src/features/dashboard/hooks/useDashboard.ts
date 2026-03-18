@@ -58,6 +58,7 @@ export function useKpiData(params?: DateRangeParams) {
     queryKey: ['dashboard', 'kpi', params],
     queryFn: () => fetchKpiData(params),
     staleTime: 15 * 1000,
+    refetchInterval: 30 * 1000,
   });
 }
 
@@ -66,6 +67,7 @@ export function useLiveOperations(params?: { branchId?: string }) {
     queryKey: ['dashboard', 'live', params],
     queryFn: () => fetchLiveOperations(params),
     staleTime: 15 * 1000,
+    refetchInterval: 30 * 1000,
   });
 }
 

@@ -1,10 +1,11 @@
-import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight } from 'lucide-react';
+import { useAuthModalStore } from '@/shared/stores/auth-modal.store';
 import { Button } from '@/shared/ui/button';
 
 export function HeroSection() {
   const { t } = useTranslation('landing');
+  const openModal = useAuthModalStore((s) => s.open);
 
   return (
     <section className="py-20 text-center lg:py-32">
@@ -16,12 +17,14 @@ export function HeroSection() {
           {t('hero.subtitle')}
         </p>
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-          <Link to="/register">
-            <Button size="lg" className="gap-2">
-              {t('hero.cta')}
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
+          <Button
+            size="lg"
+            className="gap-2"
+            onClick={() => openModal('register')}
+          >
+            {t('hero.cta')}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
           <a href="#features">
             <Button variant="outline" size="lg">
               {t('hero.secondaryCta')}

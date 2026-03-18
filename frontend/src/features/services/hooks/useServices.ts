@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   fetchServices,
   fetchService,
@@ -42,6 +43,9 @@ export function useCreateService() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: serviceKeys.all });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to create service');
+    },
   });
 }
 
@@ -54,6 +58,9 @@ export function useUpdateService() {
       queryClient.invalidateQueries({ queryKey: serviceKeys.all });
       queryClient.invalidateQueries({ queryKey: serviceKeys.detail(variables.id) });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update service');
+    },
   });
 }
 
@@ -64,6 +71,9 @@ export function useDeleteService() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: serviceKeys.all });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete service');
+    },
   });
 }
 
@@ -71,8 +81,12 @@ export function useRestoreService() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => restoreService(id),
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: serviceKeys.all });
+      queryClient.invalidateQueries({ queryKey: serviceKeys.detail(id) });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to restore service');
     },
   });
 }

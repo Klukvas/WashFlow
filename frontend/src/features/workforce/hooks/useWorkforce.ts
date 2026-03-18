@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   fetchProfiles,
   fetchProfile,
@@ -34,6 +35,9 @@ export function useCreateProfile() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [PROFILES_KEY] });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to create employee profile');
+    },
   });
 }
 
@@ -46,6 +50,9 @@ export function useUpdateProfile() {
       queryClient.invalidateQueries({ queryKey: [PROFILES_KEY] });
       queryClient.invalidateQueries({ queryKey: [PROFILES_KEY, id] });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update employee profile');
+    },
   });
 }
 
@@ -55,6 +62,9 @@ export function useDeactivateProfile() {
     mutationFn: (id: string) => deactivateProfile(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [PROFILES_KEY] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to deactivate employee profile');
     },
   });
 }

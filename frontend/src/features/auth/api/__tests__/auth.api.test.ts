@@ -4,6 +4,8 @@ import {
   register,
   changePassword,
   resetUserPassword,
+  forgotPassword,
+  resetPassword,
 } from '../auth.api';
 
 // Mock apiClient
@@ -98,6 +100,86 @@ describe('auth.api', () => {
           newPassword: 'new-pass',
         },
       );
+    });
+  });
+
+  describe('forgotPassword', () => {
+    it('calls POST /auth/forgot-password with the email', async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: {} });
+
+      await forgotPassword('user@example.com');
+
+      expect(apiClient.post).toHaveBeenCalledWith('/auth/forgot-password', {
+        email: 'user@example.com',
+      });
+    });
+
+    it('returns undefined on success', async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: {} });
+
+      const result = await forgotPassword('user@example.com');
+
+      expect(result).toBeUndefined();
+    });
+
+    it('propagates errors thrown by the API client', async () => {
+      const error = new Error('Network error');
+      vi.mocked(apiClient.post).mockRejectedValueOnce(error);
+
+      await expect(forgotPassword('user@example.com')).rejects.toThrow(
+        'Network error',
+      );
+    });
+
+    it('calls POST with the exact email address provided', async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: {} });
+
+      await forgotPassword('another+user@sub.domain.io');
+
+      expect(apiClient.post).toHaveBeenCalledWith('/auth/forgot-password', {
+        email: 'another+user@sub.domain.io',
+      });
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('calls POST /auth/reset-password with token and newPassword', async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: {} });
+
+      await resetPassword('reset-token-xyz', 'newSecurePass1');
+
+      expect(apiClient.post).toHaveBeenCalledWith('/auth/reset-password', {
+        token: 'reset-token-xyz',
+        newPassword: 'newSecurePass1',
+      });
+    });
+
+    it('returns undefined on success', async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: {} });
+
+      const result = await resetPassword('token-abc', 'mypassword');
+
+      expect(result).toBeUndefined();
+    });
+
+    it('propagates errors thrown by the API client', async () => {
+      const error = new Error('Token expired');
+      vi.mocked(apiClient.post).mockRejectedValueOnce(error);
+
+      await expect(resetPassword('bad-token', 'pass')).rejects.toThrow(
+        'Token expired',
+      );
+    });
+
+    it('passes the exact token received to the API', async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: {} });
+
+      await resetPassword('eyJhbGciOiJIUzI1NiJ9.payload.sig', 'pass123456');
+
+      expect(apiClient.post).toHaveBeenCalledWith('/auth/reset-password', {
+        token: 'eyJhbGciOiJIUzI1NiJ9.payload.sig',
+        newPassword: 'pass123456',
+      });
     });
   });
 });

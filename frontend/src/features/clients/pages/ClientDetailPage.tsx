@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useParams, useNavigate, NavLink } from 'react-router';
+import { useParams, useNavigate, NavLink, Navigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Trash2, RotateCcw, Edit, Merge } from 'lucide-react';
 import {
@@ -26,12 +26,11 @@ export function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation('common');
-  const { data: client, isLoading } = useClient(id!);
+  const { t: tc } = useTranslation('clients');
+  const { data: client, isLoading } = useClient(id ?? '');
   const { mutate: updateClientMut, isPending: updating } = useUpdateClient();
   const { mutate: deleteClientMut, isPending: deleting } = useDeleteClient();
   const { mutate: restoreClientMut, isPending: restoring } = useRestoreClient();
-
-  const { t: tc } = useTranslation('clients');
 
   const [isEditing, setIsEditing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -46,9 +45,11 @@ export function ClientDetailPage() {
     [client?.vehicles, showDeletedVehicles],
   );
 
+  if (!id) return <Navigate to="/clients" replace />;
+
   const handleUpdate = (values: ClientFormValues) => {
     updateClientMut(
-      { id: id!, ...values },
+      { id, ...values },
       {
         onSuccess: () => setIsEditing(false),
       },
@@ -56,13 +57,13 @@ export function ClientDetailPage() {
   };
 
   const handleDelete = () => {
-    deleteClientMut(id!, {
+    deleteClientMut(id, {
       onSuccess: () => navigate('/clients'),
     });
   };
 
   const handleRestore = () => {
-    restoreClientMut(id!);
+    restoreClientMut(id);
   };
 
   if (isLoading) {

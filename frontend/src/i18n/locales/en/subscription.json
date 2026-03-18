@@ -15,5 +15,49 @@
     "active_one": "Free trial — {{count}} day remaining",
     "active_other": "Free trial — {{count}} days remaining",
     "expired": "Trial expired. Please subscribe to continue."
+  },
+  "status": {
+    "TRIALING": "Trial",
+    "ACTIVE": "Active",
+    "PAST_DUE": "Past Due",
+    "PAUSED": "Paused",
+    "CANCELLED": "Cancelled"
+  },
+  "plans": {
+    "title": "Choose a Plan",
+    "description": "Select the plan that fits your business needs",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "month": "mo",
+    "year": "yr",
+    "twoMonthsFree": "2 months free",
+    "unlimited": "Unlimited",
+    "popular": "Most Popular",
+    "addons": "Add-ons",
+    "available": "Available",
+    "currentPlan": "Current Plan",
+    "selectPlan": "Select Plan"
+  },
+  "addons": {
+    "title": "Add-ons",
+    "description": "Increase resource limits with add-on packages",
+    "perUnit": "per unit"
+  },
+  "upgrade": {
+    "title": "Upgrade your plan",
+    "description": "Get more resources and unlock advanced features",
+    "button": "View Plans"
+  },
+  "cancel": {
+    "title": "Cancel Subscription",
+    "description": "Access continues until the end of your billing period",
+    "button": "Cancel",
+    "confirmTitle": "Cancel Subscription?",
+    "confirmMessage": "Are you sure you want to cancel? You'll retain access until the end of your current billing period.",
+    "activeUntil": "Your subscription remains active until {{date}}"
+  },
+  "checkout": {
+    "subscribe": "Subscribe",
+    "error": "Checkout failed. Please try again."
   }
 }

@@ -38,6 +38,18 @@
     "dateFrom": "Дата від",
     "dateTo": "Дата до"
   },
+  "tabs": {
+    "orders": "Замовлення",
+    "schedule": "Розклад"
+  },
+  "schedule": {
+    "selectBranch": "Оберіть філіал",
+    "occupied": "Зайнято",
+    "free": "Вільно",
+    "bookSlot": "Забронювати слот",
+    "noWorkPosts": "Для цього філіалу не знайдено постів",
+    "selectBranchFirst": "Оберіть філіал для перегляду розкладу"
+  },
   "creation": {
     "selectClient": "Оберіть клієнта",
     "selectVehicle": "Оберіть транспорт",
@@ -55,7 +67,15 @@
     "anyWorker": "Будь-який (авто)",
     "date": "Дата",
     "confirmBooking": "Підтвердити бронювання",
-    "success": "Замовлення успішно створено"
+    "success": "Замовлення успішно створено",
+    "chooseStartMode": "З чого почати?",
+    "startFromClient": "Почати з клієнта",
+    "startFromClientDesc": "Спочатку оберіть клієнта, потім послуги та час",
+    "startFromTime": "Почати з часу",
+    "startFromTimeDesc": "Спочатку оберіть дату та час, потім послуги та клієнта",
+    "startFromService": "Почати з послуги",
+    "startFromServiceDesc": "Спочатку оберіть послуги, потім час та клієнта",
+    "branchClosed": "Цей філіал закритий у вибраний день. Будь ласка, оберіть іншу дату."
   },
   "statusChange": {
     "confirm": "Підтвердити",

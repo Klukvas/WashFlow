@@ -18,7 +18,7 @@ const SEVERITY_BORDER: Record<DashboardAlert['severity'], string> = {
 
 const SEVERITY_BADGE: Record<
   DashboardAlert['severity'],
-  'warning' | 'warning' | 'destructive' | 'destructive'
+  'warning' | 'destructive'
 > = {
   LOW: 'warning',
   MEDIUM: 'warning',
@@ -44,13 +44,18 @@ export function AlertsPanel({ data, loading }: AlertsPanelProps) {
           </p>
         ) : (
           <ul className="space-y-2">
-            {data.map((alert, idx) => (
+            {data.map((alert) => (
               <li
-                key={idx}
+                key={`${alert.type}-${alert.severity}-${alert.messageKey}`}
                 className={`flex items-start justify-between gap-3 rounded-r-lg border-l-4 px-3 py-2 ${SEVERITY_BORDER[alert.severity]}`}
               >
-                <p className="text-sm">{t(alert.messageKey, alert.payload as Record<string, string>)}</p>
-                <Badge variant={SEVERITY_BADGE[alert.severity]} className="shrink-0">
+                <p className="text-sm">
+                  {t(alert.messageKey, alert.payload as Record<string, string>)}
+                </p>
+                <Badge
+                  variant={SEVERITY_BADGE[alert.severity]}
+                  className="shrink-0"
+                >
                   {t(`alerts.severity.${alert.severity}`)}
                 </Badge>
               </li>

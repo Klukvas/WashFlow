@@ -1,5 +1,14 @@
-import { type ReactNode, useEffect, useRef, type MouseEvent } from 'react';
+import {
+  type ReactNode,
+  useEffect,
+  useRef,
+  useCallback,
+  type MouseEvent,
+} from 'react';
 import { cn } from '@/shared/utils/cn';
+
+const FOCUSABLE_SELECTORS =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 interface DialogProps {
   open: boolean;
@@ -17,25 +26,66 @@ export function Dialog({
   className,
 }: DialogProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
-  function handleClose() {
+  const handleClose = useCallback(() => {
     onClose?.();
     onOpenChange?.(false);
-  }
+  }, [onClose, onOpenChange]);
 
   useEffect(() => {
-    function handleEsc(e: KeyboardEvent) {
-      if (e.key === 'Escape') handleClose();
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        handleClose();
+        return;
+      }
+
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusable = Array.from(
+          dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS),
+        ).filter((el) => !el.closest('[hidden]'));
+
+        if (focusable.length === 0) {
+          e.preventDefault();
+          return;
+        }
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
     }
+
     if (open) {
-      document.addEventListener('keydown', handleEsc);
+      document.addEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'hidden';
+
+      // Move focus into dialog on open
+      requestAnimationFrame(() => {
+        if (dialogRef.current) {
+          const first =
+            dialogRef.current.querySelector<HTMLElement>(FOCUSABLE_SELECTORS);
+          first ? first.focus() : dialogRef.current.focus();
+        }
+      });
     }
+
     return () => {
-      document.removeEventListener('keydown', handleEsc);
+      document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
     };
-  }, [open]);
+  }, [open, handleClose]);
 
   if (!open) return null;
 
@@ -50,6 +100,10 @@ export function Dialog({
       onClick={handleOverlayClick}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        tabIndex={-1}
         className={cn(
           'w-full max-w-lg rounded-lg bg-card p-6 shadow-lg animate-in fade-in zoom-in-95',
           className,

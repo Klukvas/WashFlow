@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   fetchUsers,
   fetchUser,
@@ -34,6 +35,9 @@ export function useCreateUser() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to create user');
+    },
   });
 }
 
@@ -46,6 +50,9 @@ export function useUpdateUser() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['users', variables.id] });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update user');
+    },
   });
 }
 
@@ -56,6 +63,9 @@ export function useDeleteUser() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete user');
+    },
   });
 }
 
@@ -65,6 +75,9 @@ export function useRestoreUser() {
     mutationFn: (id: string) => restoreUser(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to restore user');
     },
   });
 }

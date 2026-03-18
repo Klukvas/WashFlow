@@ -1,11 +1,11 @@
-import { Suspense, lazy, useState } from 'react';
+import { Suspense, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
 import {
   useAnalyticsDashboard,
   useAnalyticsRevenue,
   useAnalyticsServices,
 } from '../hooks/useAnalytics';
+import { useBranches } from '@/features/branches/hooks/useBranches';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { DatePicker } from '@/shared/ui/date-picker';
@@ -13,9 +13,6 @@ import { Select } from '@/shared/ui/select';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { formatCurrency } from '@/shared/utils/format';
 import { useBranchScope } from '@/shared/hooks/useBranchScope';
-import { apiClient } from '@/shared/api/client';
-import type { PaginatedApiResponse } from '@/shared/types/api';
-import type { Branch } from '@/shared/types/models';
 
 const RevenueChart = lazy(
   () => import('../../dashboard/components/RevenueChart'),
@@ -27,6 +24,7 @@ const PopularServicesChart = lazy(
 export function AnalyticsPage() {
   const { t } = useTranslation('analytics');
   const { t: tn } = useTranslation('nav');
+  const { t: tc } = useTranslation('common');
   const { branchId: userBranchId, isBranchScoped } = useBranchScope();
   const [branchId, setBranchId] = useState<string | undefined>(
     userBranchId ?? undefined,
@@ -34,24 +32,30 @@ export function AnalyticsPage() {
   const [dateFrom, setDateFrom] = useState<string>();
   const [dateTo, setDateTo] = useState<string>();
 
-  const params = { branchId, dateFrom, dateTo };
-  const { data: dashboard, isLoading: dashLoading } =
-    useAnalyticsDashboard(params);
-  const { data: revenue, isLoading: revLoading } = useAnalyticsRevenue(params);
-  const { data: services, isLoading: svcLoading } =
-    useAnalyticsServices(params);
+  const params = useMemo(
+    () => ({ branchId, dateFrom, dateTo }),
+    [branchId, dateFrom, dateTo],
+  );
+  const {
+    data: dashboard,
+    isLoading: dashLoading,
+    isError: dashError,
+  } = useAnalyticsDashboard(params);
+  const {
+    data: revenue,
+    isLoading: revLoading,
+    isError: revError,
+  } = useAnalyticsRevenue(params);
+  const {
+    data: services,
+    isLoading: svcLoading,
+    isError: svcError,
+  } = useAnalyticsServices(params);
 
-  const { data: branches } = useQuery({
-    queryKey: ['branches'],
-    queryFn: async () => {
-      const { data } = await apiClient.get<PaginatedApiResponse<Branch>>(
-        '/branches',
-        { params: { limit: 100 } },
-      );
-      return data.data;
-    },
-    staleTime: Infinity,
-  });
+  const hasError = dashError || revError || svcError;
+
+  const { data: branchesData } = useBranches({ limit: 100 });
+  const branches = branchesData?.items ?? [];
 
   return (
     <div>
@@ -62,7 +66,7 @@ export function AnalyticsPage() {
           <Select
             options={[
               { value: '', label: t('allBranches') },
-              ...(branches ?? []).map((b) => ({ value: b.id, label: b.name })),
+              ...branches.map((b) => ({ value: b.id, label: b.name })),
             ]}
             value={branchId ?? ''}
             onChange={(e) => setBranchId(e.target.value || undefined)}
@@ -84,6 +88,12 @@ export function AnalyticsPage() {
           className="w-full sm:w-40"
         />
       </div>
+
+      {hasError && (
+        <div className="flex items-center justify-center p-8">
+          <p className="text-sm text-destructive">{tc('errors.loadFailed')}</p>
+        </div>
+      )}
 
       {/* Stats row */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

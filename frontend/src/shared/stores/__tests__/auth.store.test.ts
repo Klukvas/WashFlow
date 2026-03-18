@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useAuthStore } from '../auth.store';
+import { useAuthStore, getAccessToken } from '../auth.store';
 import type { AuthUser } from '@/shared/types/auth';
 
 function makeJwt(payload: Record<string, unknown>): string {
@@ -22,7 +22,6 @@ describe('auth.store', () => {
   beforeEach(() => {
     localStorage.clear();
     useAuthStore.setState({
-      accessToken: null,
       user: null,
       permissions: [],
       isAuthenticated: false,
@@ -33,7 +32,7 @@ describe('auth.store', () => {
     const state = useAuthStore.getState();
     expect(state.isAuthenticated).toBe(false);
     expect(state.user).toBeNull();
-    expect(state.accessToken).toBeNull();
+    expect(getAccessToken()).toBeNull();
   });
 
   it('setAuth stores token, user, and decodes permissions', () => {
@@ -42,16 +41,17 @@ describe('auth.store', () => {
 
     const state = useAuthStore.getState();
     expect(state.isAuthenticated).toBe(true);
-    expect(state.accessToken).toBe(token);
+    expect(getAccessToken()).toBe(token);
     expect(state.user).toEqual(mockUser);
     expect(state.permissions).toEqual(['orders.read', 'orders.create']);
   });
 
-  it('setAuth persists to localStorage', () => {
+  it('setAuth persists user to localStorage but NOT accessToken', () => {
     const token = makeJwt({ permissions: ['orders.read'] });
     useAuthStore.getState().setAuth(token, mockUser);
 
-    expect(localStorage.getItem('accessToken')).toBe(token);
+    // accessToken is held in memory only — never written to localStorage
+    expect(localStorage.getItem('accessToken')).toBeNull();
     expect(localStorage.getItem('user')).toBe(JSON.stringify(mockUser));
   });
 
@@ -79,7 +79,7 @@ describe('auth.store', () => {
 
     const state = useAuthStore.getState();
     expect(state.isAuthenticated).toBe(false);
-    expect(state.accessToken).toBeNull();
+    expect(getAccessToken()).toBeNull();
     expect(state.user).toBeNull();
     expect(state.permissions).toEqual([]);
     expect(localStorage.getItem('accessToken')).toBeNull();

@@ -6,14 +6,19 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
-import { Dialog, DialogHeader, DialogTitle, DialogFooter } from '@/shared/ui/dialog';
+import {
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/shared/ui/dialog';
 import type { Service } from '@/shared/types/models';
 
 const serviceSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(255),
+  name: z.string().min(1, 'validation.nameRequired').max(255),
   description: z.string().max(1000).optional().or(z.literal('')),
-  durationMin: z.number().int().min(1, 'Must be at least 1 minute').max(1440),
-  price: z.number().min(0, 'Price must be non-negative'),
+  durationMin: z.number().int().min(1, 'validation.durationMin').max(1440),
+  price: z.number().min(0, 'validation.priceNonNegative'),
   isActive: z.boolean(),
   sortOrder: z.number().int().min(0),
 });
@@ -43,7 +48,7 @@ export function ServiceForm({
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
     defaultValues: {
@@ -81,11 +86,10 @@ export function ServiceForm({
   }, [open, service, reset]);
 
   const handleFormSubmit = (data: ServiceFormData) => {
-    const payload: ServiceFormData = {
+    onSubmit({
       ...data,
       description: data.description || undefined,
-    };
-    onSubmit(payload);
+    });
   };
 
   return (
@@ -102,7 +106,7 @@ export function ServiceForm({
           <Input
             id="name"
             {...register('name')}
-            error={errors.name?.message}
+            error={errors.name?.message ? t(errors.name.message) : undefined}
             placeholder={t('placeholders.name')}
           />
         </div>
@@ -125,7 +129,11 @@ export function ServiceForm({
               type="number"
               min={1}
               {...register('durationMin', { valueAsNumber: true })}
-              error={errors.durationMin?.message}
+              error={
+                errors.durationMin?.message
+                  ? t(errors.durationMin.message)
+                  : undefined
+              }
               placeholder={t('placeholders.duration')}
             />
           </div>
@@ -138,7 +146,9 @@ export function ServiceForm({
               min={0}
               step="0.01"
               {...register('price', { valueAsNumber: true })}
-              error={errors.price?.message}
+              error={
+                errors.price?.message ? t(errors.price.message) : undefined
+              }
               placeholder={t('placeholders.price')}
             />
           </div>
@@ -163,16 +173,23 @@ export function ServiceForm({
                 {...register('isActive')}
                 className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
               />
-              <span className="text-sm font-medium">{t('fields.isActive')}</span>
+              <span className="text-sm font-medium">
+                {t('fields.isActive')}
+              </span>
             </label>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" type="button" onClick={onClose} disabled={loading}>
+          <Button
+            variant="outline"
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+          >
             {tCommon('actions.cancel')}
           </Button>
-          <Button type="submit" loading={loading}>
+          <Button type="submit" loading={loading} disabled={isEdit && !isDirty}>
             {isEdit ? tCommon('actions.save') : tCommon('actions.create')}
           </Button>
         </DialogFooter>

@@ -9,7 +9,8 @@ interface ThemeState {
 
 function getStoredTheme(): Theme {
   const stored = localStorage.getItem('theme');
-  if (stored === 'light' || stored === 'dark' || stored === 'system') return stored;
+  if (stored === 'light' || stored === 'dark' || stored === 'system')
+    return stored;
   return 'system';
 }
 
@@ -18,18 +19,33 @@ function applyTheme(theme: Theme) {
   root.classList.remove('light', 'dark');
 
   if (theme === 'system') {
-    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const systemDark = window.matchMedia(
+      '(prefers-color-scheme: dark)',
+    ).matches;
     root.classList.add(systemDark ? 'dark' : 'light');
   } else {
     root.classList.add(theme);
   }
 }
 
-const initialTheme = getStoredTheme();
-applyTheme(initialTheme);
+function getInitialTheme(): Theme {
+  if (typeof window === 'undefined') return 'system';
+  return getStoredTheme();
+}
+
+function initTheme() {
+  if (typeof window === 'undefined') return;
+  applyTheme(getInitialTheme());
+  window
+    .matchMedia('(prefers-color-scheme: dark)')
+    .addEventListener('change', () => {
+      const { theme } = useThemeStore.getState();
+      if (theme === 'system') applyTheme('system');
+    });
+}
 
 export const useThemeStore = create<ThemeState>((set) => ({
-  theme: initialTheme,
+  theme: getInitialTheme(),
   setTheme: (theme) => {
     localStorage.setItem('theme', theme);
     applyTheme(theme);
@@ -37,9 +53,4 @@ export const useThemeStore = create<ThemeState>((set) => ({
   },
 }));
 
-window
-  .matchMedia('(prefers-color-scheme: dark)')
-  .addEventListener('change', () => {
-    const { theme } = useThemeStore.getState();
-    if (theme === 'system') applyTheme('system');
-  });
+initTheme();

@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import {
   AreaChart,
   Area,
@@ -7,6 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import { Skeleton } from '@/shared/ui/skeleton';
 import type { RevenueData } from '../api/dashboard.api';
 
@@ -16,6 +18,9 @@ interface RevenueChartProps {
 }
 
 export default function RevenueChart({ data, loading }: RevenueChartProps) {
+  const gradientId = useId();
+  const { t } = useTranslation('dashboard');
+
   if (loading) {
     return <Skeleton className="h-64" />;
   }
@@ -23,7 +28,7 @@ export default function RevenueChart({ data, loading }: RevenueChartProps) {
   if (data.length === 0) {
     return (
       <div className="flex h-64 items-center justify-center text-muted-foreground">
-        No revenue data available
+        {t('revenue.noData')}
       </div>
     );
   }
@@ -32,9 +37,17 @@ export default function RevenueChart({ data, loading }: RevenueChartProps) {
     <ResponsiveContainer width="100%" height={280}>
       <AreaChart data={data}>
         <defs>
-          <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.3} />
-            <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop
+              offset="5%"
+              stopColor="var(--color-primary)"
+              stopOpacity={0.3}
+            />
+            <stop
+              offset="95%"
+              stopColor="var(--color-primary)"
+              stopOpacity={0}
+            />
           </linearGradient>
         </defs>
         <CartesianGrid
@@ -68,7 +81,7 @@ export default function RevenueChart({ data, loading }: RevenueChartProps) {
           dataKey="revenue"
           stroke="var(--color-primary)"
           fillOpacity={1}
-          fill="url(#revenueGradient)"
+          fill={`url(#${gradientId})`}
           strokeWidth={2}
         />
       </AreaChart>

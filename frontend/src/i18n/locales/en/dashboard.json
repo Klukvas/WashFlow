@@ -50,6 +50,7 @@
     "title": "Online Booking Stats",
     "onlineRate": "Online Rate",
     "total": "Total Orders",
+    "noData": "No booking data available",
     "sources": {
       "INTERNAL": "Internal",
       "WEB": "Web",
@@ -58,6 +59,17 @@
     }
   },
   "revenue": {
-    "title": "Revenue Overview"
+    "title": "Revenue Overview",
+    "noData": "No revenue data available"
+  },
+  "statsCards": {
+    "totalOrders": "Total Orders",
+    "todayOrders": "{{count}} today",
+    "revenue": "Revenue",
+    "todayRevenue": "{{value}} today",
+    "activeClients": "Active Clients",
+    "allTime": "All time",
+    "completionRate": "Completion Rate",
+    "thisPeriod": "This period"
   }
 }

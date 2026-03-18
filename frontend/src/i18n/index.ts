@@ -108,7 +108,7 @@ i18n.use(initReactI18next).init({
     'landing',
   ],
   interpolation: {
-    escapeValue: false,
+    escapeValue: true,
   },
 });
 

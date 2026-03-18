@@ -3,7 +3,8 @@ import axios, {
   type AxiosRequestConfig,
   type InternalAxiosRequestConfig,
 } from 'axios';
-import { useAuthStore } from '@/shared/stores/auth.store';
+import * as Sentry from '@sentry/react';
+import { useAuthStore, getAccessToken } from '@/shared/stores/auth.store';
 import type {
   ApiError,
   PaginatedApiResponse,
@@ -37,7 +38,7 @@ function processQueue(error: unknown, token: string | null) {
 
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const { accessToken } = useAuthStore.getState();
+    const accessToken = getAccessToken();
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
@@ -99,6 +100,18 @@ apiClient.interceptors.response.use(
       } finally {
         isRefreshing = false;
       }
+    }
+
+    if (error.response && error.response.status >= 500) {
+      Sentry.captureException(error, {
+        contexts: {
+          api: {
+            url: error.config?.url,
+            method: error.config?.method,
+            status: error.response.status,
+          },
+        },
+      });
     }
 
     return Promise.reject(error);

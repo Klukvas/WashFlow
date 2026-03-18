@@ -5,5 +5,6 @@ export function useAuditLogs(params: AuditQueryParams) {
   return useQuery({
     queryKey: ['audit-logs', params],
     queryFn: () => fetchAuditLogs(params),
+    staleTime: 30 * 1000,
   });
 }

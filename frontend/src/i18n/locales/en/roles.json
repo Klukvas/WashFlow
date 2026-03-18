@@ -11,5 +11,33 @@
   "placeholders": {
     "name": "Role name",
     "description": "Role description (optional)"
+  },
+  "permissions": {
+    "title": "Permissions",
+    "description": "{{selected}} of {{total}} permissions selected",
+    "noPermissions": "No permissions available",
+    "modules": {
+      "tenants": "Tenants",
+      "branches": "Branches",
+      "users": "Users",
+      "roles": "Roles",
+      "clients": "Clients",
+      "vehicles": "Vehicles",
+      "services": "Services",
+      "work-posts": "Work Posts",
+      "orders": "Orders",
+      "scheduling": "Scheduling",
+      "payments": "Payments",
+      "analytics": "Analytics",
+      "audit": "Audit",
+      "workforce": "Workforce"
+    },
+    "actions": {
+      "create": "Create",
+      "read": "View",
+      "update": "Edit",
+      "delete": "Delete",
+      "view": "View"
+    }
   }
 }

@@ -5,5 +5,9 @@
   "branch": "Branch",
   "selectBranch": "-- Select Branch --",
   "filterByBranch": "Filter by branch",
-  "selectBranchPrompt": "Select a branch to view work posts"
+  "selectBranchPrompt": "Select a branch to view work posts",
+  "validation": {
+    "nameRequired": "Name is required",
+    "branchRequired": "Please select a branch"
+  }
 }

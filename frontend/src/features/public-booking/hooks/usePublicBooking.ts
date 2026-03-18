@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   fetchPublicServices,
   fetchPublicBranches,
@@ -38,5 +39,8 @@ export function usePublicAvailability(slug: string, params: CheckAvailabilityPar
 export function useCreateBooking(slug: string) {
   return useMutation({
     mutationFn: (payload: CreateBookingPayload) => createPublicBooking(slug, payload),
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to create booking');
+    },
   });
 }

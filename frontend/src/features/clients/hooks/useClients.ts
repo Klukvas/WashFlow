@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   fetchClients,
   fetchClient,
@@ -36,6 +37,9 @@ export function useCreateClient() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to create client');
+    },
   });
 }
 
@@ -48,6 +52,9 @@ export function useUpdateClient() {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       queryClient.invalidateQueries({ queryKey: ['clients', variables.id] });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update client');
+    },
   });
 }
 
@@ -57,6 +64,9 @@ export function useDeleteClient() {
     mutationFn: (id: string) => deleteClient(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete client');
     },
   });
 }
@@ -69,6 +79,9 @@ export function useRestoreClient() {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       queryClient.invalidateQueries({ queryKey: ['clients', id] });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to restore client');
+    },
   });
 }
 
@@ -78,6 +91,9 @@ export function useMergeClients() {
     mutationFn: (payload: MergeClientsPayload) => mergeClients(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to merge clients');
     },
   });
 }

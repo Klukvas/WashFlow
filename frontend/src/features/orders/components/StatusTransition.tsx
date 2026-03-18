@@ -4,7 +4,12 @@ import { OrderStatus } from '@/shared/types/enums';
 import { ALLOWED_TRANSITIONS } from '@/shared/constants/order-status';
 import { useUpdateOrderStatus } from '../hooks/useOrders';
 import { Button } from '@/shared/ui/button';
-import { Dialog, DialogHeader, DialogTitle, DialogFooter } from '@/shared/ui/dialog';
+import {
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/shared/ui/dialog';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 
@@ -14,17 +19,46 @@ interface StatusTransitionProps {
 }
 
 const STATUS_BUTTON_CONFIG: Partial<
-  Record<OrderStatus, { labelKey: string; variant: 'default' | 'destructive' | 'success' | 'secondary' }>
+  Record<
+    OrderStatus,
+    {
+      labelKey: string;
+      variant: 'default' | 'destructive' | 'success' | 'secondary';
+    }
+  >
 > = {
-  [OrderStatus.BOOKED]: { labelKey: 'statusChange.confirm', variant: 'success' },
-  [OrderStatus.IN_PROGRESS]: { labelKey: 'statusChange.start', variant: 'default' },
-  [OrderStatus.COMPLETED]: { labelKey: 'statusChange.complete', variant: 'success' },
-  [OrderStatus.CANCELLED]: { labelKey: 'statusChange.cancelOrder', variant: 'destructive' },
-  [OrderStatus.NO_SHOW]: { labelKey: 'statusChange.noShow', variant: 'secondary' },
+  [OrderStatus.BOOKED_PENDING_CONFIRMATION]: {
+    labelKey: 'statusChange.pendingConfirmation',
+    variant: 'secondary',
+  },
+  [OrderStatus.BOOKED]: {
+    labelKey: 'statusChange.confirm',
+    variant: 'success',
+  },
+  [OrderStatus.IN_PROGRESS]: {
+    labelKey: 'statusChange.start',
+    variant: 'default',
+  },
+  [OrderStatus.COMPLETED]: {
+    labelKey: 'statusChange.complete',
+    variant: 'success',
+  },
+  [OrderStatus.CANCELLED]: {
+    labelKey: 'statusChange.cancelOrder',
+    variant: 'destructive',
+  },
+  [OrderStatus.NO_SHOW]: {
+    labelKey: 'statusChange.noShow',
+    variant: 'secondary',
+  },
 };
 
-export function StatusTransition({ orderId, currentStatus }: StatusTransitionProps) {
+export function StatusTransition({
+  orderId,
+  currentStatus,
+}: StatusTransitionProps) {
   const { t } = useTranslation('orders');
+  const { t: tc } = useTranslation('common');
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancellationReason, setCancellationReason] = useState('');
   const { mutate, isPending } = useUpdateOrderStatus();
@@ -68,7 +102,10 @@ export function StatusTransition({ orderId, currentStatus }: StatusTransitionPro
         })}
       </div>
 
-      <Dialog open={cancelDialogOpen} onClose={() => setCancelDialogOpen(false)}>
+      <Dialog
+        open={cancelDialogOpen}
+        onClose={() => setCancelDialogOpen(false)}
+      >
         <DialogHeader>
           <DialogTitle>{t('statusChange.cancelOrder')}</DialogTitle>
         </DialogHeader>
@@ -82,7 +119,7 @@ export function StatusTransition({ orderId, currentStatus }: StatusTransitionPro
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
-            {t('statusChange.cancelOrder') === 'Cancel' ? 'Close' : t('statusChange.cancelOrder')}
+            {tc('actions.close')}
           </Button>
           <Button
             variant="destructive"

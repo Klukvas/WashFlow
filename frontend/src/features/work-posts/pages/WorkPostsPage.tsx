@@ -1,14 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useWorkPosts, useCreateWorkPost } from '../hooks/useWorkPosts';
-import { apiClient } from '@/shared/api/client';
-import type { PaginatedApiResponse } from '@/shared/types/api';
-import type { Branch, WorkPost } from '@/shared/types/models';
+import { useBranches } from '@/features/branches/hooks/useBranches';
+import type { WorkPost } from '@/shared/types/models';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { DataTable, type Column } from '@/shared/components/DataTable';
 import { PermissionGate } from '@/shared/components/PermissionGate';
@@ -26,8 +24,8 @@ import { PERMISSIONS } from '@/shared/constants/permissions';
 import { useBranchScope } from '@/shared/hooks/useBranchScope';
 
 const workPostSchema = z.object({
-  name: z.string().min(1),
-  branchId: z.string().uuid(),
+  name: z.string().min(1, 'validation.nameRequired'),
+  branchId: z.string().uuid('validation.branchRequired'),
 });
 
 type WorkPostForm = z.infer<typeof workPostSchema>;
@@ -39,19 +37,16 @@ export function WorkPostsPage() {
   const [branchId, setBranchId] = useState(userBranchId ?? '');
   const [createOpen, setCreateOpen] = useState(false);
 
-  const { data: branches } = useQuery({
-    queryKey: ['branches'],
-    queryFn: async () => {
-      const { data } = await apiClient.get<PaginatedApiResponse<Branch>>(
-        '/branches',
-        { params: { limit: 100 } },
-      );
-      return data.data;
-    },
-    staleTime: Infinity,
-  });
+  useEffect(() => {
+    if (isBranchScoped) {
+      setBranchId(userBranchId ?? '');
+    }
+  }, [userBranchId, isBranchScoped]);
 
-  const { data, isLoading } = useWorkPosts({ branchId, limit: 100 });
+  const { data: branchesData } = useBranches({ limit: 100 });
+  const branches = branchesData?.items ?? [];
+
+  const { data, isLoading, isError } = useWorkPosts({ branchId, limit: 100 });
   const { mutate: createMut, isPending } = useCreateWorkPost();
   const {
     register,
@@ -106,7 +101,7 @@ export function WorkPostsPage() {
           <Select
             options={[
               { value: '', label: t('selectBranch') },
-              ...(branches ?? []).map((b) => ({ value: b.id, label: b.name })),
+              ...branches.map((b) => ({ value: b.id, label: b.name })),
             ]}
             value={branchId}
             onChange={(e) => setBranchId(e.target.value)}
@@ -115,7 +110,13 @@ export function WorkPostsPage() {
         </div>
       )}
 
-      {branchId && (
+      {branchId && isError && (
+        <div className="flex items-center justify-center p-8">
+          <p className="text-sm text-destructive">{tc('errors.loadFailed')}</p>
+        </div>
+      )}
+
+      {branchId && !isError && (
         <DataTable
           columns={columns}
           data={data?.items ?? []}
@@ -135,19 +136,24 @@ export function WorkPostsPage() {
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <div>
-            <Label>{t('branch')}</Label>
+            <Label htmlFor="wp-branchId">{t('branch')}</Label>
             <Select
-              options={(branches ?? []).map((b) => ({
+              id="wp-branchId"
+              options={branches.map((b) => ({
                 value: b.id,
                 label: b.name,
               }))}
               {...register('branchId')}
-              error={errors.branchId?.message}
+              error={errors.branchId?.message ? t(errors.branchId.message) : undefined}
             />
           </div>
           <div>
-            <Label>{t('name')}</Label>
-            <Input {...register('name')} error={errors.name?.message} />
+            <Label htmlFor="wp-name">{t('name')}</Label>
+            <Input
+              id="wp-name"
+              {...register('name')}
+              error={errors.name?.message ? t(errors.name.message) : undefined}
+            />
           </div>
           <DialogFooter>
             <Button

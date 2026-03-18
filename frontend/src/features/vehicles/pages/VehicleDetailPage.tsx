@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router';
+import { useParams, useNavigate, Link, Navigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -43,7 +43,7 @@ export function VehicleDetailPage() {
   const { t } = useTranslation('vehicles');
   const { t: tc } = useTranslation('common');
 
-  const { data: vehicle, isLoading } = useVehicle(id!);
+  const { data: vehicle, isLoading } = useVehicle(id ?? '');
   const { mutate: update, isPending: updating } = useUpdateVehicle();
   const { mutate: deleteMut, isPending: deleting } = useDeleteVehicle();
   const { mutate: restore, isPending: restoring } = useRestoreVehicle();
@@ -57,8 +57,10 @@ export function VehicleDetailPage() {
     reset,
     formState: { errors, isDirty },
   } = useForm<EditFormData>({
-    resolver: zodResolver(editSchema) as any,
+    resolver: zodResolver(editSchema),
   });
+
+  if (!id) return <Navigate to="/vehicles" replace />;
 
   function startEdit() {
     if (!vehicle) return;
@@ -80,7 +82,7 @@ export function VehicleDetailPage() {
   function onSubmit(data: EditFormData) {
     update(
       {
-        id: id!,
+        id,
         make: data.make,
         model: data.model || undefined,
         licensePlate: data.licensePlate || undefined,
@@ -188,22 +190,28 @@ export function VehicleDetailPage() {
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <Label>{t('makeRequired')}</Label>
+                      <Label htmlFor="vd-make">{t('makeRequired')}</Label>
                       <Input
+                        id="vd-make"
                         {...register('make')}
                         error={errors.make?.message}
                         placeholder={t('make')}
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>{t('model')}</Label>
-                      <Input {...register('model')} placeholder={t('model')} />
+                      <Label htmlFor="vd-model">{t('model')}</Label>
+                      <Input
+                        id="vd-model"
+                        {...register('model')}
+                        placeholder={t('model')}
+                      />
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label>{t('licensePlate')}</Label>
+                    <Label htmlFor="vd-licensePlate">{t('licensePlate')}</Label>
                     <Input
+                      id="vd-licensePlate"
                       {...register('licensePlate')}
                       placeholder={t('licensePlate')}
                     />
@@ -211,12 +219,17 @@ export function VehicleDetailPage() {
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <Label>{t('color')}</Label>
-                      <Input {...register('color')} placeholder={t('color')} />
+                      <Label htmlFor="vd-color">{t('color')}</Label>
+                      <Input
+                        id="vd-color"
+                        {...register('color')}
+                        placeholder={t('color')}
+                      />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>{t('year')}</Label>
+                      <Label htmlFor="vd-year">{t('year')}</Label>
                       <Input
+                        id="vd-year"
                         type="number"
                         {...register('year')}
                         error={errors.year?.message}

@@ -38,6 +38,18 @@
     "dateFrom": "Date From",
     "dateTo": "Date To"
   },
+  "tabs": {
+    "orders": "Orders",
+    "schedule": "Schedule"
+  },
+  "schedule": {
+    "selectBranch": "Select branch",
+    "occupied": "Occupied",
+    "free": "Free",
+    "bookSlot": "Book this slot",
+    "noWorkPosts": "No work posts found for this branch",
+    "selectBranchFirst": "Select a branch to view schedule"
+  },
   "creation": {
     "selectClient": "Select Client",
     "selectVehicle": "Select Vehicle",
@@ -55,7 +67,15 @@
     "anyWorker": "Any (auto-assign)",
     "date": "Date",
     "confirmBooking": "Confirm Booking",
-    "success": "Order created successfully"
+    "success": "Order created successfully",
+    "chooseStartMode": "How would you like to start?",
+    "startFromClient": "Start from Client",
+    "startFromClientDesc": "Select client first, then pick services and time",
+    "startFromTime": "Start from Time",
+    "startFromTimeDesc": "Choose date and time first, then select services and client",
+    "startFromService": "Start from Service",
+    "startFromServiceDesc": "Pick services first, then choose time and client",
+    "branchClosed": "This branch is closed on the selected day. Please choose a different date."
   },
   "statusChange": {
     "confirm": "Confirm",

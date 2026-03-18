@@ -1,10 +1,11 @@
-import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight } from 'lucide-react';
+import { useAuthModalStore } from '@/shared/stores/auth-modal.store';
 import { Button } from '@/shared/ui/button';
 
 export function CtaSection() {
   const { t } = useTranslation('landing');
+  const openModal = useAuthModalStore((s) => s.open);
 
   return (
     <section className="py-20">
@@ -16,12 +17,14 @@ export function CtaSection() {
           {t('cta.subtitle')}
         </p>
         <div className="mt-8">
-          <Link to="/register">
-            <Button size="lg" className="gap-2">
-              {t('cta.button')}
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
+          <Button
+            size="lg"
+            className="gap-2"
+            onClick={() => openModal('register')}
+          >
+            {t('cta.button')}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
         </div>
       </div>
     </section>

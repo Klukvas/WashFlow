@@ -38,14 +38,13 @@ export function ServicesPage() {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Service | null>(null);
 
-  const { data, isLoading } = useServices(params);
+  const { data, isLoading, isError } = useServices(params);
   const createMutation = useCreateService();
   const updateMutation = useUpdateService();
   const deleteMutation = useDeleteService();
   const restoreMutation = useRestoreService();
 
-  const isMutating =
-    createMutation.isPending || updateMutation.isPending;
+  const isMutating = createMutation.isPending || updateMutation.isPending;
 
   const handleOpenCreate = useCallback(() => {
     setEditingService(null);
@@ -218,17 +217,25 @@ export function ServicesPage() {
         />
       </div>
 
-      <DataTable
-        columns={columns}
-        data={data?.items ?? []}
-        loading={isLoading}
-        page={params.page ?? 1}
-        totalPages={data?.meta.totalPages ?? 1}
-        total={data?.meta.total ?? 0}
-        limit={params.limit ?? 20}
-        onPageChange={handlePageChange}
-        emptyMessage={t('emptyState')}
-      />
+      {isError ? (
+        <div className="flex items-center justify-center p-8">
+          <p className="text-sm text-destructive">
+            {tCommon('errors.loadFailed')}
+          </p>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={data?.items ?? []}
+          loading={isLoading}
+          page={params.page ?? 1}
+          totalPages={data?.meta.totalPages ?? 1}
+          total={data?.meta.total ?? 0}
+          limit={params.limit ?? 20}
+          onPageChange={handlePageChange}
+          emptyMessage={t('emptyState')}
+        />
+      )}
 
       <ServiceForm
         open={formOpen}

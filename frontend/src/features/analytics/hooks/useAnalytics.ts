@@ -1,10 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchDashboard, fetchRevenue, fetchServiceStats, type AnalyticsParams } from '../api/analytics.api';
+import {
+  fetchRevenue,
+  fetchServiceStats,
+  type AnalyticsParams,
+} from '../api/analytics.api';
+import { fetchDashboardStats } from '@/features/dashboard/api/dashboard.api';
 
 export function useAnalyticsDashboard(params?: AnalyticsParams) {
   return useQuery({
     queryKey: ['analytics', 'dashboard', params],
-    queryFn: () => fetchDashboard(params),
+    queryFn: () => fetchDashboardStats(params),
     staleTime: 60 * 1000,
   });
 }

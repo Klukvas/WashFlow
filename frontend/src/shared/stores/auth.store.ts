@@ -3,7 +3,6 @@ import axios from 'axios';
 import type { AuthUser } from '@/shared/types/auth';
 
 interface AuthState {
-  accessToken: string | null;
   user: AuthUser | null;
   permissions: string[];
   isAuthenticated: boolean;
@@ -15,6 +14,14 @@ interface AuthState {
 interface JwtPayloadDecoded {
   permissions?: string[];
   isSuperAdmin?: boolean;
+}
+
+// Access token is held in memory only — never written to localStorage/sessionStorage.
+// This prevents XSS attacks from extracting it.
+let _accessToken: string | null = null;
+
+export function getAccessToken(): string | null {
+  return _accessToken;
 }
 
 export function decodeJwtPayload(token: string): JwtPayloadDecoded {
@@ -38,22 +45,20 @@ function restoreUser(): AuthUser | null {
   }
 }
 
-const storedAccessToken = localStorage.getItem('accessToken');
-
-export const useAuthStore = create<AuthState>((set, get) => ({
-  accessToken: storedAccessToken,
+export const useAuthStore = create<AuthState>(() => ({
+  // No token in initial state — a silent refresh call on app boot will populate it.
   user: restoreUser(),
-  permissions: storedAccessToken ? decodePermissions(storedAccessToken) : [],
-  isAuthenticated: !!storedAccessToken,
+  permissions: [],
+  isAuthenticated: false,
 
   setAuth: (accessToken, user) => {
-    localStorage.setItem('accessToken', accessToken);
+    _accessToken = accessToken;
     localStorage.setItem('user', JSON.stringify(user));
     const permissions = decodePermissions(accessToken);
-    set({ accessToken, user, permissions, isAuthenticated: true });
+    useAuthStore.setState({ user, permissions, isAuthenticated: true });
   },
 
-  setPermissions: (permissions) => set({ permissions }),
+  setPermissions: (permissions) => useAuthStore.setState({ permissions }),
 
   logout: async () => {
     // Tell the backend to invalidate the tokenVersion and clear the HttpOnly cookie.
@@ -65,7 +70,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         {
           withCredentials: true,
           headers: {
-            Authorization: `Bearer ${get().accessToken}`,
+            Authorization: `Bearer ${_accessToken}`,
             'Content-Type': 'application/json',
           },
         },
@@ -74,10 +79,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Ignore network / auth errors — proceed with local cleanup regardless.
     }
 
-    localStorage.removeItem('accessToken');
+    _accessToken = null;
     localStorage.removeItem('user');
-    set({
-      accessToken: null,
+    useAuthStore.setState({
       user: null,
       permissions: [],
       isAuthenticated: false,

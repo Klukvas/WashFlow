@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   fetchBranches,
   fetchBranch,
@@ -6,13 +7,11 @@ import {
   updateBranch,
   deleteBranch,
   restoreBranch,
-  fetchWorkPosts,
   fetchBranchBookingSettings,
   updateBranchBookingSettings,
   type BranchQueryParams,
   type CreateBranchPayload,
   type UpdateBranchPayload,
-  type WorkPostQueryParams,
   type UpdateBookingSettingsPayload,
 } from '../api/branches.api';
 
@@ -22,11 +21,6 @@ export const branchKeys = {
   list: (params: BranchQueryParams) => [...branchKeys.lists(), params] as const,
   details: () => [...branchKeys.all, 'detail'] as const,
   detail: (id: string) => [...branchKeys.details(), id] as const,
-};
-
-export const workPostKeys = {
-  all: ['work-posts'] as const,
-  list: (params: WorkPostQueryParams) => [...workPostKeys.all, params] as const,
 };
 
 export const bookingSettingsKeys = {
@@ -57,6 +51,9 @@ export function useCreateBranch() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: branchKeys.all });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to create branch');
+    },
   });
 }
 
@@ -71,6 +68,9 @@ export function useUpdateBranch() {
         queryKey: branchKeys.detail(variables.id),
       });
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update branch');
+    },
   });
 }
 
@@ -80,6 +80,9 @@ export function useDeleteBranch() {
     mutationFn: (id: string) => deleteBranch(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: branchKeys.all });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete branch');
     },
   });
 }
@@ -92,14 +95,9 @@ export function useRestoreBranch() {
       queryClient.invalidateQueries({ queryKey: branchKeys.all });
       queryClient.invalidateQueries({ queryKey: branchKeys.detail(id) });
     },
-  });
-}
-
-export function useWorkPosts(params: WorkPostQueryParams) {
-  return useQuery({
-    queryKey: workPostKeys.list(params),
-    queryFn: () => fetchWorkPosts(params),
-    enabled: !!params.branchId,
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to restore branch');
+    },
   });
 }
 
@@ -124,6 +122,9 @@ export function useUpdateBranchBookingSettings() {
       queryClient.invalidateQueries({
         queryKey: bookingSettingsKeys.detail(variables.branchId),
       });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update booking settings');
     },
   });
 }

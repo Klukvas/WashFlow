@@ -32,9 +32,9 @@ const bookingSchema = z.object({
   serviceIds: z.array(z.string().uuid()).min(1),
   firstName: z.string().min(1),
   lastName: z.string().optional().or(z.literal('')),
-  phone: z.string().min(1),
+  phone: z.string().regex(/^\+?[\d\s\-()]{7,20}$/, 'Invalid phone format'),
   email: z.string().email().optional().or(z.literal('')),
-  licensePlate: z.string().min(1),
+  licensePlate: z.string().min(1, 'License plate is required'),
   vehicleMake: z.string().optional(),
   vehicleModel: z.string().optional(),
   notes: z.string().optional(),
@@ -49,13 +49,13 @@ export function PublicBookingPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
 
-  const { data: branches, isLoading: branchesLoading } = usePublicBranches(
-    slug!,
-  );
-  const { data: services, isLoading: servicesLoading } = usePublicServices(
-    slug!,
-  );
-  const { mutate: book, isPending } = useCreateBooking(slug!);
+  const tenantSlug = slug ?? '';
+
+  const { data: branches, isLoading: branchesLoading } =
+    usePublicBranches(tenantSlug);
+  const { data: services, isLoading: servicesLoading } =
+    usePublicServices(tenantSlug);
+  const { mutate: book, isPending } = useCreateBooking(tenantSlug);
 
   const {
     register,
@@ -80,7 +80,7 @@ export function PublicBookingPage() {
     .filter((s) => selectedServiceIds.includes(s.id))
     .reduce((sum, s) => sum + Number(s.price), 0);
 
-  const { data: rawSlots } = usePublicAvailability(slug!, {
+  const { data: rawSlots } = usePublicAvailability(tenantSlug, {
     branchId,
     date: selectedDate,
     durationMinutes: totalDuration || undefined,

@@ -1,4 +1,5 @@
 import { ShoppingCart, DollarSign, Users, TrendingUp } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent } from '@/shared/ui/card';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { formatCurrency } from '@/shared/utils/format';
@@ -10,35 +11,39 @@ interface StatsCardsProps {
 }
 
 export function StatsCards({ data, loading }: StatsCardsProps) {
+  const { t } = useTranslation('dashboard');
+
   const cards = [
     {
-      title: 'Total Orders',
+      title: t('statsCards.totalOrders'),
       value: data?.totalOrders ?? 0,
-      subtitle: `${data?.todayOrders ?? 0} today`,
+      subtitle: t('statsCards.todayOrders', { count: data?.todayOrders ?? 0 }),
       icon: ShoppingCart,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
     },
     {
-      title: 'Revenue',
+      title: t('statsCards.revenue'),
       value: formatCurrency(data?.revenue ?? 0),
-      subtitle: `${formatCurrency(data?.todayRevenue ?? 0)} today`,
+      subtitle: t('statsCards.todayRevenue', {
+        value: formatCurrency(data?.todayRevenue ?? 0),
+      }),
       icon: DollarSign,
       color: 'text-success',
       bgColor: 'bg-success/10',
     },
     {
-      title: 'Active Clients',
+      title: t('statsCards.activeClients'),
       value: data?.activeClients ?? 0,
-      subtitle: 'All time',
+      subtitle: t('statsCards.allTime'),
       icon: Users,
       color: 'text-blue-600 dark:text-blue-400',
       bgColor: 'bg-blue-100 dark:bg-blue-900/30',
     },
     {
-      title: 'Completion Rate',
+      title: t('statsCards.completionRate'),
       value: `${data?.completionRate ?? 0}%`,
-      subtitle: 'This period',
+      subtitle: t('statsCards.thisPeriod'),
       icon: TrendingUp,
       color: 'text-warning',
       bgColor: 'bg-warning/10',
@@ -64,7 +69,9 @@ export function StatsCards({ data, loading }: StatsCardsProps) {
               <div>
                 <p className="text-sm text-muted-foreground">{card.title}</p>
                 <p className="mt-1 text-2xl font-bold">{card.value}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{card.subtitle}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {card.subtitle}
+                </p>
               </div>
               <div className={`rounded-lg p-3 ${card.bgColor}`}>
                 <card.icon className={`h-6 w-6 ${card.color}`} />

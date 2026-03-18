@@ -17,7 +17,10 @@ interface OnlineBookingChartProps {
   loading: boolean;
 }
 
-export default function OnlineBookingChart({ data, loading }: OnlineBookingChartProps) {
+export default function OnlineBookingChart({
+  data,
+  loading,
+}: OnlineBookingChartProps) {
   const { t } = useTranslation('dashboard');
 
   if (loading) {
@@ -32,22 +35,30 @@ export default function OnlineBookingChart({ data, loading }: OnlineBookingChart
   return (
     <Card>
       <CardContent className="p-4">
-        <h3 className="mb-1 text-sm font-semibold">{t('onlineBooking.title')}</h3>
+        <h3 className="mb-1 text-sm font-semibold">
+          {t('onlineBooking.title')}
+        </h3>
 
         <div className="mb-4 flex gap-6 text-sm">
           <div>
-            <span className="text-muted-foreground">{t('onlineBooking.total')}: </span>
+            <span className="text-muted-foreground">
+              {t('onlineBooking.total')}:{' '}
+            </span>
             <span className="font-semibold">{data?.total ?? 0}</span>
           </div>
           <div>
-            <span className="text-muted-foreground">{t('onlineBooking.onlineRate')}: </span>
-            <span className="font-semibold">{((data?.onlineRate ?? 0)).toFixed(1)}%</span>
+            <span className="text-muted-foreground">
+              {t('onlineBooking.onlineRate')}:{' '}
+            </span>
+            <span className="font-semibold">
+              {(data?.onlineRate ?? 0).toFixed(1)}%
+            </span>
           </div>
         </div>
 
         {chartData.length === 0 ? (
           <div className="flex h-48 items-center justify-center text-muted-foreground">
-            {t('alerts.noAlerts')}
+            {t('onlineBooking.noData')}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={200}>
@@ -81,7 +92,11 @@ export default function OnlineBookingChart({ data, loading }: OnlineBookingChart
                   color: 'var(--color-popover-foreground)',
                 }}
               />
-              <Bar dataKey="count" fill="var(--color-primary)" radius={[0, 4, 4, 0]} />
+              <Bar
+                dataKey="count"
+                fill="var(--color-primary)"
+                radius={[0, 4, 4, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         )}
