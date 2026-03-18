@@ -41,13 +41,13 @@ describe('CustomThrottlerGuard', () => {
       process.env.NODE_ENV = originalEnv;
     });
 
-    it('returns false when NODE_ENV is development', async () => {
+    it('returns true when NODE_ENV is development', async () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'development';
 
       const result = await (guard as any).shouldSkip(mockContext);
 
-      expect(result).toBe(false);
+      expect(result).toBe(true);
       process.env.NODE_ENV = originalEnv;
     });
 
