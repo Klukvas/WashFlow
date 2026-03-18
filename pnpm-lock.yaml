@@ -86,6 +86,9 @@ importers:
       dotenv:
         specifier: ^17.3.1
         version: 17.3.1
+      express:
+        specifier: ^5.2.1
+        version: 5.2.1
       helmet:
         specifier: ^8.1.0
         version: 8.1.0

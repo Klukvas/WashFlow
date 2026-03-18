@@ -47,6 +47,7 @@
     "class-validator": "^0.14.3",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.3.1",
+    "express": "^5.2.1",
     "helmet": "^8.1.0",
     "ioredis": "^5.9.3",
     "nestjs-pino": "^4.6.0",
