@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import type { JwtPayload } from '../types/jwt-payload.type.js';
+import type { JwtPayload } from '../types/jwt-payload.type';
 
 /**
  * Guard that restricts access to super-admins only.

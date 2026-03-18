@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { of } from 'rxjs';
 import { ExecutionContext, CallHandler } from '@nestjs/common';
-import { TransformInterceptor } from './transform.interceptor.js';
+import { TransformInterceptor } from './transform.interceptor';
 
 // ---------------------------------------------------------------------------
 // Helpers

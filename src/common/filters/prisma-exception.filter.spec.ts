@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { HttpStatus } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaExceptionFilter } from './prisma-exception.filter.js';
+import { PrismaExceptionFilter } from './prisma-exception.filter';
 
 // ---------------------------------------------------------------------------
 // Helpers

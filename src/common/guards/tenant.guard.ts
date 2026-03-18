@@ -9,11 +9,11 @@ import {
 import { Reflector } from '@nestjs/core';
 import { ModuleRef } from '@nestjs/core';
 import type { Request } from 'express';
-import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
-import { JwtPayload } from '../types/jwt-payload.type.js';
-import { PrismaService } from '../../prisma/prisma.service.js';
-import { EventDispatcherService } from '../events/event-dispatcher.service.js';
-import { SuperAdminTenantAccessEvent } from '../events/auth-events.js';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { JwtPayload } from '../types/jwt-payload.type';
+import { PrismaService } from '../../prisma/prisma.service';
+import { EventDispatcherService } from '../events/event-dispatcher.service';
+import { SuperAdminTenantAccessEvent } from '../events/auth-events';
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

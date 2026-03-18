@@ -7,7 +7,7 @@ import {
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import type { Request, Response } from 'express';
-import type { JwtPayload } from '../../common/types/jwt-payload.type.js';
+import type { JwtPayload } from '../../common/types/jwt-payload.type';
 import { IdempotencyService } from './idempotency.service';
 
 @Injectable()

@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { AllExceptionsFilter } from './all-exceptions.filter.js';
+import { AllExceptionsFilter } from './all-exceptions.filter';
 
 // ---------------------------------------------------------------------------
 // Helpers
