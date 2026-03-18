@@ -9,7 +9,14 @@ import {
   Query,
   ParseUUIDPipe,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import * as fs from 'fs';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
@@ -71,5 +78,55 @@ export class VehiclesController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.vehiclesService.restore(tenantId, id);
+  }
+
+  @Post(':id/photo')
+  @Permissions('vehicles.update')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/vehicles',
+        filename: (_req, file, cb) => {
+          const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+          cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
+        },
+      }),
+      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+      fileFilter: (_req, file, cb) => {
+        const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+        const ext = extname(file.originalname).toLowerCase();
+        if (
+          !file.mimetype.startsWith('image/') ||
+          !allowedExtensions.includes(ext)
+        ) {
+          cb(
+            new BadRequestException(
+              `Only image files are allowed (${allowedExtensions.join(', ')})`,
+            ),
+            false,
+          );
+          return;
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  async uploadPhoto(
+    @CurrentTenant() tenantId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+    const photoUrl = `/uploads/vehicles/${file.filename}`;
+    try {
+      return await this.vehiclesService.updatePhoto(tenantId, id, photoUrl);
+    } catch (error) {
+      if (file?.path) {
+        await fs.promises.unlink(file.path).catch(() => {});
+      }
+      throw error;
+    }
   }
 }

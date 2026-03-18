@@ -1,24 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PaymentsRepository } from './payments.repository';
+import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { EventDispatcherService } from '../../common/events/event-dispatcher.service';
-import { EventType } from '../../common/events/event-types';
-import { DomainEvent } from '../../common/events/domain-event';
 import { CreatePaymentDto } from './dto/create-payment.dto';
-
-class PaymentReceivedEvent extends DomainEvent {
-  readonly eventType = EventType.PAYMENT_RECEIVED;
-  constructor(
-    readonly tenantId: string,
-    readonly payload: Record<string, unknown>,
-  ) {
-    super();
-  }
-}
+import { PaymentStatus } from '@prisma/client';
+import { PaymentReceivedEvent } from '../../common/events/payment-events';
 
 @Injectable()
 export class PaymentsService {
   constructor(
     private readonly paymentsRepo: PaymentsRepository,
+    private readonly tenantPrisma: TenantPrismaService,
     private readonly eventDispatcher: EventDispatcherService,
   ) {}
 
@@ -26,12 +22,44 @@ export class PaymentsService {
     return this.paymentsRepo.findByOrderId(tenantId, orderId);
   }
 
-  async create(tenantId: string, orderId: string, dto: CreatePaymentDto) {
+  async create(
+    tenantId: string,
+    orderId: string,
+    dto: CreatePaymentDto,
+    performedById: string,
+  ) {
+    const db = this.tenantPrisma.forTenant(tenantId);
+    const order = await db.order.findFirst({ where: { id: orderId } });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    // Prevent payments on cancelled/completed orders
+    if (order.status === 'CANCELLED') {
+      throw new BadRequestException('Cannot add payment to a cancelled order');
+    }
+
+    // Overpayment protection: check existing payments total
+    const existingPayments = await db.payment.findMany({
+      where: { orderId },
+    });
+    const totalPaid = existingPayments.reduce(
+      (sum, p) => sum + Number(p.amount),
+      0,
+    );
+    const orderTotal = Number(order.totalPrice ?? 0);
+    if (orderTotal > 0 && totalPaid + dto.amount > orderTotal) {
+      throw new BadRequestException(
+        `Payment would exceed order total. Remaining: ${(orderTotal - totalPaid).toFixed(2)}`,
+      );
+    }
+
     const payment = await this.paymentsRepo.create(tenantId, {
       amount: dto.amount,
       method: dto.method,
       reference: dto.reference,
-      status: 'PAID',
+      status: PaymentStatus.PAID,
       orderId,
     });
 
@@ -41,6 +69,7 @@ export class PaymentsService {
         orderId,
         amount: dto.amount,
         method: dto.method,
+        performedById,
       }),
     );
 

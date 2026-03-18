@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PaginationDto } from '../../common/utils/pagination.dto';
@@ -22,8 +23,7 @@ export class BranchesRepository {
     userBranchId: string | null = null,
   ) {
     const { skip, take, orderBy } = buildPaginationArgs(query);
-    const base: any = {};
-    if (query.includeDeleted) base._includeDeleted = true;
+    const base = query.includeDeleted ? ({ _includeDeleted: true } as any) : {};
     const where = applyBranchScope(base, userBranchId, 'id');
     const [items, total] = await Promise.all([
       this.db(tenantId).branch.findMany({ where, skip, take, orderBy }),
@@ -61,7 +61,7 @@ export class BranchesRepository {
     return this.db(tenantId).branch.create({ data: data as any });
   }
 
-  async update(tenantId: string, id: string, data: Record<string, unknown>) {
+  async update(tenantId: string, id: string, data: Prisma.BranchUpdateInput) {
     return this.db(tenantId).branch.update({
       where: { id } as any,
       data: data as any,

@@ -37,6 +37,14 @@ export class PublicBookingService {
 
   async checkAvailability(slug: string, dto: CheckAvailabilityDto) {
     const tenant = await this.resolveTenant(slug);
+
+    const branch = await this.prisma.branch.findFirst({
+      where: { id: dto.branchId, tenantId: tenant.id },
+    });
+    if (!branch) {
+      throw new NotFoundException('Branch not found');
+    }
+
     return this.schedulingService.checkAvailability({
       tenantId: tenant.id,
       branchId: dto.branchId,
@@ -62,6 +70,13 @@ export class PublicBookingService {
     idempotencyKey?: string,
   ) {
     const tenant = await this.resolveTenant(slug);
+
+    const branch = await this.prisma.branch.findFirst({
+      where: { id: dto.branchId, tenantId: tenant.id },
+    });
+    if (!branch) {
+      throw new NotFoundException('Branch not found');
+    }
 
     // Check if online booking is enabled (branch-level → tenant → defaults)
     const settings = await resolveBookingSettings(

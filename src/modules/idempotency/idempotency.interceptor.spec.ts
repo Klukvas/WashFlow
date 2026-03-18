@@ -82,7 +82,7 @@ describe('IdempotencyInterceptor', () => {
     const obs = await interceptor.intercept(ctx, handler);
     await firstValueFrom(obs);
     expect(idempotencyService.check).toHaveBeenCalledWith(
-      'tenant-x',
+      'slug:tenant-x',
       'key-abc',
     );
   });
@@ -95,7 +95,7 @@ describe('IdempotencyInterceptor', () => {
     const obs = await interceptor.intercept(ctx, handler);
     await firstValueFrom(obs);
     expect(idempotencyService.check).toHaveBeenCalledWith(
-      'my-tenant',
+      'slug:my-tenant',
       'key-slug',
     );
   });
@@ -110,7 +110,7 @@ describe('IdempotencyInterceptor', () => {
     const obs = await interceptor.intercept(ctx, handler);
     await firstValueFrom(obs);
     expect(idempotencyService.save).toHaveBeenCalledWith(
-      'tenant-1',
+      'slug:tenant-1',
       'key-1',
       expect.objectContaining({ body: responseData }),
     );

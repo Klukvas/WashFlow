@@ -11,7 +11,14 @@ export class IdempotencyCleanupService {
   @Cron(CronExpression.EVERY_HOUR)
   async handleCleanup() {
     this.logger.log('Cleaning expired idempotency keys...');
-    const result = await this.idempotencyService.cleanExpired();
-    this.logger.log(`Deleted ${result.count} expired idempotency keys`);
+    try {
+      const result = await this.idempotencyService.cleanExpired();
+      this.logger.log(`Deleted ${result.count} expired idempotency keys`);
+    } catch (error) {
+      this.logger.error(
+        'Idempotency key cleanup failed',
+        (error as Error).stack,
+      );
+    }
   }
 }

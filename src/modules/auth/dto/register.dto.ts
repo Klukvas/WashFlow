@@ -1,26 +1,40 @@
-import { IsEmail, IsString, MinLength, MaxLength } from 'class-validator';
+import {
+  IsEmail,
+  IsOptional,
+  IsString,
+  MinLength,
+  MaxLength,
+  Matches,
+} from 'class-validator';
+import { Transform } from 'class-transformer';
+
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+const PASSWORD_MESSAGE =
+  'Password must contain at least 1 uppercase letter, 1 lowercase letter, and 1 digit';
 
 export class RegisterDto {
   @IsEmail()
+  @Transform(({ value }) => (value as string).toLowerCase().trim())
   email: string;
 
   @IsString()
   @MinLength(8)
   @MaxLength(128)
+  @Matches(PASSWORD_REGEX, { message: PASSWORD_MESSAGE })
   password: string;
 
+  @IsOptional()
   @IsString()
-  @MinLength(1)
   @MaxLength(100)
-  firstName: string;
+  firstName?: string;
 
+  @IsOptional()
   @IsString()
-  @MinLength(1)
   @MaxLength(100)
-  lastName: string;
+  lastName?: string;
 
+  @IsOptional()
   @IsString()
-  @MinLength(2)
   @MaxLength(100)
-  companyName: string;
+  companyName?: string;
 }

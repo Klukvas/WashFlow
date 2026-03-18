@@ -1221,7 +1221,34 @@ async function main() {
     console.log(`Super admin user already exists: ${adminUser.email}`);
   }
 
-  // 5. Seed realistic data
+  // 5. Seed trial subscription for demo tenant
+  const existingSub = await prisma.subscription.findUnique({
+    where: { tenantId: tenant.id },
+  });
+
+  if (!existingSub) {
+    const trialEndsAt = new Date();
+    trialEndsAt.setDate(trialEndsAt.getDate() + 30);
+
+    await prisma.subscription.create({
+      data: {
+        tenantId: tenant.id,
+        planTier: 'TRIAL',
+        status: 'TRIALING',
+        isTrial: true,
+        trialEndsAt,
+        maxUsers: 15,
+        maxBranches: 3,
+        maxWorkPosts: 10,
+        maxServices: 20,
+      },
+    });
+    console.log('Created trial subscription for demo tenant');
+  } else {
+    console.log('Subscription already exists, skipping');
+  }
+
+  // 6. Seed realistic data
   await seedRealisticData(tenant.id, adminUser!.id);
 
   console.log('\n--- Login credentials ---');

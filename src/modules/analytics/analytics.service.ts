@@ -42,8 +42,12 @@ export class AnalyticsService {
     return this.analyticsRepo.getLiveOperations(tenantId, branchId);
   }
 
-  async getBranchPerformance(tenantId: string, query: AnalyticsQueryDto) {
-    return this.analyticsRepo.getBranchPerformance(tenantId, query);
+  async getBranchPerformance(
+    tenantId: string,
+    query: AnalyticsQueryDto,
+    branchId: string | null = null,
+  ) {
+    return this.analyticsRepo.getBranchPerformance(tenantId, query, branchId);
   }
 
   async getEmployeePerformance(

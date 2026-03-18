@@ -52,42 +52,60 @@ export class CleanupService {
           where: { deletedAt: { not: null, lt: cutoff } },
         });
 
-        // 5. Users (must be after orders which reference createdById)
+        // 5. EmployeeProfiles for deleted users (must be before users)
+        await tx.$queryRaw`
+          DELETE FROM employee_profiles WHERE "userId" IN (
+            SELECT id FROM users WHERE "deletedAt" IS NOT NULL AND "deletedAt" < ${cutoff}
+          )
+        `;
+
+        // 6. Users (must be after orders which reference createdById)
         const users = await tx.user.deleteMany({
           where: { deletedAt: { not: null, lt: cutoff } },
         });
 
-        // 6. Clients (must be after vehicles and orders)
+        // 7. Clients (must be after vehicles and orders)
         const clients = await tx.client.deleteMany({
           where: { deletedAt: { not: null, lt: cutoff } },
         });
 
-        // 7. RolePermissions for deleted roles
+        // 8. RolePermissions for deleted roles
         await tx.$queryRaw`
           DELETE FROM role_permissions WHERE "roleId" IN (
             SELECT id FROM roles WHERE "deletedAt" IS NOT NULL AND "deletedAt" < ${cutoff}
           )
         `;
 
-        // 8. Roles
+        // 9. Roles
         const roles = await tx.role.deleteMany({
           where: { deletedAt: { not: null, lt: cutoff } },
         });
 
-        // 9. Services
+        // 10. Services
         const services = await tx.service.deleteMany({
           where: { deletedAt: { not: null, lt: cutoff } },
         });
 
-        // 10. Branches (must be after orders, users, work_posts)
+        // 11. WorkPosts for deleted branches (must be before branches)
+        const workPosts = await tx.workPost.deleteMany({
+          where: { deletedAt: { not: null, lt: cutoff } },
+        });
+
+        // 12. Branches (must be after orders, users, work_posts)
         const branches = await tx.branch.deleteMany({
           where: { deletedAt: { not: null, lt: cutoff } },
+        });
+
+        // 13. Audit logs older than the retention cutoff
+        const auditLogs = await tx.auditLog.deleteMany({
+          where: { createdAt: { lt: cutoff } },
         });
 
         this.logger.log(
           `Hard-delete cleanup completed: ${orders.count} orders, ${vehicles.count} vehicles, ` +
             `${users.count} users, ${clients.count} clients, ${roles.count} roles, ` +
-            `${services.count} services, ${branches.count} branches`,
+            `${services.count} services, ${workPosts.count} work posts, ${branches.count} branches, ` +
+            `${auditLogs.count} audit logs`,
         );
       });
     } catch (error) {

@@ -21,29 +21,22 @@ export class BookingConfirmationProcessor extends WorkerHost {
     orderId: string;
     tenantId: string;
   }) {
-    try {
-      // Use updateMany with both id and tenantId for tenant isolation
-      const result = await this.prisma.order.updateMany({
-        where: {
-          id: data.orderId,
-          tenantId: data.tenantId,
-          status: 'BOOKED_PENDING_CONFIRMATION',
-        },
-        data: {
-          status: 'CANCELLED',
-          cancellationReason: 'Auto-cancelled: confirmation timeout',
-        },
-      });
+    // Use updateMany with both id and tenantId for tenant isolation
+    const result = await this.prisma.order.updateMany({
+      where: {
+        id: data.orderId,
+        tenantId: data.tenantId,
+        status: 'BOOKED_PENDING_CONFIRMATION',
+      },
+      data: {
+        status: 'CANCELLED',
+        cancellationReason: 'Auto-cancelled: confirmation timeout',
+      },
+    });
 
-      if (result.count > 0) {
-        this.logger.log(
-          `Auto-cancelled order ${data.orderId} due to confirmation timeout`,
-        );
-      }
-    } catch (error) {
-      this.logger.error(
-        `Failed to process confirmation timeout for order ${data.orderId}`,
-        error instanceof Error ? error.stack : String(error),
+    if (result.count > 0) {
+      this.logger.log(
+        `Auto-cancelled order ${data.orderId} due to confirmation timeout`,
       );
     }
   }

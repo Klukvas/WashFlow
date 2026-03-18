@@ -9,10 +9,14 @@ import { CreateEmployeeProfileDto } from './dto/create-employee-profile.dto';
 import { UpdateEmployeeProfileDto } from './dto/update-employee-profile.dto';
 import { EmployeeProfileQueryDto } from './dto/employee-profile-query.dto';
 import { paginatedResponse } from '../../common/utils/pagination.util';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class EmployeeProfileService {
-  constructor(private readonly workforceRepo: WorkforceRepository) {}
+  constructor(
+    private readonly workforceRepo: WorkforceRepository,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async findAll(tenantId: string, query: EmployeeProfileQueryDto) {
     const { items, total } = await this.workforceRepo.findProfiles(
@@ -29,6 +33,20 @@ export class EmployeeProfileService {
   }
 
   async create(tenantId: string, dto: CreateEmployeeProfileDto) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: dto.userId, tenantId },
+    });
+    if (!user) {
+      throw new BadRequestException('User not found in this tenant');
+    }
+
+    const branch = await this.prisma.branch.findFirst({
+      where: { id: dto.branchId, tenantId },
+    });
+    if (!branch) {
+      throw new BadRequestException('Branch not found in this tenant');
+    }
+
     const existing = await this.workforceRepo.findProfileByUserId(
       tenantId,
       dto.userId,
@@ -51,6 +69,16 @@ export class EmployeeProfileService {
 
   async update(tenantId: string, id: string, dto: UpdateEmployeeProfileDto) {
     await this.findById(tenantId, id);
+
+    if (dto.branchId) {
+      const branch = await this.prisma.branch.findFirst({
+        where: { id: dto.branchId, tenantId },
+      });
+      if (!branch) {
+        throw new BadRequestException('Branch not found in this tenant');
+      }
+    }
+
     return this.workforceRepo.updateProfile(tenantId, id, { ...dto });
   }
 

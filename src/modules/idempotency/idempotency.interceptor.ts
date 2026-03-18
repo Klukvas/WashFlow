@@ -30,15 +30,20 @@ export class IdempotencyInterceptor implements NestInterceptor {
       return next.handle();
     }
 
-    const tenantId: string | undefined =
+    const rawTenantId: string | undefined =
       request.user?.tenantId || request.params?.tenantSlug;
 
-    if (!tenantId) {
+    if (!rawTenantId) {
       return next.handle();
     }
 
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const isUUID = uuidRegex.test(rawTenantId);
+    const tenantKey = isUUID ? rawTenantId : `slug:${rawTenantId}`;
+
     const cached = await this.idempotencyService.check(
-      tenantId,
+      tenantKey,
       idempotencyKey,
     );
     if (cached.hit && cached.cachedResponse) {
@@ -48,7 +53,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       tap(async (data) => {
-        await this.idempotencyService.save(tenantId, idempotencyKey, {
+        await this.idempotencyService.save(tenantKey, idempotencyKey, {
           method: request.method,
           path: request.path,
           statusCode: response.statusCode || 201,

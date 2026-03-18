@@ -1,8 +1,18 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import {
+  createParamDecorator,
+  ExecutionContext,
+  ForbiddenException,
+} from '@nestjs/common';
 
 export const CurrentTenant = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): string => {
     const request = ctx.switchToHttp().getRequest();
-    return request.user.tenantId;
+    const tenantId: string | undefined = request.user?.tenantId;
+    if (!tenantId) {
+      throw new ForbiddenException(
+        'Tenant context is required. Provide x-tenant-id header.',
+      );
+    }
+    return tenantId;
   },
 );

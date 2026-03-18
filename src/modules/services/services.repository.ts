@@ -10,59 +10,75 @@ export class ServicesRepository {
     return this.tenantPrisma.forTenant(tenantId);
   }
 
+  private mapService<T extends { price?: any }>(service: T): T {
+    if (service && service.price != null) {
+      return { ...service, price: Number(service.price) };
+    }
+    return service;
+  }
+
   async findAll(tenantId: string) {
-    return this.db(tenantId).service.findMany({
+    const rows = await this.db(tenantId).service.findMany({
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
     });
+    return rows.map((s) => this.mapService(s));
   }
 
   async findActive(tenantId: string) {
-    return this.db(tenantId).service.findMany({
+    const rows = await this.db(tenantId).service.findMany({
       where: { isActive: true },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
     });
+    return rows.map((s) => this.mapService(s));
   }
 
   async findById(tenantId: string, id: string) {
-    return this.db(tenantId).service.findFirst({ where: { id } });
+    const row = await this.db(tenantId).service.findFirst({ where: { id } });
+    return row ? this.mapService(row) : row;
   }
 
   async findByIds(tenantId: string, ids: string[]) {
-    return this.db(tenantId).service.findMany({
+    const rows = await this.db(tenantId).service.findMany({
       where: { id: { in: ids }, isActive: true },
     });
+    return rows.map((s) => this.mapService(s));
   }
 
   async create(tenantId: string, data: Record<string, unknown>) {
-    return this.db(tenantId).service.create({
+    const row = await this.db(tenantId).service.create({
       data: data as Prisma.ServiceUncheckedCreateInput,
     });
+    return this.mapService(row);
   }
 
   async update(tenantId: string, id: string, data: Record<string, unknown>) {
-    return this.db(tenantId).service.update({
+    const row = await this.db(tenantId).service.update({
       where: { id } as Prisma.ServiceWhereUniqueInput,
       data: data as Prisma.ServiceUpdateInput,
     });
+    return this.mapService(row);
   }
 
   async softDelete(tenantId: string, id: string) {
-    return this.db(tenantId).service.update({
+    const row = await this.db(tenantId).service.update({
       where: { id } as Prisma.ServiceWhereUniqueInput,
       data: { deletedAt: new Date() },
     });
+    return this.mapService(row);
   }
 
   async findByIdIncludeDeleted(tenantId: string, id: string) {
-    return this.db(tenantId).service.findFirst({
+    const row = await this.db(tenantId).service.findFirst({
       where: { id, _includeDeleted: true } as any,
     });
+    return row ? this.mapService(row) : row;
   }
 
   async restore(tenantId: string, id: string) {
-    return this.db(tenantId).service.update({
+    const row = await this.db(tenantId).service.update({
       where: { id } as Prisma.ServiceWhereUniqueInput,
       data: { deletedAt: null },
     });
+    return this.mapService(row);
   }
 }

@@ -46,6 +46,18 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
       JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-15m}
       JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-7d}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      GRAFANA_LOKI_HOST: ${GRAFANA_LOKI_HOST:-}
+      GRAFANA_LOKI_USERNAME: ${GRAFANA_LOKI_USERNAME:-}
+      GRAFANA_LOKI_PASSWORD: ${GRAFANA_LOKI_PASSWORD:-}
+      FRONTEND_URL: ${FRONTEND_URL:-https://washflow.app}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      PADDLE_API_KEY: ${PADDLE_API_KEY:-}
+      PADDLE_CLIENT_TOKEN: ${PADDLE_CLIENT_TOKEN:-}
+      PADDLE_WEBHOOK_SECRET: ${PADDLE_WEBHOOK_SECRET:-}
+      PADDLE_SANDBOX: 'false'
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -61,6 +73,10 @@ services:
 
   frontend:
     image: ${DOCKER_IMAGE_FRONTEND:-washflow/frontend}:${DOCKER_TAG:-latest}
+    build:
+      context: ./frontend
+      args:
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
     restart: unless-stopped
     ports:
       - '80:80'
@@ -77,3 +93,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  uploads_data:

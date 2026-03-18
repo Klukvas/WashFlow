@@ -44,12 +44,18 @@ describe('PaymentsController', () => {
   });
 
   describe('create', () => {
-    it('should delegate to service.create with tenantId, orderId, and dto', async () => {
+    it('should delegate to service.create with tenantId, orderId, dto, and user.sub', async () => {
       const dto = { amount: 250, method: 'CASH' } as any;
+      const user = { sub: 'user-123' };
       const expected = { id: 'pay-2', ...dto };
       service.create.mockResolvedValue(expected);
-      const result = await controller.create(tenantId, orderId, dto);
-      expect(service.create).toHaveBeenCalledWith(tenantId, orderId, dto);
+      const result = await controller.create(tenantId, orderId, dto, user);
+      expect(service.create).toHaveBeenCalledWith(
+        tenantId,
+        orderId,
+        dto,
+        user.sub,
+      );
       expect(result).toEqual(expected);
     });
   });

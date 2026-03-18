@@ -46,7 +46,7 @@ export class AuditSubscriber {
       'Order',
       event.payload.orderId as string,
       AuditAction.STATUS_CHANGE,
-      null,
+      { status: event.payload.previousStatus || 'unknown' },
       { status: 'CANCELLED', reason: event.payload.reason },
       event.payload.userId as string,
       { branchId: event.payload.branchId },
@@ -79,6 +79,86 @@ export class AuditSubscriber {
     );
   }
 
+  @OnEvent(EventType.AUTH_LOGIN)
+  async handleAuthLogin(event: DomainEvent) {
+    const email = event.payload.email as string;
+    await this.log(
+      event.tenantId,
+      'Auth',
+      event.payload.userId as string,
+      AuditAction.CREATE,
+      null,
+      { action: 'login', email: email.replace(/(.{2}).*(@.*)/, '$1***$2') },
+      event.payload.userId as string,
+      { ip: event.payload.ip },
+    );
+  }
+
+  @OnEvent(EventType.AUTH_LOGIN_FAILED)
+  async handleAuthLoginFailed(event: DomainEvent) {
+    const email = event.payload.email as string;
+    await this.log(
+      event.tenantId,
+      'Auth',
+      'login-failed',
+      AuditAction.CREATE,
+      null,
+      {
+        action: 'login_failed',
+        email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
+        reason: event.payload.reason,
+      },
+      undefined,
+      { ip: event.payload.ip },
+    );
+  }
+
+  @OnEvent(EventType.AUTH_PASSWORD_CHANGED)
+  async handleAuthPasswordChanged(event: DomainEvent) {
+    const email = event.payload.email as string;
+    await this.log(
+      event.tenantId,
+      'Auth',
+      event.payload.userId as string,
+      AuditAction.UPDATE,
+      null,
+      {
+        action: 'password_changed',
+        email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
+      },
+      event.payload.userId as string,
+    );
+  }
+
+  @OnEvent(EventType.AUTH_LOGOUT)
+  async handleAuthLogout(event: DomainEvent) {
+    await this.log(
+      event.tenantId,
+      'Auth',
+      event.payload.userId as string,
+      AuditAction.DELETE,
+      null,
+      { action: 'logout' },
+      event.payload.userId as string,
+    );
+  }
+
+  @OnEvent(EventType.SUPERADMIN_TENANT_ACCESS)
+  async handleSuperAdminTenantAccess(event: DomainEvent) {
+    await this.log(
+      event.payload.targetTenantId as string,
+      'Auth',
+      event.payload.superAdminId as string,
+      AuditAction.CREATE,
+      null,
+      {
+        action: 'superadmin_tenant_access',
+        targetTenantId: event.payload.targetTenantId,
+      },
+      event.payload.superAdminId as string,
+    );
+  }
+
   private async log(
     tenantId: string,
     entityType: string,
@@ -101,7 +181,7 @@ export class AuditSubscriber {
         metadata: metadata || null,
       });
     } catch (error) {
-      this.logger.error(`Failed to create audit log: ${error}`);
+      this.logger.error('Failed to create audit log', (error as Error).stack);
     }
   }
 }

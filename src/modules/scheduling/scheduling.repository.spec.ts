@@ -101,4 +101,51 @@ describe('SchedulingRepository', () => {
       expect(result).toEqual(mockOrders);
     });
   });
+
+  describe('findOrdersForWorkPostsInRange', () => {
+    it('returns orders for multiple work posts in a date range', async () => {
+      const result = await repo.findOrdersForWorkPostsInRange(
+        tenantId,
+        [workPostId, 'wp-2'],
+        start,
+        end,
+      );
+      expect(tenantPrisma.forTenant).toHaveBeenCalledWith(tenantId);
+      expect(tenantClient.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            workPostId: { in: [workPostId, 'wp-2'] },
+          }),
+        }),
+      );
+      expect(result).toEqual(mockOrders);
+    });
+
+    it('returns empty array immediately when workPostIds is empty', async () => {
+      const result = await repo.findOrdersForWorkPostsInRange(
+        tenantId,
+        [],
+        start,
+        end,
+      );
+      expect(result).toEqual([]);
+      expect(tenantClient.order.findMany).not.toHaveBeenCalled();
+    });
+
+    it('filters out cancelled, no-show, and completed orders', async () => {
+      await repo.findOrdersForWorkPostsInRange(
+        tenantId,
+        [workPostId],
+        start,
+        end,
+      );
+      expect(tenantClient.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: { notIn: ['CANCELLED', 'NO_SHOW', 'COMPLETED'] },
+          }),
+        }),
+      );
+    });
+  });
 });

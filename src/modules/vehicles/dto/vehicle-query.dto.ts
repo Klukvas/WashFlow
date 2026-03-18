@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { PaginationDto } from '../../../common/utils/pagination.dto';
 
 export class VehicleQueryDto extends PaginationDto {
@@ -8,5 +8,6 @@ export class VehicleQueryDto extends PaginationDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   search?: string;
 }

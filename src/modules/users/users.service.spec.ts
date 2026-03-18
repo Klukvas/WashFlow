@@ -8,6 +8,7 @@ import * as argon2 from 'argon2';
 import { UsersService } from './users.service';
 import { UsersRepository } from './users.repository';
 import { SubscriptionLimitsService } from '../subscriptions/subscription-limits.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PaginationDto } from '../../common/utils/pagination.dto';
@@ -72,6 +73,19 @@ const makeLimitsMock = () => ({
   getUsage: jest.fn(),
 });
 
+const makePrismaMock = () => ({
+  role: {
+    findFirst: jest
+      .fn()
+      .mockResolvedValue({ id: 'role-id', tenantId: TENANT_ID }),
+  },
+  branch: {
+    findFirst: jest
+      .fn()
+      .mockResolvedValue({ id: BRANCH_ID, tenantId: TENANT_ID }),
+  },
+});
+
 // ---------------------------------------------------------------------------
 // Test suite
 // ---------------------------------------------------------------------------
@@ -80,16 +94,19 @@ describe('UsersService', () => {
   let service: UsersService;
   let repo: ReturnType<typeof makeRepoMock>;
   let limits: ReturnType<typeof makeLimitsMock>;
+  let prisma: ReturnType<typeof makePrismaMock>;
 
   beforeEach(async () => {
     repo = makeRepoMock();
     limits = makeLimitsMock();
+    prisma = makePrismaMock();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
         { provide: UsersRepository, useValue: repo },
         { provide: SubscriptionLimitsService, useValue: limits },
+        { provide: PrismaService, useValue: prisma },
       ],
     }).compile();
 

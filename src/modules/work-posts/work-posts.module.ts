@@ -8,6 +8,6 @@ import { WorkPostsRepository } from './work-posts.repository';
   imports: [SubscriptionsModule],
   controllers: [WorkPostsController],
   providers: [WorkPostsService, WorkPostsRepository],
-  exports: [WorkPostsService, WorkPostsRepository],
+  exports: [WorkPostsService],
 })
 export class WorkPostsModule {}

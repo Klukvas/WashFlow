@@ -57,6 +57,10 @@ describe('RealtimeGateway', () => {
     };
   });
 
+  afterEach(() => {
+    gateway.onModuleDestroy();
+  });
+
   describe('handleConnection', () => {
     it('should join tenant room when valid token is in auth', async () => {
       const client = makeSocket({
@@ -144,6 +148,7 @@ describe('RealtimeGateway', () => {
       config.get.mockReturnValue('https://app.com, https://admin.com');
       (gateway as any).server = {
         engine: { opts: { cors: {} } },
+        sockets: { sockets: new Map() },
         to: jest.fn(),
       };
 
@@ -155,115 +160,177 @@ describe('RealtimeGateway', () => {
       });
     });
 
-    it('does NOT modify CORS when corsOrigins is wildcard', () => {
-      config.get.mockReturnValue('*');
-      const originalCors = { origin: true };
+    it('sets CORS origin to true in dev when corsOrigins is wildcard', () => {
+      config.get.mockImplementation((key: string) => {
+        if (key === 'nodeEnv') return 'development';
+        return '*';
+      });
       (gateway as any).server = {
-        engine: { opts: { cors: originalCors } },
+        engine: { opts: { cors: {} } },
+        sockets: { sockets: new Map() },
         to: jest.fn(),
       };
 
       gateway.afterInit();
 
-      expect((gateway as any).server.engine.opts.cors).toBe(originalCors);
+      expect((gateway as any).server.engine.opts.cors).toEqual({
+        origin: true,
+        credentials: true,
+      });
     });
 
-    it('does NOT modify CORS when corsOrigins is empty', () => {
-      config.get.mockReturnValue('');
-      const originalCors = { origin: true };
+    it('sets CORS origin to true in dev when corsOrigins is empty', () => {
+      config.get.mockImplementation((key: string) => {
+        if (key === 'nodeEnv') return 'development';
+        return '';
+      });
       (gateway as any).server = {
-        engine: { opts: { cors: originalCors } },
+        engine: { opts: { cors: {} } },
+        sockets: { sockets: new Map() },
         to: jest.fn(),
       };
 
       gateway.afterInit();
 
-      expect((gateway as any).server.engine.opts.cors).toBe(originalCors);
+      expect((gateway as any).server.engine.opts.cors).toEqual({
+        origin: true,
+        credentials: true,
+      });
     });
 
     it('does NOT crash when server.engine.opts is undefined', () => {
       config.get.mockReturnValue('https://app.com');
-      (gateway as any).server = { to: jest.fn() };
+      (gateway as any).server = {
+        sockets: { sockets: new Map() },
+        to: jest.fn(),
+      };
 
       expect(() => gateway.afterInit()).not.toThrow();
+    });
+
+    it('starts token check interval', () => {
+      config.get.mockReturnValue('');
+      (gateway as any).server = {
+        engine: { opts: { cors: {} } },
+        sockets: { sockets: new Map() },
+        to: jest.fn(),
+      };
+
+      gateway.afterInit();
+
+      expect((gateway as any).tokenCheckInterval).toBeTruthy();
+      gateway.onModuleDestroy();
     });
   });
 
   // =========================================================================
-  // handleConnection — origin validation
+  // afterInit — CORS in production
   // =========================================================================
 
-  describe('handleConnection — origin validation', () => {
-    it('disconnects client when origin is not in allowed list', async () => {
+  describe('afterInit (production CORS)', () => {
+    it('returns false for wildcard CORS in production', () => {
       config.get.mockImplementation((key: string) => {
-        if (key === 'corsOrigins') return 'https://allowed.com';
-        return 'test-secret';
-      });
-      const client = makeSocket({
-        handshake: {
-          auth: { token: 'valid.jwt.token' },
-          headers: { origin: 'https://evil.com' },
-        },
-      });
-
-      await gateway.handleConnection(client);
-
-      expect(client.disconnect).toHaveBeenCalledWith(true);
-      expect(client.join).not.toHaveBeenCalled();
-    });
-
-    it('allows client when origin is in allowed list', async () => {
-      config.get.mockImplementation((key: string) => {
-        if (key === 'corsOrigins') return 'https://allowed.com';
-        return 'test-secret';
-      });
-      const client = makeSocket({
-        handshake: {
-          auth: { token: 'valid.jwt.token' },
-          headers: { origin: 'https://allowed.com' },
-        },
-      });
-
-      await gateway.handleConnection(client);
-
-      expect(client.disconnect).not.toHaveBeenCalled();
-      expect(client.join).toHaveBeenCalledWith('tenant:tenant-1');
-    });
-
-    it('skips origin check when corsOrigins is wildcard', async () => {
-      config.get.mockImplementation((key: string) => {
+        if (key === 'nodeEnv') return 'production';
         if (key === 'corsOrigins') return '*';
-        return 'test-secret';
+        return '*';
       });
-      const client = makeSocket({
-        handshake: {
-          auth: { token: 'valid.jwt.token' },
-          headers: { origin: 'https://any-origin.com' },
-        },
+      (gateway as any).server = {
+        engine: { opts: { cors: {} } },
+        sockets: { sockets: new Map() },
+        to: jest.fn(),
+      };
+
+      gateway.afterInit();
+
+      expect((gateway as any).server.engine.opts.cors).toEqual({
+        origin: false,
+        credentials: true,
       });
+    });
+  });
 
-      await gateway.handleConnection(client);
+  // =========================================================================
+  // disconnectExpiredClients
+  // =========================================================================
 
-      expect(client.disconnect).not.toHaveBeenCalled();
-      expect(client.join).toHaveBeenCalled();
+  describe('disconnectExpiredClients', () => {
+    it('skips when server.sockets.sockets is undefined', () => {
+      (gateway as any).server = { sockets: {} };
+      expect(() => (gateway as any).disconnectExpiredClients()).not.toThrow();
     });
 
-    it('skips origin check when no origin header present', async () => {
-      config.get.mockImplementation((key: string) => {
-        if (key === 'corsOrigins') return 'https://allowed.com';
-        return 'test-secret';
-      });
-      const client = makeSocket({
-        handshake: {
-          auth: { token: 'valid.jwt.token' },
-          headers: {},
-        },
-      });
+    it('skips sockets without tokens', () => {
+      const socket = { id: 's1', data: {}, disconnect: jest.fn() };
+      (gateway as any).server = {
+        sockets: { sockets: new Map([['s1', socket]]) },
+      };
 
-      await gateway.handleConnection(client);
+      (gateway as any).disconnectExpiredClients();
 
-      expect(client.disconnect).not.toHaveBeenCalled();
-      expect(client.join).toHaveBeenCalled();
+      expect(socket.disconnect).not.toHaveBeenCalled();
+    });
+
+    it('keeps sockets with valid tokens', () => {
+      jwtService.verify.mockReturnValue({}); // valid
+      const socket = {
+        id: 's1',
+        data: { token: 'valid' },
+        disconnect: jest.fn(),
+      };
+      (gateway as any).server = {
+        sockets: { sockets: new Map([['s1', socket]]) },
+      };
+
+      (gateway as any).disconnectExpiredClients();
+
+      expect(socket.disconnect).not.toHaveBeenCalled();
+    });
+
+    it('disconnects sockets with expired tokens', () => {
+      jwtService.verify.mockImplementation(() => {
+        throw new Error('jwt expired');
+      });
+      const socket = {
+        id: 's1',
+        data: { token: 'expired' },
+        disconnect: jest.fn(),
+      };
+      (gateway as any).server = {
+        sockets: { sockets: new Map([['s1', socket]]) },
+      };
+
+      (gateway as any).disconnectExpiredClients();
+
+      expect(socket.disconnect).toHaveBeenCalledWith(true);
+    });
+
+    it('handles empty sockets map gracefully', () => {
+      (gateway as any).server = {
+        sockets: { sockets: new Map() },
+      };
+
+      expect(() => (gateway as any).disconnectExpiredClients()).not.toThrow();
+    });
+  });
+
+  // =========================================================================
+  // onModuleDestroy — cleanup
+  // =========================================================================
+
+  describe('onModuleDestroy', () => {
+    it('clears the token check interval', () => {
+      config.get.mockReturnValue('');
+      (gateway as any).server = {
+        engine: { opts: { cors: {} } },
+        sockets: { sockets: new Map() },
+        to: jest.fn(),
+      };
+
+      gateway.afterInit();
+      expect((gateway as any).tokenCheckInterval).toBeTruthy();
+
+      gateway.onModuleDestroy();
+      expect((gateway as any).tokenCheckInterval).toBeNull();
     });
   });
 });

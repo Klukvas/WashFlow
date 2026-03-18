@@ -7,13 +7,18 @@ import {
   Body,
   ParseUUIDPipe,
   UseGuards,
+  ForbiddenException,
+  HttpCode,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { SuperAdminGuard } from '../../common/guards/superadmin.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { TenantsService } from './tenants.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
+import type { JwtPayload } from '../../common/types/jwt-payload.type';
 
 @Controller('tenants')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -21,26 +26,40 @@ export class TenantsController {
   constructor(private readonly tenantsService: TenantsService) {}
 
   @Get()
-  @Permissions('tenants.read')
+  @UseGuards(SuperAdminGuard)
   findAll() {
     return this.tenantsService.findAll();
   }
 
   @Get(':id')
   @Permissions('tenants.read')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
+  findOne(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    if (!user.isSuperAdmin && user.tenantId !== id) {
+      throw new ForbiddenException('Cannot access another tenant');
+    }
     return this.tenantsService.findById(id);
   }
 
   @Post()
-  @Permissions('tenants.create')
+  @HttpCode(201)
+  @UseGuards(SuperAdminGuard)
   create(@Body() dto: CreateTenantDto) {
     return this.tenantsService.create(dto);
   }
 
   @Patch(':id')
   @Permissions('tenants.update')
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTenantDto) {
+  update(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateTenantDto,
+  ) {
+    if (!user.isSuperAdmin && user.tenantId !== id) {
+      throw new ForbiddenException('Cannot modify another tenant');
+    }
     return this.tenantsService.update(id, dto);
   }
 }

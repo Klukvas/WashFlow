@@ -5,6 +5,14 @@ import { PaginationDto } from '../../common/utils/pagination.dto';
 import { buildPaginationArgs } from '../../common/utils/pagination.util';
 import { applyBranchScope } from '../../common/utils/branch-scope.util';
 
+/** Strip passwordHash from user objects before returning to API consumers. */
+function stripSensitive<T extends Record<string, unknown>>(
+  user: T,
+): Omit<T, 'passwordHash'> {
+  const { passwordHash, ...safe } = user;
+  return safe;
+}
+
 @Injectable()
 export class UsersRepository {
   constructor(private readonly tenantPrisma: TenantPrismaService) {}
@@ -20,9 +28,13 @@ export class UsersRepository {
   ) {
     const prisma = this.db(tenantId);
     const { skip, take, orderBy } = buildPaginationArgs(query);
-    const base: any = {};
-    if (query.includeDeleted) base._includeDeleted = true;
-    const where = applyBranchScope(base, userBranchId);
+    const base: Prisma.UserWhereInput = query.includeDeleted
+      ? ({ _includeDeleted: true } as any)
+      : {};
+    const where = applyBranchScope(
+      base as Record<string, unknown>,
+      userBranchId,
+    ) as Prisma.UserWhereInput;
 
     const [items, total] = await Promise.all([
       prisma.user.findMany({
@@ -35,7 +47,7 @@ export class UsersRepository {
       prisma.user.count({ where }),
     ]);
 
-    return { items, total };
+    return { items: items.map(stripSensitive), total };
   }
 
   async findById(
@@ -57,43 +69,48 @@ export class UsersRepository {
     if (user && userBranchId !== null && user.branchId !== userBranchId) {
       return null;
     }
-    return user;
+    return user ? stripSensitive(user) : null;
   }
 
   async create(tenantId: string, data: Record<string, unknown>) {
-    return this.db(tenantId).user.create({
+    const user = await this.db(tenantId).user.create({
       data: data as Prisma.UserUncheckedCreateInput,
       include: { role: true, branch: true },
     });
+    return stripSensitive(user);
   }
 
   async update(tenantId: string, id: string, data: Prisma.UserUpdateInput) {
-    return this.db(tenantId).user.update({
+    const user = await this.db(tenantId).user.update({
       where: { id } as Prisma.UserWhereUniqueInput,
       data,
       include: { role: true, branch: true },
     });
+    return stripSensitive(user);
   }
 
   async softDelete(tenantId: string, id: string) {
-    return this.db(tenantId).user.update({
+    const user = await this.db(tenantId).user.update({
       where: { id } as Prisma.UserWhereUniqueInput,
       data: { deletedAt: new Date() },
     });
+    return stripSensitive(user);
   }
 
   async findByIdIncludeDeleted(tenantId: string, id: string) {
-    return this.db(tenantId).user.findFirst({
+    const user = await this.db(tenantId).user.findFirst({
       where: { id, _includeDeleted: true } as any,
       include: { role: true, branch: true },
     });
+    return user ? stripSensitive(user) : null;
   }
 
   async restore(tenantId: string, id: string) {
-    return this.db(tenantId).user.update({
+    const user = await this.db(tenantId).user.update({
       where: { id } as Prisma.UserWhereUniqueInput,
       data: { deletedAt: null },
       include: { role: true, branch: true },
     });
+    return stripSensitive(user);
   }
 }

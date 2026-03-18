@@ -1,9 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 
 @Injectable()
 export class NotificationProducer {
+  private readonly logger = new Logger(NotificationProducer.name);
+
   constructor(@InjectQueue('notifications') private readonly queue: Queue) {}
 
   async sendOrderConfirmation(orderId: string, tenantId: string) {
@@ -38,6 +40,11 @@ export class NotificationProducer {
         'booking-reminder',
         { orderId, tenantId },
         { delay, attempts: 2 },
+      );
+    } else {
+      this.logger.warn(
+        `Skipping booking reminder for orderId=${orderId}: scheduled time is too soon or already past ` +
+          `(scheduledFor=${scheduledFor.toISOString()}, delay=${delay}ms)`,
       );
     }
   }

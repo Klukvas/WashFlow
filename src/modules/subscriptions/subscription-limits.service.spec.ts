@@ -12,6 +12,7 @@ describe('SubscriptionLimitsService', () => {
   beforeEach(async () => {
     repo = {
       findByTenantId: jest.fn().mockResolvedValue(null),
+      findByTenantIdWithAddons: jest.fn().mockResolvedValue(null),
       checkLimitAtomic: jest.fn(),
       countUsers: jest.fn(),
       countBranches: jest.fn(),
@@ -86,9 +87,9 @@ describe('SubscriptionLimitsService', () => {
         max: 5,
       });
 
-      await expect(
-        service.checkLimit(tenantId, 'workPosts'),
-      ).rejects.toThrow(/work posts/);
+      await expect(service.checkLimit(tenantId, 'workPosts')).rejects.toThrow(
+        /work posts/,
+      );
     });
 
     it('enforces services resource limit', async () => {
@@ -98,9 +99,9 @@ describe('SubscriptionLimitsService', () => {
         max: 20,
       });
 
-      await expect(
-        service.checkLimit(tenantId, 'services'),
-      ).rejects.toThrow(/maximum 20 services allowed/);
+      await expect(service.checkLimit(tenantId, 'services')).rejects.toThrow(
+        /maximum 20 services allowed/,
+      );
     });
 
     it('throws ForbiddenException when trial has expired', async () => {
@@ -111,9 +112,9 @@ describe('SubscriptionLimitsService', () => {
         trialExpired: true,
       });
 
-      await expect(
-        service.checkLimit(tenantId, 'users'),
-      ).rejects.toThrow('Trial has expired');
+      await expect(service.checkLimit(tenantId, 'users')).rejects.toThrow(
+        'Trial has expired',
+      );
     });
 
     it('allows creation when trial is still active', async () => {
@@ -131,7 +132,7 @@ describe('SubscriptionLimitsService', () => {
 
   describe('getUsage', () => {
     it('returns usage with null limits when no subscription exists', async () => {
-      repo.findByTenantId.mockResolvedValue(null);
+      repo.findByTenantIdWithAddons.mockResolvedValue(null);
       repo.countUsers.mockResolvedValue(3);
       repo.countBranches.mockResolvedValue(1);
       repo.countWorkPosts.mockResolvedValue(2);
@@ -147,17 +148,21 @@ describe('SubscriptionLimitsService', () => {
     });
 
     it('returns usage with limits when subscription exists', async () => {
-      repo.findByTenantId.mockResolvedValue({
+      repo.findByTenantIdWithAddons.mockResolvedValue({
         id: 'sub-1',
         tenantId,
+        planTier: 'BUSINESS',
+        status: 'ACTIVE',
+        billingInterval: 'MONTHLY',
         maxUsers: 10,
         maxBranches: 3,
         maxWorkPosts: 8,
         maxServices: 20,
         isTrial: false,
         trialEndsAt: null,
-        paddleSubscriptionId: 'paddle-123',
-        paddleCustomerId: 'cus-456',
+        currentPeriodEnd: null,
+        cancelEffectiveAt: null,
+        addons: [],
       });
       repo.countUsers.mockResolvedValue(7);
       repo.countBranches.mockResolvedValue(2);
@@ -166,14 +171,9 @@ describe('SubscriptionLimitsService', () => {
 
       const result = await service.getUsage(tenantId);
 
-      expect(result.subscription).toEqual({
-        maxUsers: 10,
-        maxBranches: 3,
-        maxWorkPosts: 8,
-        maxServices: 20,
-        isTrial: false,
-        trialEndsAt: null,
-      });
+      expect(result.subscription?.planTier).toBe('BUSINESS');
+      expect(result.subscription?.status).toBe('ACTIVE');
+      expect(result.subscription?.maxUsers).toBe(10);
       expect(result.usage.users).toEqual({ current: 7, max: 10 });
       expect(result.usage.branches).toEqual({ current: 2, max: 3 });
       expect(result.usage.workPosts).toEqual({ current: 5, max: 8 });
@@ -182,15 +182,21 @@ describe('SubscriptionLimitsService', () => {
 
     it('returns trial info when subscription is a trial', async () => {
       const trialEnd = new Date('2026-03-16T00:00:00.000Z');
-      repo.findByTenantId.mockResolvedValue({
+      repo.findByTenantIdWithAddons.mockResolvedValue({
         id: 'sub-1',
         tenantId,
+        planTier: 'TRIAL',
+        status: 'TRIALING',
+        billingInterval: null,
         maxUsers: 15,
         maxBranches: 3,
         maxWorkPosts: 10,
         maxServices: 20,
         isTrial: true,
         trialEndsAt: trialEnd,
+        currentPeriodEnd: null,
+        cancelEffectiveAt: null,
+        addons: [],
       });
       repo.countUsers.mockResolvedValue(1);
       repo.countBranches.mockResolvedValue(1);
@@ -200,25 +206,28 @@ describe('SubscriptionLimitsService', () => {
       const result = await service.getUsage(tenantId);
 
       expect(result.subscription?.isTrial).toBe(true);
-      expect(result.subscription?.trialEndsAt).toBe(
-        trialEnd.toISOString(),
-      );
+      expect(result.subscription?.trialEndsAt).toBe(trialEnd.toISOString());
     });
 
-    it('does not leak Paddle billing fields', async () => {
-      repo.findByTenantId.mockResolvedValue({
+    it('does not leak internal Paddle fields', async () => {
+      repo.findByTenantIdWithAddons.mockResolvedValue({
         id: 'sub-1',
         tenantId,
+        planTier: 'STARTER',
+        status: 'ACTIVE',
+        billingInterval: 'MONTHLY',
         maxUsers: 5,
         maxBranches: 2,
         maxWorkPosts: 5,
         maxServices: 20,
         isTrial: false,
         trialEndsAt: null,
+        currentPeriodEnd: null,
+        cancelEffectiveAt: null,
         paddleSubscriptionId: 'paddle-secret',
         paddleCustomerId: 'cus-secret',
         paddleStatus: 'active',
-        currentPeriodEnd: new Date(),
+        addons: [],
       });
       repo.countUsers.mockResolvedValue(0);
       repo.countBranches.mockResolvedValue(0);
@@ -230,13 +239,12 @@ describe('SubscriptionLimitsService', () => {
       expect(result.subscription).not.toHaveProperty('paddleSubscriptionId');
       expect(result.subscription).not.toHaveProperty('paddleCustomerId');
       expect(result.subscription).not.toHaveProperty('paddleStatus');
-      expect(result.subscription).not.toHaveProperty('currentPeriodEnd');
       expect(result.subscription).not.toHaveProperty('id');
       expect(result.subscription).not.toHaveProperty('tenantId');
     });
 
     it('calls all count queries exactly once', async () => {
-      repo.findByTenantId.mockResolvedValue(null);
+      repo.findByTenantIdWithAddons.mockResolvedValue(null);
       repo.countUsers.mockResolvedValue(0);
       repo.countBranches.mockResolvedValue(0);
       repo.countWorkPosts.mockResolvedValue(0);
@@ -244,7 +252,7 @@ describe('SubscriptionLimitsService', () => {
 
       await service.getUsage(tenantId);
 
-      expect(repo.findByTenantId).toHaveBeenCalledTimes(1);
+      expect(repo.findByTenantIdWithAddons).toHaveBeenCalledTimes(1);
       expect(repo.countUsers).toHaveBeenCalledTimes(1);
       expect(repo.countBranches).toHaveBeenCalledTimes(1);
       expect(repo.countWorkPosts).toHaveBeenCalledTimes(1);

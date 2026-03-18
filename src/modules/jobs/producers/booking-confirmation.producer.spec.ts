@@ -30,7 +30,7 @@ describe('BookingConfirmationProducer', () => {
       expect(queue.add).toHaveBeenCalledWith(
         'confirmation-timeout',
         { orderId: 'order-1', tenantId: 'tenant-1' },
-        expect.objectContaining({ delay: 30 * 60000, attempts: 1 }),
+        expect.objectContaining({ delay: 30 * 60000, attempts: 3 }),
       );
     });
 

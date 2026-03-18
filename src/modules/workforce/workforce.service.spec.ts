@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { EmployeeProfileService } from './employee-profile.service';
 import { WorkforceRepository } from './workforce.repository';
+import { PrismaService } from '../../prisma/prisma.service';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -33,6 +34,10 @@ const mockProfile = {
 describe('EmployeeProfileService', () => {
   let service: EmployeeProfileService;
   let repo: Record<string, jest.Mock>;
+  let prismaMock: {
+    user: { findFirst: jest.Mock };
+    branch: { findFirst: jest.Mock };
+  };
 
   beforeEach(async () => {
     repo = {
@@ -46,10 +51,20 @@ describe('EmployeeProfileService', () => {
       deleteProfile: jest.fn().mockResolvedValue(mockProfile),
     };
 
+    prismaMock = {
+      user: {
+        findFirst: jest.fn().mockResolvedValue({ id: userId, tenantId }),
+      },
+      branch: {
+        findFirst: jest.fn().mockResolvedValue({ id: branchId, tenantId }),
+      },
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EmployeeProfileService,
         { provide: WorkforceRepository, useValue: repo },
+        { provide: PrismaService, useValue: prismaMock },
       ],
     }).compile();
 

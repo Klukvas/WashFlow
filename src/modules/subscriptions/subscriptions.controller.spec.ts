@@ -46,14 +46,24 @@ const mockSubscription = {
 describe('SubscriptionUsageController', () => {
   let controller: SubscriptionUsageController;
   let limitsService: { getUsage: jest.Mock };
+  let subscriptionsService: Record<string, jest.Mock>;
 
   beforeEach(async () => {
     limitsService = { getUsage: jest.fn().mockResolvedValue(mockUsage) };
+    subscriptionsService = {
+      getPlanCatalog: jest.fn(),
+      createCheckout: jest.fn(),
+      changePlan: jest.fn(),
+      manageAddon: jest.fn(),
+      previewPlanChange: jest.fn(),
+      cancelSubscription: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [SubscriptionUsageController],
       providers: [
         { provide: SubscriptionLimitsService, useValue: limitsService },
+        { provide: SubscriptionsService, useValue: subscriptionsService },
       ],
     }).compile();
 
@@ -83,6 +93,224 @@ describe('SubscriptionUsageController', () => {
       limitsService.getUsage.mockRejectedValue(new Error('DB error'));
 
       await expect(controller.getUsage(TENANT_ID)).rejects.toThrow('DB error');
+    });
+  });
+
+  describe('getPlanCatalog', () => {
+    it('calls subscriptionsService.getPlanCatalog', () => {
+      const catalog = { plans: [], addons: [] };
+      subscriptionsService.getPlanCatalog.mockReturnValue(catalog);
+
+      controller.getPlanCatalog();
+
+      expect(subscriptionsService.getPlanCatalog).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns the result from service', () => {
+      const catalog = { plans: [{ tier: 'STARTER' }], addons: [] };
+      subscriptionsService.getPlanCatalog.mockReturnValue(catalog);
+
+      const result = controller.getPlanCatalog();
+
+      expect(result).toEqual(catalog);
+    });
+
+    it('propagates errors from service', () => {
+      subscriptionsService.getPlanCatalog.mockImplementation(() => {
+        throw new Error('catalog error');
+      });
+
+      expect(() => controller.getPlanCatalog()).toThrow('catalog error');
+    });
+  });
+
+  describe('createCheckout', () => {
+    const dto = {
+      planTier: 'STARTER' as const,
+      billingInterval: 'MONTHLY' as const,
+    };
+
+    it('calls service.createCheckout with tenantId and dto', async () => {
+      subscriptionsService.createCheckout.mockResolvedValue({
+        transactionId: 'txn-1',
+        clientToken: 'tok-1',
+      });
+
+      await controller.createCheckout(TENANT_ID, dto);
+
+      expect(subscriptionsService.createCheckout).toHaveBeenCalledWith(
+        TENANT_ID,
+        dto,
+      );
+    });
+
+    it('returns the result from service', async () => {
+      const expected = { transactionId: 'txn-1', clientToken: 'tok-1' };
+      subscriptionsService.createCheckout.mockResolvedValue(expected);
+
+      const result = await controller.createCheckout(TENANT_ID, dto);
+
+      expect(result).toEqual(expected);
+    });
+
+    it('propagates errors from service', async () => {
+      subscriptionsService.createCheckout.mockRejectedValue(
+        new Error('checkout error'),
+      );
+
+      await expect(controller.createCheckout(TENANT_ID, dto)).rejects.toThrow(
+        'checkout error',
+      );
+    });
+  });
+
+  describe('changePlan', () => {
+    const dto = {
+      planTier: 'BUSINESS' as const,
+      billingInterval: 'YEARLY' as const,
+    };
+
+    it('calls service.changePlan with tenantId and dto', async () => {
+      subscriptionsService.changePlan.mockResolvedValue({
+        message: 'Plan change initiated.',
+      });
+
+      await controller.changePlan(TENANT_ID, dto);
+
+      expect(subscriptionsService.changePlan).toHaveBeenCalledWith(
+        TENANT_ID,
+        dto,
+      );
+    });
+
+    it('returns the result from service', async () => {
+      const expected = { message: 'Plan change initiated.' };
+      subscriptionsService.changePlan.mockResolvedValue(expected);
+
+      const result = await controller.changePlan(TENANT_ID, dto);
+
+      expect(result).toEqual(expected);
+    });
+
+    it('propagates errors from service', async () => {
+      subscriptionsService.changePlan.mockRejectedValue(
+        new Error('change error'),
+      );
+
+      await expect(controller.changePlan(TENANT_ID, dto)).rejects.toThrow(
+        'change error',
+      );
+    });
+  });
+
+  describe('manageAddon', () => {
+    const dto = { resource: 'branches' as const, quantity: 2 };
+
+    it('calls service.manageAddon with tenantId and dto', async () => {
+      subscriptionsService.manageAddon.mockResolvedValue({ id: 'sub-1' });
+
+      await controller.manageAddon(TENANT_ID, dto);
+
+      expect(subscriptionsService.manageAddon).toHaveBeenCalledWith(
+        TENANT_ID,
+        dto,
+      );
+    });
+
+    it('returns the result from service', async () => {
+      const expected = {
+        id: 'sub-1',
+        addons: [{ resource: 'branches', quantity: 2 }],
+      };
+      subscriptionsService.manageAddon.mockResolvedValue(expected);
+
+      const result = await controller.manageAddon(TENANT_ID, dto);
+
+      expect(result).toEqual(expected);
+    });
+
+    it('propagates errors from service', async () => {
+      subscriptionsService.manageAddon.mockRejectedValue(
+        new Error('addon error'),
+      );
+
+      await expect(controller.manageAddon(TENANT_ID, dto)).rejects.toThrow(
+        'addon error',
+      );
+    });
+  });
+
+  describe('previewPlanChange', () => {
+    const dto = {
+      planTier: 'STARTER' as const,
+      billingInterval: 'MONTHLY' as const,
+    };
+
+    it('calls service.previewPlanChange with tenantId and dto', async () => {
+      subscriptionsService.previewPlanChange.mockResolvedValue({
+        amount: '2900',
+        currency: 'USD',
+        interval: 'MONTHLY',
+      });
+
+      await controller.previewPlanChange(TENANT_ID, dto);
+
+      expect(subscriptionsService.previewPlanChange).toHaveBeenCalledWith(
+        TENANT_ID,
+        dto,
+      );
+    });
+
+    it('returns the result from service', async () => {
+      const expected = { amount: '2900', currency: 'USD', interval: 'MONTHLY' };
+      subscriptionsService.previewPlanChange.mockResolvedValue(expected);
+
+      const result = await controller.previewPlanChange(TENANT_ID, dto);
+
+      expect(result).toEqual(expected);
+    });
+
+    it('propagates errors from service', async () => {
+      subscriptionsService.previewPlanChange.mockRejectedValue(
+        new Error('preview error'),
+      );
+
+      await expect(
+        controller.previewPlanChange(TENANT_ID, dto),
+      ).rejects.toThrow('preview error');
+    });
+  });
+
+  describe('cancelSubscription', () => {
+    it('calls service.cancelSubscription with tenantId', async () => {
+      subscriptionsService.cancelSubscription.mockResolvedValue({
+        message: 'Cancellation requested.',
+      });
+
+      await controller.cancelSubscription(TENANT_ID);
+
+      expect(subscriptionsService.cancelSubscription).toHaveBeenCalledWith(
+        TENANT_ID,
+      );
+    });
+
+    it('returns the result from service', async () => {
+      const expected = { message: 'Cancellation requested.' };
+      subscriptionsService.cancelSubscription.mockResolvedValue(expected);
+
+      const result = await controller.cancelSubscription(TENANT_ID);
+
+      expect(result).toEqual(expected);
+    });
+
+    it('propagates errors from service', async () => {
+      subscriptionsService.cancelSubscription.mockRejectedValue(
+        new Error('cancel error'),
+      );
+
+      await expect(controller.cancelSubscription(TENANT_ID)).rejects.toThrow(
+        'cancel error',
+      );
     });
   });
 });

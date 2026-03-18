@@ -1,7 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AnalyticsController } from './analytics.controller';
 import { AnalyticsService } from './analytics.service';
+import { AnalyticsExportService } from './analytics-export.service';
 import { AnalyticsQueryDto } from './dto/analytics-query.dto';
+
+const mockExportService = {
+  exportOrdersCsv: jest.fn(),
+  exportClientsCsv: jest.fn(),
+};
 
 const mockAnalyticsService = {
   getDashboard: jest.fn(),
@@ -25,6 +31,7 @@ describe('AnalyticsController', () => {
       controllers: [AnalyticsController],
       providers: [
         { provide: AnalyticsService, useValue: mockAnalyticsService },
+        { provide: AnalyticsExportService, useValue: mockExportService },
       ],
     })
       .overrideGuard(require('../../common/guards/jwt-auth.guard').JwtAuthGuard)
@@ -141,18 +148,24 @@ describe('AnalyticsController', () => {
   });
 
   describe('getBranchPerformance', () => {
-    it('delegates to analyticsService.getBranchPerformance with tenantId and query only', async () => {
+    it('delegates to analyticsService.getBranchPerformance with tenantId, branchId and query', async () => {
       const tenantId = 'tenant-uuid';
+      const branchId = null;
       const query: AnalyticsQueryDto = {} as AnalyticsQueryDto;
       const expected = [{ branchId: 'branch-1', revenue: 2000 }];
 
       mockAnalyticsService.getBranchPerformance.mockResolvedValue(expected);
 
-      const result = await controller.getBranchPerformance(tenantId, query);
+      const result = await controller.getBranchPerformance(
+        tenantId,
+        branchId,
+        query,
+      );
 
       expect(mockAnalyticsService.getBranchPerformance).toHaveBeenCalledWith(
         tenantId,
         query,
+        branchId,
       );
       expect(result).toBe(expected);
     });
@@ -223,6 +236,66 @@ describe('AnalyticsController', () => {
         branchId,
       );
       expect(result).toBe(expected);
+    });
+  });
+
+  describe('exportOrders', () => {
+    it('calls exportService.exportOrdersCsv, sets Content-Type and Content-Disposition headers, and ends response with csv', async () => {
+      const tenantId = 'tenant-uuid';
+      const branchId = 'branch-uuid';
+      const query: AnalyticsQueryDto = {} as AnalyticsQueryDto;
+      const csv = 'id,date,total\n1,2026-01-01,100';
+
+      mockExportService.exportOrdersCsv.mockResolvedValue(csv);
+
+      const mockRes = {
+        set: jest.fn(),
+        end: jest.fn(),
+      };
+
+      await controller.exportOrders(tenantId, branchId, query, mockRes as any);
+
+      expect(mockExportService.exportOrdersCsv).toHaveBeenCalledWith(
+        tenantId,
+        query,
+        branchId,
+      );
+      expect(mockRes.set).toHaveBeenCalledWith('Content-Type', 'text/csv');
+      expect(mockRes.set).toHaveBeenCalledWith(
+        'Content-Disposition',
+        'attachment; filename="orders-export.csv"',
+      );
+      expect(mockRes.end).toHaveBeenCalledWith(csv);
+    });
+  });
+
+  describe('exportClients', () => {
+    it('calls exportService.exportClientsCsv, sets Content-Type and Content-Disposition headers, and ends response with csv', async () => {
+      const tenantId = 'tenant-uuid';
+      const branchId = 'branch-uuid';
+      const query: AnalyticsQueryDto = {} as AnalyticsQueryDto;
+      const csv = 'id,name,email\n1,John,john@example.com';
+
+      mockExportService.exportClientsCsv.mockResolvedValue(csv);
+
+      const mockRes = {
+        set: jest.fn(),
+        end: jest.fn(),
+      };
+
+      await controller.exportClients(tenantId, branchId, query, mockRes as any);
+
+      expect(mockExportService.exportClientsCsv).toHaveBeenCalledWith(
+        tenantId,
+        query,
+        branchId,
+      );
+      expect(mockRes.set).toHaveBeenCalledWith('Content-Type', 'text/csv');
+      expect(mockRes.set).toHaveBeenCalledWith(
+        'Content-Disposition',
+        'attachment; filename="clients-export.csv"',
+      );
+      expect(mockRes.end).toHaveBeenCalledWith(csv);
     });
   });
 });

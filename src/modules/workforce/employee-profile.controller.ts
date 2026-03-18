@@ -67,6 +67,6 @@ export class EmployeeProfileController {
     @CurrentTenant() tenantId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.profileService.deactivate(tenantId, id);
+    return this.profileService.delete(tenantId, id);
   }
 }

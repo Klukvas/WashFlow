@@ -16,8 +16,8 @@ const OTHER_TENANT = 'tenant-uuid-999';
 function buildPrismaMock() {
   let extensionConfig: any;
 
-  const prisma = {
-    $extends: jest.fn((config: any) => {
+  const prisma: { $extends: jest.Mock } = {
+    $extends: jest.fn((config: any): { $extends: jest.Mock } => {
       extensionConfig = config;
       return prisma; // chain
     }),

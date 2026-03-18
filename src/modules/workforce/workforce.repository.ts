@@ -23,10 +23,10 @@ export class WorkforceRepository {
 
   async findProfiles(tenantId: string, query: EmployeeProfileQueryDto) {
     const { skip, take, orderBy } = buildPaginationArgs(query);
-    const where: Record<string, unknown> = {};
-
-    if (query.branchId) where.branchId = query.branchId;
-    if (query.active !== undefined) where.active = query.active;
+    const where: Prisma.EmployeeProfileWhereInput = {
+      ...(query.branchId !== undefined && { branchId: query.branchId }),
+      ...(query.active !== undefined && { active: query.active }),
+    };
 
     const [items, total] = await Promise.all([
       this.db(tenantId).employeeProfile.findMany({

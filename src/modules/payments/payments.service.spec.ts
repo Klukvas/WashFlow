@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { PaymentsRepository } from './payments.repository';
+import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { EventDispatcherService } from '../../common/events/event-dispatcher.service';
 import { EventType } from '../../common/events/event-types';
 
@@ -28,12 +30,26 @@ const makePayment = (overrides: Record<string, unknown> = {}) => ({
 describe('PaymentsService', () => {
   let service: PaymentsService;
   let paymentsRepo: { findByOrderId: jest.Mock; create: jest.Mock };
+  let tenantPrisma: { forTenant: jest.Mock };
+  let orderFindFirst: jest.Mock;
+  let paymentFindMany: jest.Mock;
   let eventDispatcher: { dispatch: jest.Mock };
 
   beforeEach(async () => {
     paymentsRepo = {
       findByOrderId: jest.fn(),
       create: jest.fn(),
+    };
+
+    orderFindFirst = jest
+      .fn()
+      .mockResolvedValue({ id: ORDER_ID, status: 'PENDING', totalPrice: 1000 });
+    paymentFindMany = jest.fn().mockResolvedValue([]);
+    tenantPrisma = {
+      forTenant: jest.fn().mockReturnValue({
+        order: { findFirst: orderFindFirst },
+        payment: { findMany: paymentFindMany },
+      }),
     };
 
     eventDispatcher = {
@@ -44,6 +60,7 @@ describe('PaymentsService', () => {
       providers: [
         PaymentsService,
         { provide: PaymentsRepository, useValue: paymentsRepo },
+        { provide: TenantPrismaService, useValue: tenantPrisma },
         { provide: EventDispatcherService, useValue: eventDispatcher },
       ],
     }).compile();
@@ -202,6 +219,30 @@ describe('PaymentsService', () => {
       await expect(
         service.create(TENANT_ID, ORDER_ID, frozen as any),
       ).resolves.not.toThrow();
+    });
+
+    it('throws NotFoundException when order does not belong to tenant', async () => {
+      orderFindFirst.mockResolvedValue(null);
+
+      await expect(
+        service.create(TENANT_ID, ORDER_ID, makePaymentDto() as any),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(tenantPrisma.forTenant).toHaveBeenCalledWith(TENANT_ID);
+      expect(orderFindFirst).toHaveBeenCalledWith({
+        where: { id: ORDER_ID },
+      });
+    });
+
+    it('does not create payment when order not found', async () => {
+      orderFindFirst.mockResolvedValue(null);
+
+      await expect(
+        service.create(TENANT_ID, ORDER_ID, makePaymentDto() as any),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(paymentsRepo.create).not.toHaveBeenCalled();
+      expect(eventDispatcher.dispatch).not.toHaveBeenCalled();
     });
   });
 });

@@ -36,6 +36,13 @@ describe('Security (e2e)', () => {
   let orderBId: string;
   let clientBId: string;
 
+  // Tenant B entity IDs for cross-tenant isolation tests
+  let serviceBId: string;
+  let vehicleBId: string;
+  let workPostBId: string;
+  let userBId: string;
+  let roleBId: string;
+
   // Limited users on Tenant A
   let noPermsToken: string;
   let ordersOnlyToken: string;
@@ -52,6 +59,20 @@ describe('Security (e2e)', () => {
         request(server).patch(url).set('Authorization', `Bearer ${tkn}`),
       delete: (url: string) =>
         request(server).delete(url).set('Authorization', `Bearer ${tkn}`),
+    };
+  };
+
+  /** Helper: api() with custom headers */
+  const apiWithHeaders = (tkn: string, headers: Record<string, string>) => {
+    const server = app.getHttpServer() as App;
+    return {
+      get: (url: string) => {
+        const req = request(server)
+          .get(url)
+          .set('Authorization', `Bearer ${tkn}`);
+        for (const [k, v] of Object.entries(headers)) req.set(k, v);
+        return req;
+      },
     };
   };
 
@@ -186,8 +207,14 @@ describe('Security (e2e)', () => {
     });
     branchB = bB;
 
+    // Role for Tenant B (used in cross-tenant isolation tests)
+    const roleB = await prisma.role.create({
+      data: { tenantId: tenantB.id, name: 'Staff B' },
+    });
+    roleBId = roleB.id;
+
     const passwordHash = await argon2.hash('password123');
-    await prisma.user.create({
+    const adminB = await prisma.user.create({
       data: {
         tenantId: tenantB.id,
         email: 'admin@sec-b.com',
@@ -197,6 +224,7 @@ describe('Security (e2e)', () => {
         isSuperAdmin: true,
       },
     });
+    userBId = adminB.id;
 
     const tokensB = await loginAs(app, tenantB.id, 'admin@sec-b.com');
     tokenB = tokensB.accessToken;
@@ -209,6 +237,7 @@ describe('Security (e2e)', () => {
         price: 60,
       },
     });
+    serviceBId = serviceB.id;
 
     const clientB = await prisma.client.create({
       data: {
@@ -228,10 +257,12 @@ describe('Security (e2e)', () => {
         make: 'Honda',
       },
     });
+    vehicleBId = vehicleB.id;
 
     const wpB = await prisma.workPost.create({
       data: { tenantId: tenantB.id, branchId: branchB.id, name: 'WP B' },
     });
+    workPostBId = wpB.id;
 
     const startB = nextWorkday(12, 5);
     const endB = new Date(startB.getTime() + 30 * 60 * 1000);
@@ -306,6 +337,7 @@ describe('Security (e2e)', () => {
   // SECTION 1: Multi-Tenant Isolation
   // ====================================================================
   describe('Multi-Tenant Isolation', () => {
+    // --- Orders & Clients (existing) ---
     it('Tenant A lists orders — no Tenant B orders appear', async () => {
       const res = await api(tokenA).get('/api/v1/orders').expect(200);
       const ids: string[] = res.body.data.map((o: { id: string }) => o.id);
@@ -358,25 +390,144 @@ describe('Security (e2e)', () => {
       await api(tokenB).get(`/api/v1/clients/${clientAId}`).expect(404);
     });
 
-    it('Tenant B POST payment on Tenant A order → not 2xx', async () => {
-      const res = await api(tokenB)
+    // --- Cross-Tenant Payment (fixed vulnerability) ---
+    it('Tenant B POST payment on Tenant A order → 404', async () => {
+      await api(tokenB)
         .post(`/api/v1/orders/${orderA1Id}/payments`)
-        .send({ amount: 50, method: 'CASH' });
-      // Payment should not succeed cross-tenant: expect 404 or at minimum
-      // the payment should be associated with Tenant B's scope (not Tenant A).
-      // If it returns 201, verify the order still belongs to Tenant A (data leak).
-      if (res.status === 201) {
-        // Mark this as a known gap — payment endpoint doesn't verify order tenant
-        const payment = await prisma.payment.findFirst({
-          where: { orderId: orderA1Id },
-          orderBy: { createdAt: 'desc' },
-        });
-        // Clean up the leaked payment
-        if (payment) await prisma.payment.delete({ where: { id: payment.id } });
-        // TODO: Fix PaymentsService to verify order belongs to request tenant
-        console.warn('SECURITY GAP: Cross-tenant payment creation succeeded');
-      }
-      // Regardless of current behavior, test passes — gap documented
+        .send({ amount: 50, method: 'CASH' })
+        .expect(404);
+    });
+
+    // --- Services ---
+    it('Tenant A lists services — no Tenant B services appear', async () => {
+      const res = await api(tokenA).get('/api/v1/services').expect(200);
+      const ids: string[] = res.body.data.map((s: { id: string }) => s.id);
+      expect(ids).not.toContain(serviceBId);
+    });
+
+    it('Tenant A GET /services/:serviceBId → 404', async () => {
+      await api(tokenA).get(`/api/v1/services/${serviceBId}`).expect(404);
+    });
+
+    it('Tenant A PATCH /services/:serviceBId → 404', async () => {
+      await api(tokenA)
+        .patch(`/api/v1/services/${serviceBId}`)
+        .send({ name: 'Hacked' })
+        .expect(404);
+    });
+
+    it('Tenant A DELETE /services/:serviceBId → 404', async () => {
+      await api(tokenA).delete(`/api/v1/services/${serviceBId}`).expect(404);
+    });
+
+    // --- Vehicles ---
+    it('Tenant A lists vehicles — no Tenant B vehicles appear', async () => {
+      const res = await api(tokenA).get('/api/v1/vehicles').expect(200);
+      const ids: string[] = res.body.data.map((v: { id: string }) => v.id);
+      expect(ids).not.toContain(vehicleBId);
+    });
+
+    it('Tenant A GET /vehicles/:vehicleBId → 404', async () => {
+      await api(tokenA).get(`/api/v1/vehicles/${vehicleBId}`).expect(404);
+    });
+
+    it('Tenant A PATCH /vehicles/:vehicleBId → 404', async () => {
+      await api(tokenA)
+        .patch(`/api/v1/vehicles/${vehicleBId}`)
+        .send({ make: 'Hacked' })
+        .expect(404);
+    });
+
+    it('Tenant A DELETE /vehicles/:vehicleBId → 404', async () => {
+      await api(tokenA).delete(`/api/v1/vehicles/${vehicleBId}`).expect(404);
+    });
+
+    // --- Work Posts ---
+    it('Tenant A lists work-posts — no Tenant B work-posts appear', async () => {
+      const res = await api(tokenA).get('/api/v1/work-posts').expect(200);
+      const ids: string[] = res.body.data.map((w: { id: string }) => w.id);
+      expect(ids).not.toContain(workPostBId);
+    });
+
+    it('Tenant A GET /work-posts/:workPostBId → 404', async () => {
+      await api(tokenA).get(`/api/v1/work-posts/${workPostBId}`).expect(404);
+    });
+
+    it('Tenant A PATCH /work-posts/:workPostBId → 404', async () => {
+      await api(tokenA)
+        .patch(`/api/v1/work-posts/${workPostBId}`)
+        .send({ name: 'Hacked' })
+        .expect(404);
+    });
+
+    it('Tenant A DELETE /work-posts/:workPostBId → 404', async () => {
+      await api(tokenA).delete(`/api/v1/work-posts/${workPostBId}`).expect(404);
+    });
+
+    // --- Branches ---
+    it('Tenant A lists branches — no Tenant B branches appear', async () => {
+      const res = await api(tokenA).get('/api/v1/branches').expect(200);
+      const ids: string[] = res.body.data.map((b: { id: string }) => b.id);
+      expect(ids).not.toContain(branchB.id);
+    });
+
+    it('Tenant A GET /branches/:branchBId → 404', async () => {
+      await api(tokenA).get(`/api/v1/branches/${branchB.id}`).expect(404);
+    });
+
+    it('Tenant A PATCH /branches/:branchBId → 404', async () => {
+      await api(tokenA)
+        .patch(`/api/v1/branches/${branchB.id}`)
+        .send({ name: 'Hacked' })
+        .expect(404);
+    });
+
+    it('Tenant A DELETE /branches/:branchBId → 404', async () => {
+      await api(tokenA).delete(`/api/v1/branches/${branchB.id}`).expect(404);
+    });
+
+    // --- Roles ---
+    it('Tenant A lists roles — no Tenant B roles appear', async () => {
+      const res = await api(tokenA).get('/api/v1/roles').expect(200);
+      const ids: string[] = res.body.data.map((r: { id: string }) => r.id);
+      expect(ids).not.toContain(roleBId);
+    });
+
+    it('Tenant A GET /roles/:roleBId → 404', async () => {
+      await api(tokenA).get(`/api/v1/roles/${roleBId}`).expect(404);
+    });
+
+    it('Tenant A PATCH /roles/:roleBId → 404', async () => {
+      await api(tokenA)
+        .patch(`/api/v1/roles/${roleBId}`)
+        .send({ name: 'Hacked' })
+        .expect(404);
+    });
+
+    it('Tenant A DELETE /roles/:roleBId → 404', async () => {
+      await api(tokenA).delete(`/api/v1/roles/${roleBId}`).expect(404);
+    });
+
+    // --- Users ---
+    it('Tenant A lists users — no Tenant B users appear', async () => {
+      const res = await api(tokenA).get('/api/v1/users').expect(200);
+      const ids: string[] = res.body.data.map((u: { id: string }) => u.id);
+      expect(ids).not.toContain(userBId);
+    });
+
+    it('Tenant A GET /users/:userBId → 404', async () => {
+      await api(tokenA).get(`/api/v1/users/${userBId}`).expect(404);
+    });
+
+    it('Tenant A PATCH /users/:userBId → 404', async () => {
+      await api(tokenA)
+        .patch(`/api/v1/users/${userBId}`)
+        .send({ firstName: 'Hacked' })
+        .expect(404);
+    });
+
+    it('Tenant A DELETE /users/:userBId → 404', async () => {
+      await api(tokenA).delete(`/api/v1/users/${userBId}`).expect(404);
     });
   });
 
@@ -408,6 +559,37 @@ describe('Security (e2e)', () => {
       it('GET /audit-logs → 403', async () => {
         await api(noPermsToken).get('/api/v1/audit-logs').expect(403);
       });
+
+      // --- Additional modules ---
+      it('GET /roles → 403', async () => {
+        await api(noPermsToken).get('/api/v1/roles').expect(403);
+      });
+
+      it('GET /users → 403', async () => {
+        await api(noPermsToken).get('/api/v1/users').expect(403);
+      });
+
+      it('GET /branches → 403', async () => {
+        await api(noPermsToken).get('/api/v1/branches').expect(403);
+      });
+
+      it('GET /vehicles → 403', async () => {
+        await api(noPermsToken).get('/api/v1/vehicles').expect(403);
+      });
+
+      it('GET /work-posts → 403', async () => {
+        await api(noPermsToken).get('/api/v1/work-posts').expect(403);
+      });
+
+      it('GET /workforce/profiles → 403', async () => {
+        await api(noPermsToken).get('/api/v1/workforce/profiles').expect(403);
+      });
+
+      it('GET /orders/:id/payments → 403', async () => {
+        await api(noPermsToken)
+          .get(`/api/v1/orders/${orderA1Id}/payments`)
+          .expect(403);
+      });
     });
 
     describe('Orders-only user', () => {
@@ -432,6 +614,39 @@ describe('Security (e2e)', () => {
       it('DELETE /orders/:id → 403 (no orders.delete)', async () => {
         await api(ordersOnlyToken)
           .delete(`/api/v1/orders/${orderA1Id}`)
+          .expect(403);
+      });
+
+      // --- Additional modules ---
+      it('GET /roles → 403 (no roles.read)', async () => {
+        await api(ordersOnlyToken).get('/api/v1/roles').expect(403);
+      });
+
+      it('GET /users → 403 (no users.read)', async () => {
+        await api(ordersOnlyToken).get('/api/v1/users').expect(403);
+      });
+
+      it('GET /branches → 403 (no branches.read)', async () => {
+        await api(ordersOnlyToken).get('/api/v1/branches').expect(403);
+      });
+
+      it('GET /vehicles → 403 (no vehicles.read)', async () => {
+        await api(ordersOnlyToken).get('/api/v1/vehicles').expect(403);
+      });
+
+      it('GET /work-posts → 403 (no work-posts.read)', async () => {
+        await api(ordersOnlyToken).get('/api/v1/work-posts').expect(403);
+      });
+
+      it('GET /workforce/profiles → 403 (no workforce.read)', async () => {
+        await api(ordersOnlyToken)
+          .get('/api/v1/workforce/profiles')
+          .expect(403);
+      });
+
+      it('GET /orders/:id/payments → 403 (no payments.read)', async () => {
+        await api(ordersOnlyToken)
+          .get(`/api/v1/orders/${orderA1Id}/payments`)
           .expect(403);
       });
     });
@@ -509,6 +724,217 @@ describe('Security (e2e)', () => {
       );
       expect(branchIds).toContain(branchA1.id);
       expect(branchIds).toContain(branchA2.id);
+    });
+  });
+
+  // ====================================================================
+  // SECTION 4: SuperAdmin x-tenant-id Override
+  // ====================================================================
+  describe('SuperAdmin x-tenant-id Override', () => {
+    it('SuperAdmin with x-tenant-id header can access Tenant B orders', async () => {
+      const res = await apiWithHeaders(tokenA, {
+        'x-tenant-id': tenantB.id,
+      }).get('/api/v1/orders');
+      expect(res.status).toBe(200);
+      const ids: string[] = res.body.data.map((o: { id: string }) => o.id);
+      expect(ids).toContain(orderBId);
+    });
+
+    it('SuperAdmin with invalid x-tenant-id → 400', async () => {
+      await apiWithHeaders(tokenA, {
+        'x-tenant-id': 'not-a-uuid',
+      })
+        .get('/api/v1/orders')
+        .expect(400);
+    });
+
+    it('Non-superAdmin with x-tenant-id header cannot override tenant context', async () => {
+      // ordersOnlyToken is a regular user — should ignore x-tenant-id
+      const res = await apiWithHeaders(ordersOnlyToken, {
+        'x-tenant-id': tenantB.id,
+      }).get('/api/v1/orders');
+
+      // Should still see Tenant A orders (header ignored for non-superAdmin)
+      expect(res.status).toBe(200);
+      const ids: string[] = res.body.data.map((o: { id: string }) => o.id);
+      expect(ids).not.toContain(orderBId);
+    });
+
+    it('SuperAdmin with x-tenant-id for non-existent tenant → 400', async () => {
+      await apiWithHeaders(tokenA, {
+        'x-tenant-id': '00000000-0000-0000-0000-000000000099',
+      })
+        .get('/api/v1/orders')
+        .expect(400);
+    });
+  });
+
+  // ====================================================================
+  // SECTION 5: Role Lifecycle & Permission Propagation
+  // ====================================================================
+  describe('Role Lifecycle & Permission Propagation', () => {
+    it('user with soft-deleted role gets 403 on protected endpoints', async () => {
+      // Create a user with orders.read, then soft-delete their role
+      const { userId, roleId } = await createLimitedUser(prisma, {
+        tenantId: tenantA.id,
+        email: 'deleted-role@sec-a.com',
+        permissionSlugs: ['orders.read'],
+      });
+
+      // Login before deleting role
+      const tokens = await loginAs(app, tenantA.id, 'deleted-role@sec-a.com');
+
+      // Soft-delete the role
+      await prisma.role.update({
+        where: { id: roleId },
+        data: { deletedAt: new Date() },
+      });
+
+      // Re-login — user should get empty permissions now
+      const newTokens = await loginAs(
+        app,
+        tenantA.id,
+        'deleted-role@sec-a.com',
+      );
+
+      // With no permissions, accessing orders should be 403
+      await api(newTokens.accessToken).get('/api/v1/orders').expect(403);
+
+      // Cleanup: restore the role and delete test user
+      await prisma.role.update({
+        where: { id: roleId },
+        data: { deletedAt: null },
+      });
+    });
+
+    it('permission changes are reflected after re-login', async () => {
+      // Create user with orders.read
+      const { userId, roleId } = await createLimitedUser(prisma, {
+        tenantId: tenantA.id,
+        email: 'perm-change@sec-a.com',
+        permissionSlugs: ['orders.read'],
+      });
+
+      const tokens1 = await loginAs(app, tenantA.id, 'perm-change@sec-a.com');
+
+      // Can read orders
+      await api(tokens1.accessToken).get('/api/v1/orders').expect(200);
+
+      // Cannot read clients
+      await api(tokens1.accessToken).get('/api/v1/clients').expect(403);
+
+      // Add clients.read permission to the role
+      const clientsReadPerm = await prisma.permission.findFirst({
+        where: { module: 'clients', action: 'read' },
+      });
+      await prisma.rolePermission.create({
+        data: { roleId, permissionId: clientsReadPerm!.id },
+      });
+
+      // Re-login to get updated permissions
+      const tokens2 = await loginAs(app, tenantA.id, 'perm-change@sec-a.com');
+
+      // Now can read clients
+      await api(tokens2.accessToken).get('/api/v1/clients').expect(200);
+    });
+
+    it('removing a permission is reflected after re-login', async () => {
+      const { userId, roleId } = await createLimitedUser(prisma, {
+        tenantId: tenantA.id,
+        email: 'perm-revoke@sec-a.com',
+        permissionSlugs: ['orders.read', 'clients.read'],
+      });
+
+      const tokens1 = await loginAs(app, tenantA.id, 'perm-revoke@sec-a.com');
+      await api(tokens1.accessToken).get('/api/v1/clients').expect(200);
+
+      // Remove clients.read from the role
+      const clientsReadPerm = await prisma.permission.findFirst({
+        where: { module: 'clients', action: 'read' },
+      });
+      await prisma.rolePermission.deleteMany({
+        where: { roleId, permissionId: clientsReadPerm!.id },
+      });
+
+      // Re-login
+      const tokens2 = await loginAs(app, tenantA.id, 'perm-revoke@sec-a.com');
+
+      // Clients should now be 403
+      await api(tokens2.accessToken).get('/api/v1/clients').expect(403);
+
+      // Orders still works
+      await api(tokens2.accessToken).get('/api/v1/orders').expect(200);
+    });
+  });
+
+  // ====================================================================
+  // SECTION 6: Soft-Deleted & Inactive User Access
+  // ====================================================================
+  describe('Soft-Deleted & Inactive User Access', () => {
+    it('soft-deleted user cannot login', async () => {
+      const { userId } = await createLimitedUser(prisma, {
+        tenantId: tenantA.id,
+        email: 'soft-deleted@sec-a.com',
+        permissionSlugs: ['orders.read'],
+      });
+
+      // Soft-delete the user
+      await prisma.user.update({
+        where: { id: userId },
+        data: { deletedAt: new Date() },
+      });
+
+      const server = app.getHttpServer() as App;
+      await request(server)
+        .post('/api/v1/auth/login')
+        .send({ email: 'soft-deleted@sec-a.com', password: 'password123' })
+        .expect(401);
+    });
+
+    it('deactivated user cannot login', async () => {
+      const { userId } = await createLimitedUser(prisma, {
+        tenantId: tenantA.id,
+        email: 'inactive@sec-a.com',
+        permissionSlugs: ['orders.read'],
+      });
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: { isActive: false },
+      });
+
+      const server = app.getHttpServer() as App;
+      await request(server)
+        .post('/api/v1/auth/login')
+        .send({ email: 'inactive@sec-a.com', password: 'password123' })
+        .expect(401);
+    });
+
+    it('user deactivated after login cannot refresh token', async () => {
+      const { userId } = await createLimitedUser(prisma, {
+        tenantId: tenantA.id,
+        email: 'deactivated-refresh@sec-a.com',
+        permissionSlugs: ['orders.read'],
+      });
+
+      const tokens = await loginAs(
+        app,
+        tenantA.id,
+        'deactivated-refresh@sec-a.com',
+      );
+
+      // Deactivate the user after login
+      await prisma.user.update({
+        where: { id: userId },
+        data: { isActive: false },
+      });
+
+      // Try to refresh — should fail
+      const server = app.getHttpServer() as App;
+      await request(server)
+        .post('/api/v1/auth/refresh')
+        .set('Cookie', [`refreshToken=${tokens.refreshToken}`])
+        .expect(401);
     });
   });
 });

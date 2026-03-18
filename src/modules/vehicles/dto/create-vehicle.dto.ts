@@ -6,6 +6,7 @@ import {
   IsInt,
   Min,
   Max,
+  MaxLength,
 } from 'class-validator';
 
 export class CreateVehicleDto {
@@ -14,10 +15,12 @@ export class CreateVehicleDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(20)
   licensePlate?: string;
 
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
   make: string;
 
   @IsOptional()

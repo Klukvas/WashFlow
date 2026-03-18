@@ -8,6 +8,7 @@ import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TRIAL_DEFAULTS } from '../subscriptions/trial.constants';
+import { PlanTier, SubscriptionStatus } from '../subscriptions/plan.constants';
 
 @Injectable()
 export class TenantsService {
@@ -49,6 +50,8 @@ export class TenantsService {
       await tx.subscription.create({
         data: {
           tenantId: tenant.id,
+          planTier: PlanTier.TRIAL,
+          status: SubscriptionStatus.TRIALING,
           maxUsers: TRIAL_DEFAULTS.maxUsers,
           maxBranches: TRIAL_DEFAULTS.maxBranches,
           maxWorkPosts: TRIAL_DEFAULTS.maxWorkPosts,

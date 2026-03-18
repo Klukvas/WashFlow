@@ -34,6 +34,34 @@ export default () => {
       accessExpiration: env.JWT_ACCESS_EXPIRATION,
       refreshExpiration: env.JWT_REFRESH_EXPIRATION,
     },
+
+    paddle: {
+      apiKey: env.PADDLE_API_KEY ?? '',
+      clientToken: env.PADDLE_CLIENT_TOKEN ?? '',
+      webhookSecret: env.PADDLE_WEBHOOK_SECRET ?? '',
+      sandbox: env.PADDLE_SANDBOX ?? true,
+      priceIds: env.PADDLE_PRICE_IDS ?? {},
+      addonPriceIds: env.PADDLE_ADDON_PRICE_IDS ?? {},
+    },
+
+    resend: {
+      apiKey: env.RESEND_API_KEY ?? '',
+      from: env.EMAIL_FROM ?? 'WashFlow <noreply@washflow.app>',
+    },
+
+    frontendUrl: env.FRONTEND_URL ?? 'http://localhost:5173',
+
+    metricsToken: env.METRICS_TOKEN ?? '',
+
+    grafanaLoki: {
+      host: env.GRAFANA_LOKI_HOST ?? '',
+      username: env.GRAFANA_LOKI_USERNAME ?? '',
+      password: env.GRAFANA_LOKI_PASSWORD ?? '',
+    },
+
+    cleanup: {
+      retentionDays: parseInt(process.env.CLEANUP_RETENTION_DAYS ?? '30', 10),
+    },
   } as const;
 };
 

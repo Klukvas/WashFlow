@@ -89,6 +89,21 @@ pnpm build && pnpm start:prod   # production build
 | `PORT` | No | `3000` | Server port |
 | `NODE_ENV` | No | `development` | Environment |
 | `CORS_ORIGINS` | No | `*` | Comma-separated origins |
+| `PADDLE_API_KEY` | No | — | Paddle API key (required for billing) |
+| `PADDLE_CLIENT_TOKEN` | No | — | Paddle client-side token (for checkout) |
+| `PADDLE_WEBHOOK_SECRET` | No | — | Paddle webhook HMAC secret |
+| `PADDLE_SANDBOX` | No | `true` | Use Paddle sandbox environment |
+| `PADDLE_PRICE_IDS` | No | — | JSON map of price IDs (e.g. `{"starter_monthly":"pri_abc"}`) — overrides defaults |
+| `RESEND_API_KEY` | No | — | Resend API key (required for transactional emails) |
+| `EMAIL_FROM` | No | `WashFlow <noreply@washflow.app>` | Sender address for transactional emails |
+| `FRONTEND_URL` | No | `http://localhost:5173` | Frontend base URL (used in password reset links) |
+| `SENTRY_DSN` | No | — | Sentry DSN for error tracking |
+| `VITE_SENTRY_DSN` | No | — | Sentry DSN for frontend |
+| `METRICS_TOKEN` | No | — | Bearer token protecting /metrics endpoint (leave empty to allow unauthenticated access) |
+| `SENTRY_TRACES_SAMPLE_RATE` | No | — | Sentry performance trace sampling rate (0–1) |
+| `GRAFANA_LOKI_HOST` | No | — | Grafana Cloud Loki push URL (e.g. `https://logs-prod-xxx.grafana.net`) |
+| `GRAFANA_LOKI_USERNAME` | No | — | Grafana Cloud Loki user ID |
+| `GRAFANA_LOKI_PASSWORD` | No | — | Grafana Cloud API key for Loki |
 
 Validated at startup with Zod — fails fast with clear errors.
 
@@ -109,6 +124,9 @@ Validated at startup with Zod — fails fast with clear errors.
 | Validation | class-validator + class-transformer |
 | Password Hashing | Argon2 |
 | Rate Limiting | @nestjs/throttler |
+| Logging | nestjs-pino + pino-http + pino-loki (Grafana Cloud) |
+| Monitoring | prom-client (Prometheus) |
+| Email | Resend SDK |
 
 ### Frontend
 
@@ -147,6 +165,8 @@ pnpm | Docker + Docker Compose | TypeScript 5.x (strict)
 - **Permissions**: `@Permissions('orders.create')` decorator + `PermissionsGuard` (47 permissions across 14 modules)
 - **Super-admin**: `isSuperAdmin: true` bypasses all permission checks
 - **Rate limiting**: ThrottlerGuard — short (10 req/1s) + long (100 req/60s)
+- **Account lockout**: 5 failed login attempts → account locked for 30 minutes; auto-reset on successful login; dispatches `AuthAccountLockedEvent`
+- **Password reset**: forgot-password → email with token link (1h expiry) → reset-password (invalidates all sessions via tokenVersion++); silent response for unknown emails (no info leak)
 
 ### Scheduling Engine
 
@@ -167,16 +187,23 @@ Tracks operational employees independently of RBAC (Users/Roles remain unchanged
 - **Auto-assignment**: when creating an order, the system selects the first available employee (working hours cover the order window, no conflicting active orders) and stores `assignedEmployeeId` on the order
 - **Zero-profile fallback**: branches without profiles (or profiles without configured hours) behave exactly as before — no capacity reduction
 
-### Subscription & Limits
+### Subscription & Billing (Paddle)
 
-- **Subscription model**: 1:1 with Tenant — `maxUsers`, `maxBranches`, `maxWorkPosts`, `maxServices`
-- **Enforcement**: `SubscriptionLimitsService.checkLimit()` called before create and restore in Users, Branches, WorkPosts, and Services
-- **Trial support**: `isTrial` flag + `trialEndsAt` timestamp; expired trials block all resource creation
-- **Auto-provisioning**: new tenants automatically get a 30-day trial with Business-tier limits (15 users, 3 branches, 10 work posts, 20 services)
+- **Plan tiers**: Trial (30 days, free) → Starter ($29/mo) → Business ($79/mo) → Enterprise ($199/mo); annual billing = 2 months free
+- **Subscription model**: 1:1 with Tenant — `planTier`, `status`, `billingInterval`, nullable `maxUsers/maxBranches/maxWorkPosts/maxServices` (null = unlimited)
+- **Add-ons**: per-unit resource boosts (branches +1/$15, work posts +5/$10, users +5/$5, services +10/$5) available on Starter/Business
+- **Effective limits**: `baseLimits[resource] + addon.quantity * unitSize`; recalculated on every plan/addon change
+- **Enforcement**: `SubscriptionLimitsService.checkLimit()` called before create and restore; checks trial expiry, subscription status (CANCELLED past effective date / PAUSED → deny), and resource limits (null = unlimited → always allowed)
+- **Status state machine**: TRIALING → ACTIVE → PAST_DUE / PAUSED / CANCELLED; CANCELLED → ACTIVE (resubscribe)
+- **Paddle integration**: checkout via Paddle.js overlay, webhooks for subscription lifecycle events (created/updated/canceled/past_due/paused/resumed, transaction.completed)
+- **Webhook security**: HMAC-SHA256 signature verification (`Paddle-Signature` header), Redis-based idempotent event processing (SETNX + 24h TTL), raw body access via NestJS `rawBody` option
+- **Price ID mapping**: configurable via `PADDLE_PRICE_IDS` env (JSON map), falls back to convention `pri_{tier}_{interval}`; addon price IDs via `PADDLE_ADDON_PRICE_IDS` env, falls back to `pri_addon_{resource}`
+- **Addon billing**: `manageAddon()` syncs changes to Paddle as multi-item subscription updates (plan + addons); `changePlan()` and `previewPlanChange()` include existing addons in Paddle items; webhook handlers (`subscription.created`/`subscription.updated`) sync addon items back from Paddle to DB
+- **Domain events**: `SubscriptionActivatedEvent`, `SubscriptionChangedEvent`, `SubscriptionCancelledEvent`
+- **Downgrade validation**: before changing to a lower plan, checks current usage fits new effective limits (including current addons); returns 409 Conflict with details if not
+- **Trial auto-provisioning**: new tenants get 30-day trial (15 users, 3 branches, 10 work posts, 20 services)
 - **Backward compatible**: no Subscription row → no limits enforced
-- **Usage endpoint**: `GET /subscription/usage` (requires `tenants.read`) returns current counts + max limits for all resources, plus trial info (`isTrial`, `trialEndsAt`)
 - **Admin management**: super-admin can create/update/delete subscriptions via `/tenants/:id/subscription`
-- **Paddle fields**: `paddleSubscriptionId`, `paddleCustomerId`, `paddleStatus`, `currentPeriodEnd` reserved for future payment integration
 
 ### Order Lifecycle
 
@@ -193,13 +220,20 @@ Creation flow: validate services → calculate price/duration → enforce workin
 
 ### Domain Events & Side Effects
 
-Built on NestJS `EventEmitter2`. Events: `ORDER_CREATED`, `ORDER_STATUS_CHANGED`, `ORDER_CANCELLED`, `CLIENT_DELETED`, `PAYMENT_RECEIVED`, `BOOKING_CONFIRMED`.
+Built on NestJS `EventEmitter2`. Events: `ORDER_CREATED`, `ORDER_UPDATED`, `ORDER_STATUS_CHANGED`, `ORDER_CANCELLED`, `CLIENT_DELETED`, `PAYMENT_RECEIVED`, `BOOKING_CONFIRMED`, `CLIENT_MERGED`, `AUTH_LOGIN`, `AUTH_LOGIN_FAILED`, `AUTH_PASSWORD_CHANGED`, `AUTH_LOGOUT`, `SUPERADMIN_TENANT_ACCESS`, `SUBSCRIPTION_ACTIVATED`, `SUBSCRIPTION_CHANGED`, `SUBSCRIPTION_CANCELLED`, `AUTH_ACCOUNT_LOCKED`, `AUTH_PASSWORD_RESET_REQUESTED`.
 
 Subscribers (async): audit logging, WebSocket broadcasting, BullMQ job queueing.
 
 ### Realtime
 
 Socket.IO on `/events` namespace. JWT auth on handshake. Auto-join `tenant:{id}` rooms. Domain events bridged to WS broadcasts.
+
+### Email Service (Resend)
+
+- `@Global()` `EmailModule` wrapping Resend SDK — no-op when `RESEND_API_KEY` is empty (dev/test safe)
+- Templates: password reset, account locked, order confirmation, status update, booking reminder
+- Best-effort delivery: errors are logged, never thrown (non-blocking)
+- `NotificationProcessor` (BullMQ) sends real emails for order-confirmation, status-update, and booking-reminder jobs
 
 ### Background Jobs
 
@@ -214,12 +248,12 @@ Socket.IO on `/events` namespace. JWT auth on handshake. Auto-join `tenant:{id}`
 
 ### Soft Delete
 
-7 models: User, Client, Order, Vehicle, Service, Branch, Role.
+9 models: User, Client, Order, Vehicle, Service, Branch, Role, WorkPost, EmployeeProfile.
 
 - Auto-filtered via `TenantPrismaService.$extends` on all read operations
 - `_includeDeleted: true` bypass flag | `?includeDeleted=true` query param
 - Partial unique indexes: `WHERE deleted_at IS NULL` for re-creating after delete
-- `PATCH /:id/restore` endpoints on all 7 models
+- `PATCH /:id/restore` endpoints on all 9 models
 - Daily cron at 2 AM hard-deletes records older than 30 days
 
 ### Public Booking
@@ -251,8 +285,8 @@ Rate-limited `@Public()` endpoints for customer-facing booking. Resolves tenant 
 | Route | Page | Description |
 |-------|------|-------------|
 | `/dashboard` | Dashboard | KPI cards, live ops panel, revenue chart, branch/employee performance, alerts, online booking stats |
-| `/orders` | Orders | Table/card toggle, status/branch filters, search, pagination |
-| `/orders/create` | Create Order | 6-step wizard: client → vehicle → services → worker → time slot → review; slot resets on service/worker change; availability cache invalidated on mutations |
+| `/orders` | Orders | Two tabs: **Orders** (table/card toggle, status/branch filters, pagination) and **Schedule** (availability grid: rows=work posts, columns=30-min slots; click free slot → prefilled create wizard) |
+| `/orders/create` | Create Order | Flexible wizard with 3 start modes: **Client first** (client→vehicle→services→worker→slot→review), **Time first** (branch→slot→services→client→vehicle→worker→review), **Service first** (branch→services→slot→client→vehicle→worker→review). Supports URL prefill params (`branchId`, `workPostId`, `date`, `time`) from schedule tab. Step components extracted into `steps/` directory. |
 | `/orders/:id` | Order Detail | Status transitions, services, client/vehicle info, delete/restore |
 | `/clients` | Clients | Search (name/phone), create dialog, pagination |
 | `/clients/:id` | Client Detail | Inline edit, vehicles list, quick info sidebar, delete/restore |
@@ -267,7 +301,8 @@ Rate-limited `@Public()` endpoints for customer-facing booking. Resolves tenant 
 | `/analytics` | Analytics | Revenue + services charts, branch/date filters |
 | `/audit` | Audit Log | Filterable by action/entity/date, color-coded badges |
 | `/workforce` | Workforce | Employee profiles with working hours (Start/End Time); create, edit, activate/deactivate |
-| `/subscription` | Subscription | Resource usage cards (users, branches, work posts, services) with progress bars; trial banner with days remaining / expired state; admin-only (`tenants.read`); hidden from sidebar + route-guarded for non-admins |
+| `/subscription` | Subscription | Plan tier badge, status badge, resource usage cards with progress bars, trial banner, upgrade CTA, add-on manager (+/- controls), cancel button; admin-only (`tenants.read`) |
+| `/subscription/plans` | Plans | Plan selection page — 3 tiers (Starter/Business/Enterprise), monthly/yearly toggle, pricing cards with feature comparison, Paddle checkout integration |
 | `/how-to` | How To (Wiki) | In-app help: 11 reference topics + 4 step-by-step flows (New Client Call, Online Booking, New Employee, Branch Setup), TOC sidebar, EN + UK |
 
 #### Public
@@ -275,8 +310,10 @@ Rate-limited `@Public()` endpoints for customer-facing booking. Resolves tenant 
 | Route | Page | Description |
 |-------|------|-------------|
 | `/` | Landing Page | Hero, features, pricing sections; unauthenticated users see this, authenticated redirect to `/dashboard` |
-| `/login` | Login | Email/password form |
+| `/login` | Login | Email/password form + "Forgot password?" link |
 | `/register` | Registration | Company name, personal info, password; creates tenant + admin user + trial subscription, auto-login |
+| `/forgot-password` | Forgot Password | Email form → sends reset link; always shows success (no info leak) |
+| `/reset-password` | Reset Password | Token from URL, new password form → redirects to login |
 | `/public/:slug` | Public Booking | 4-step customer booking wizard |
 
 ### Cross-Cutting
@@ -300,7 +337,7 @@ Rate-limited `@Public()` endpoints for customer-facing booking. Resolves tenant 
 
 ## Database Schema
 
-**18 models, 5 enums.** All UUIDs, timestamps. Soft-delete on 7 models with auto-filtering.
+**20 models, 8 enums.** All UUIDs, timestamps. Soft-delete on 7 models with auto-filtering.
 
 ### Enums
 
@@ -311,6 +348,9 @@ Rate-limited `@Public()` endpoints for customer-facing booking. Resolves tenant 
 | `PaymentStatus` | PENDING, PAID, PARTIALLY_PAID, REFUNDED, FAILED |
 | `PaymentMethod` | CASH, CARD, ONLINE, OTHER |
 | `AuditAction` | CREATE, UPDATE, DELETE, STATUS_CHANGE, MERGE |
+| `PlanTier` | TRIAL, STARTER, BUSINESS, ENTERPRISE |
+| `BillingInterval` | MONTHLY, YEARLY |
+| `SubscriptionStatus` | TRIALING, ACTIVE, PAST_DUE, PAUSED, CANCELLED |
 
 ### Models
 
@@ -319,12 +359,12 @@ Rate-limited `@Public()` endpoints for customer-facing booking. Resolves tenant 
 | **Tenant** | Unique slug, settings JSON, 1:1 BookingSettings |
 | **BookingSettings** | Slot duration, buffer, working hours/days, online booking toggle |
 | **Branch** | Per-tenant, has many WorkPosts, soft-delete |
-| **User** | Globally unique email, soft-delete, optional Role + Branch |
+| **User** | Globally unique email, soft-delete, optional Role + Branch; `failedLoginAttempts` + `accountLockedUntil` for lockout |
 | **Role** | Unique name per tenant, M:N Permissions, soft-delete |
 | **RolePermission** | Join table for Role ↔ Permission M:N |
 | **Permission** | Global (no tenantId), seeded `module.action` pairs |
 | **Client** | Unique phone per tenant, soft-delete |
-| **Vehicle** | Linked to Client, make (required), licensePlate (optional), soft-delete |
+| **Vehicle** | Linked to Client, make (required), licensePlate (optional), `photoUrl` (optional), soft-delete |
 | **Service** | Name, duration, price (decimal), sortOrder, soft-delete |
 | **WorkPost** | Bay per Branch |
 | **EmployeeProfile** | Links User to Branch; `isWorker`, `efficiencyCoefficient`, `active`, optional `workStartTime`/`workEndTime` (HH:MM); unique per userId |
@@ -332,7 +372,9 @@ Rate-limited `@Public()` endpoints for customer-facing booking. Resolves tenant 
 | **OrderService** | Price snapshot at booking time |
 | **Payment** | Amount, method, status, linked to Order |
 | **AuditLog** | Entity type/id, action, old/new values, performer |
-| **Subscription** | 1:1 with Tenant; `maxUsers`, `maxBranches`, `maxWorkPosts`, `maxServices` limits; `isTrial` + `trialEndsAt` for trial support; Paddle fields reserved |
+| **Subscription** | 1:1 with Tenant; `planTier`, `status`, `billingInterval`; nullable `maxUsers/maxBranches/maxWorkPosts/maxServices` (null = unlimited); `isTrial` + `trialEndsAt`; Paddle fields (`paddleSubscriptionId`, `paddleCustomerId`, `paddleStatus`, `paddlePriceId`, `currentPeriodStart`, `currentPeriodEnd`); `cancelledAt` + `cancelEffectiveAt` |
+| **SubscriptionAddon** | Belongs to Subscription; `resource` (branches/workPosts/users/services) + `quantity`; unique per (subscriptionId, resource); optional `paddlePriceId` |
+| **PasswordResetToken** | userId, unique token, 1h expiry, `usedAt` tracking; indexed on `token` + `userId` |
 | **IdempotencyKey** | Tenant-scoped, unique `(tenantId, key)`, TTL-based expiry |
 
 ### Indexes
@@ -349,7 +391,7 @@ Rate-limited `@Public()` endpoints for customer-facing booking. Resolves tenant 
 ## API Reference
 
 All endpoints prefixed with `/api/v1`. Protected by JWT unless marked Public.
-**87 endpoints** (80 protected, 7 public) across 17 controllers.
+**104 endpoints** (92 protected, 12 public) across 21 controllers.
 
 ### Auth
 
@@ -358,6 +400,9 @@ All endpoints prefixed with `/api/v1`. Protected by JWT unless marked Public.
 | POST | `/auth/login` | Public | Returns access + refresh tokens |
 | POST | `/auth/register` | Public | Self-registration: creates tenant + trial subscription + admin role + user; returns tokens (3/min rate limit) |
 | POST | `/auth/refresh` | Public | Refresh tokens |
+| POST | `/auth/forgot-password` | Public | Request password reset email (3/min rate limit); silent response for unknown emails |
+| POST | `/auth/reset-password` | Public | Reset password with token (5/min rate limit); invalidates all sessions |
+| POST | `/auth/logout` | JWT | Logs out user, increments tokenVersion, clears refresh cookie |
 | PATCH | `/auth/change-password` | JWT | User changes own password (verifies current password) |
 
 ### CRUD Resources
@@ -371,9 +416,9 @@ Standard pattern: `GET /` | `GET /:id` | `POST /` | `PATCH /:id` | `DELETE /:id`
 | `/roles` | `roles.*` | + `POST /:id/permissions` |
 | `/branches` | `branches.*` | + `GET /:id/booking-settings`, `PATCH /:id/booking-settings` |
 | `/clients` | `clients.*` | Searchable; + `POST /merge` |
-| `/vehicles` | `vehicles.*` | Filterable by clientId |
+| `/vehicles` | `vehicles.*` | Filterable by clientId; + `POST /:id/photo` (file upload, 5MB max, image/* only) |
 | `/services` | `services.*` | |
-| `/work-posts` | `work-posts.*` | No delete/restore, requires `?branchId` |
+| `/work-posts` | `work-posts.*` | Requires `?branchId` |
 
 ### Permissions (JWT only)
 
@@ -416,15 +461,24 @@ All endpoints require `analytics.view` permission. Params: `dateFrom`, `dateTo`,
 | GET | `/analytics/employees` | Per-employee orders, revenue, cancel rate |
 | GET | `/analytics/alerts` | Business anomalies: high cancel rate, revenue drop, booking decline |
 | GET | `/analytics/online-booking` | Order source breakdown (INTERNAL / WEB / WIDGET / API) |
+| GET | `/analytics/export/orders` | CSV export of orders (Content-Disposition: attachment) |
+| GET | `/analytics/export/clients` | CSV export of clients (Content-Disposition: attachment) |
 
-### Subscriptions
+### Subscriptions & Billing
 
 | Method | Path | Permission | Description |
 |--------|------|------------|-------------|
-| GET | `/subscription/usage` | tenants.read | Own tenant limits + current usage |
-| GET | `/tenants/:tenantId/subscription` | tenants.read | Get tenant subscription (super-admin) |
-| PUT | `/tenants/:tenantId/subscription` | tenants.update | Create/update subscription (super-admin) |
-| DELETE | `/tenants/:tenantId/subscription` | tenants.delete | Remove subscription → unlimited (super-admin) |
+| GET | `/subscription/usage` | tenants.read | Own tenant limits + current usage + plan tier + addons |
+| GET | `/subscription/plans` | tenants.read | Plan catalog (tiers, prices, addon definitions) |
+| POST | `/subscription/checkout` | tenants.update | Create Paddle checkout session → returns transactionId + clientToken |
+| POST | `/subscription/change-plan` | tenants.update | Change plan tier via Paddle (for existing subscribers) |
+| POST | `/subscription/addons` | tenants.update | Manage add-on quantities (upsert/remove) |
+| POST | `/subscription/preview` | tenants.read | Preview price change before committing |
+| POST | `/subscription/cancel` | tenants.update | Request cancellation (access until period end) |
+| POST | `/webhooks/paddle` | Public | Paddle webhook receiver (signature-verified) |
+| GET | `/tenants/:tenantId/subscription` | SuperAdmin | Get tenant subscription |
+| PUT | `/tenants/:tenantId/subscription` | SuperAdmin | Create/update subscription |
+| DELETE | `/tenants/:tenantId/subscription` | SuperAdmin | Remove subscription → unlimited |
 
 ### Workforce
 
@@ -470,14 +524,17 @@ src/
 ├── prisma/                          # PrismaService, TenantPrismaService
 ├── common/
 │   ├── decorators/                  # @CurrentUser, @CurrentTenant, @Permissions, @Public
-│   ├── guards/                      # JwtAuthGuard, PermissionsGuard, TenantGuard
+│   ├── guards/                      # JwtAuthGuard, PermissionsGuard, TenantGuard, SuperAdminGuard, CustomThrottlerGuard
 │   ├── filters/                     # AllExceptionsFilter, PrismaExceptionFilter
 │   ├── interceptors/                # TransformInterceptor
 │   ├── events/                      # DomainEvent, EventDispatcherService
 │   ├── types/                       # JwtPayload, AuthenticatedRequest
 │   └── utils/                       # PaginationDto, helpers
 └── modules/
-    ├── auth/                        # Login, refresh, change-password, JWT strategies
+    ├── auth/                        # Login, refresh, change-password, forgot/reset-password, JWT strategies
+    ├── email/                       # @Global Resend email service (no-op without API key)
+    ├── health/                      # Health check endpoint (PostgreSQL + Redis)
+    ├── metrics/                     # Prometheus metrics + MetricsAuthGuard
     ├── tenants/                     # CRUD (super-admin)
     ├── users/                       # CRUD + soft-delete
     ├── roles/                       # CRUD + soft-delete + permission assignment
@@ -492,7 +549,7 @@ src/
     ├── workforce/                   # EmployeeProfile CRUD (working hours on profile)
     ├── orders/                      # Order lifecycle + idempotency + employee auto-assign
     ├── payments/                    # Payment recording + idempotency
-    ├── analytics/                   # Dashboard + reports
+    ├── analytics/                   # Dashboard + reports + CSV export
     ├── audit/                       # Event-driven audit logs
     ├── public-booking/              # Public-facing booking API
     ├── realtime/                    # Socket.IO gateway
@@ -526,7 +583,7 @@ frontend/src/
 │   ├── layout/                      # DashboardLayout, AppShell, PublicLayout, Sidebar, Header
 │   └── pages/                       # 404, 403
 ├── features/
-│   ├── auth/                        # LoginPage, RegisterPage, API, hooks
+│   ├── auth/                        # LoginPage, RegisterPage, ForgotPasswordPage, ResetPasswordPage, API, hooks
 │   ├── dashboard/                   # StatsCards, RevenueChart
 │   ├── orders/                      # OrdersPage, CreateOrderPage, OrderDetailPage
 │   ├── clients/                     # ClientsPage, ClientDetailPage, ClientForm
@@ -540,6 +597,7 @@ frontend/src/
 │   ├── audit/                       # AuditPage
 │   ├── workforce/                   # WorkforcePage (employee profiles)
 │   ├── subscription/                # SubscriptionPage (usage + limits)
+│   ├── payments/                    # Payments API, hooks, types
 │   ├── landing/                     # LandingPage (Hero, Features, Pricing, Header, Footer)
 │   ├── public-booking/              # PublicBookingPage
 │   └── how-to/                      # In-app wiki (HowToLayout, TopicSidebar, TopicContent)
@@ -549,6 +607,7 @@ frontend/src/
 │   ├── ui/                          # button, input, dialog, card, badge, combobox, skeleton
 │   ├── stores/auth.store.ts         # Zustand (tokens, user, permissions)
 │   ├── hooks/                       # useDebounce, useSocket, usePermissions
+│   ├── lib/                         # Sentry SDK initialization
 │   ├── types/                       # models.ts, api.ts, auth.ts
 │   ├── constants/permissions.ts
 │   └── utils/                       # cn, format (currency, duration, time)
@@ -575,8 +634,20 @@ frontend/src/
 | Permission gates in UI | `PermissionGate` component matches backend RBAC |
 | Workforce separate from RBAC | `EmployeeProfile` is an operational layer (who is on shift) — User/Role/Permission tables remain unchanged; branches without profiles get legacy behavior automatically |
 | Employee auto-assignment inside Serializable tx | Assigned inside the same lock that reserves the slot — eliminates TOCTOU race between capacity check and assignment |
-| Subscription limits (optional) | No subscription row → no limits enforced (backward compat); limits checked in service layer before create; Paddle fields reserved for future payment integration |
-| Trial auto-provisioning | New tenants get 30-day Business-tier trial automatically; expired trials block resource creation; trial info exposed on usage endpoint + frontend banner |
+| Subscription limits (optional) | No subscription row → no limits enforced (backward compat); limits checked in service layer before create; null = unlimited for Enterprise-tier resources |
+| Paddle Billing integration | Webhook-driven subscription lifecycle — backend is source of truth; Paddle.js overlay for checkout; HMAC-SHA256 signature verification; Redis-based idempotent event processing; configurable price IDs via env |
+| Add-on model | Separate `SubscriptionAddon` table with unique (subscriptionId, resource) constraint; effective limits recalculated on every change; stored in Subscription for fast enforcement |
+| Trial auto-provisioning | New tenants get 30-day trial automatically; expired trials block resource creation; trial info exposed on usage endpoint + frontend banner |
+| Email service (Resend) | `@Global()` module, no-op without API key — dev/test never sends real emails; best-effort (never throws); templates as pure functions |
+| Account lockout | 5 attempts / 30 min window — simple rate limiting at account level without Redis; fields on User model (not separate table) |
+| Password reset tokens | Separate `PasswordResetToken` model with 1h expiry; `usedAt` tracking prevents reuse; tokenVersion increment invalidates all existing sessions |
+| CSV export | Simple `toCsv()` utility with proper escaping — no external CSV library needed; streams response via `res.end()` |
+| Vehicle photo upload | Multer `diskStorage` to `./uploads/vehicles/`; served via Express static assets at `/uploads`; 5MB limit, image/* validation |
+| Health checks | `/api/v1/health` checks both PostgreSQL (Prisma ping) and Redis; used by load balancers and container orchestrators |
+| Prometheus metrics | `/api/v1/metrics` exposes request duration histograms, request counters, and Node.js default metrics; global interceptor tracks all HTTP requests |
+| Sentry integration | Error tracking + performance traces; PII disabled in production; configurable sample rate via `SENTRY_TRACES_SAMPLE_RATE` env var |
+| Request timeout | 30s server-level timeout prevents hanging requests from exhausting connections |
+| Grafana Cloud Loki | `pino-loki` transport ships structured JSON logs directly to Grafana Cloud via HTTP push; no self-hosted agents; batched delivery (5s interval); no-op without env vars; stdout preserved alongside Loki in production |
 
 ---
 

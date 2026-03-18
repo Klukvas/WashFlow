@@ -61,6 +61,9 @@ export class SchedulingService {
     }
 
     const slotDuration = durationMinutes || settings.slotDurationMinutes;
+    if (slotDuration <= 0) {
+      return [];
+    }
     const bufferTime = settings.bufferTimeMinutes;
     const workStart = settings.workingHoursStart;
     const workEnd = settings.workingHoursEnd;
@@ -367,7 +370,15 @@ export class SchedulingService {
   }
 
   private parseTime(date: Date, timeStr: string): Date {
-    const [hours, minutes] = timeStr.split(':').map(Number);
+    const match = /^(\d{1,2}):(\d{2})$/.exec(timeStr);
+    if (!match) {
+      throw new Error(`Invalid time format: "${timeStr}" (expected HH:MM)`);
+    }
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (hours > 23 || minutes > 59) {
+      throw new Error(`Invalid time value: "${timeStr}"`);
+    }
     const result = new Date(date);
     result.setUTCHours(hours, minutes, 0, 0);
     return result;

@@ -14,9 +14,12 @@ function getDecoratorFactory(decorator: ParameterDecorator) {
 const mockUser: JwtPayload = {
   sub: 'user-1',
   tenantId: 'tenant-1',
+  branchId: null,
+  email: 'user@example.com',
   type: 'access',
   isSuperAdmin: false,
   permissions: ['orders.read'],
+  tokenVersion: 1,
 };
 
 function makeCtx(user: JwtPayload): ExecutionContext {
@@ -34,7 +37,7 @@ describe('CurrentUser decorator', () => {
   ) => unknown;
 
   beforeEach(() => {
-    factory = getDecoratorFactory(CurrentUser);
+    factory = getDecoratorFactory(CurrentUser as unknown as ParameterDecorator);
   });
 
   it('should return the full user object when no data key is provided', () => {

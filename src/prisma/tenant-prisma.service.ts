@@ -186,6 +186,47 @@ export class TenantPrismaService {
             }
             return query(args);
           },
+          async upsert({ model, args, query }) {
+            if (!shouldBypassTenant(model)) {
+              args.where = { ...args.where, tenantId } as typeof args.where;
+              if (typeof args.create === 'object' && args.create !== null) {
+                (args as any).create = { ...args.create, tenantId };
+              }
+            }
+            return query(args);
+          },
+          async findUniqueOrThrow({ model, args, query }) {
+            if (!shouldBypassTenant(model) || shouldSoftDeleteFilter(model)) {
+              const { _includeDeleted, ...cleanWhere } = (args.where ??
+                {}) as any;
+              const extraWhere: Record<string, unknown> = { ...cleanWhere };
+
+              if (!shouldBypassTenant(model)) {
+                extraWhere['tenantId'] = tenantId;
+              }
+              if (shouldSoftDeleteFilter(model) && !_includeDeleted) {
+                extraWhere['deletedAt'] = null;
+              }
+
+              return (query as any)({ ...args, where: extraWhere });
+            }
+            return query(args);
+          },
+          async findFirstOrThrow({ model, args, query }) {
+            if (!shouldBypassTenant(model)) {
+              args.where = { ...args.where, tenantId };
+            }
+            if (shouldSoftDeleteFilter(model)) {
+              const { cleaned, includeDeleted } = stripIncludeDeleted(
+                args.where,
+              );
+              args.where = cleaned;
+              if (!includeDeleted) {
+                args.where = { ...args.where, deletedAt: null };
+              }
+            }
+            return query(args);
+          },
         },
         // Models without tenantId — bypass injection entirely
         permission: {

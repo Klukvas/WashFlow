@@ -4,7 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 describe('TenantsRepository', () => {
   let repo: TenantsRepository;
-  let prisma: Record<string, jest.Mock>;
+  let prisma: any;
 
   const mockTenant = {
     id: 'tenant-1',
@@ -25,7 +25,7 @@ describe('TenantsRepository', () => {
       bookingSettings: {
         findFirst: jest.fn().mockResolvedValue(null),
       },
-    };
+    } as any;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [

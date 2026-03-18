@@ -57,7 +57,7 @@ export class RolesRepository {
     data: { name?: string; description?: string },
   ) {
     const role = await this.db(tenantId).role.update({
-      where: { id } as any,
+      where: { id },
       data,
       include: RolesRepository.permissionsInclude,
     });
@@ -66,7 +66,7 @@ export class RolesRepository {
 
   async softDelete(tenantId: string, id: string) {
     return this.db(tenantId).role.update({
-      where: { id } as any,
+      where: { id },
       data: { deletedAt: new Date() },
     });
   }
@@ -81,7 +81,7 @@ export class RolesRepository {
 
   async restore(tenantId: string, id: string) {
     const role = await this.db(tenantId).role.update({
-      where: { id } as any,
+      where: { id },
       data: { deletedAt: null },
       include: RolesRepository.permissionsInclude,
     });
@@ -89,21 +89,23 @@ export class RolesRepository {
   }
 
   async assignPermissions(roleId: string, permissionIds: string[]) {
-    await this.prisma.rolePermission.deleteMany({ where: { roleId } });
+    return this.prisma.$transaction(async (tx) => {
+      await tx.rolePermission.deleteMany({ where: { roleId } });
 
-    if (permissionIds.length > 0) {
-      await this.prisma.rolePermission.createMany({
-        data: permissionIds.map((permissionId) => ({
-          roleId,
-          permissionId,
-        })),
+      if (permissionIds.length > 0) {
+        await tx.rolePermission.createMany({
+          data: permissionIds.map((permissionId) => ({
+            roleId,
+            permissionId,
+          })),
+        });
+      }
+
+      const role = await tx.role.findUnique({
+        where: { id: roleId },
+        include: RolesRepository.permissionsInclude,
       });
-    }
-
-    const role = await this.prisma.role.findUnique({
-      where: { id: roleId },
-      include: RolesRepository.permissionsInclude,
+      return role ? this.flattenPermissions(role) : null;
     });
-    return role ? this.flattenPermissions(role) : null;
   }
 }

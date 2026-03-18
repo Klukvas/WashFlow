@@ -49,7 +49,7 @@ describe('ClientsController', () => {
       const dto: MergeClientDto = {
         survivorId: CLIENT_ID,
         duplicateIds: ['dup-uuid-1'],
-      } as MergeClientDto;
+      } as unknown as MergeClientDto;
       const expected = { id: CLIENT_ID };
       mockClientsService.merge.mockResolvedValue(expected);
 
@@ -97,7 +97,9 @@ describe('ClientsController', () => {
 
   describe('create', () => {
     it('delegates to clientsService.create with tenantId and dto', async () => {
-      const dto: CreateClientDto = { name: 'Alice' } as CreateClientDto;
+      const dto: CreateClientDto = {
+        name: 'Alice',
+      } as unknown as CreateClientDto;
       const expected = { id: CLIENT_ID, name: 'Alice' };
       mockClientsService.create.mockResolvedValue(expected);
 

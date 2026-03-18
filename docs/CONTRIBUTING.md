@@ -75,8 +75,8 @@ The backend listens on `http://localhost:3000` and the frontend dev server on `h
 | `pnpm start:dev` | Start with hot reload (watch mode) |
 | `pnpm start:debug` | Start with hot reload + Node.js inspector |
 | `pnpm start:prod` | Run production build from `dist/` |
-| `pnpm format` | Auto-format all `src/**/*.ts` files with Prettier |
-| `pnpm lint` | Lint and auto-fix `src/**/*.ts` with ESLint |
+| `pnpm format` | Auto-format all `src/**/*.ts` and `test/**/*.ts` files with Prettier |
+| `pnpm lint` | Lint and auto-fix `src/`, `apps/`, `libs/`, `test/` directories with ESLint |
 | `pnpm test` | Run unit test suite (Jest) |
 | `pnpm test:watch` | Run unit tests in watch mode |
 | `pnpm test:cov` | Run unit tests with coverage report |
@@ -95,6 +95,9 @@ The backend listens on `http://localhost:3000` and the frontend dev server on `h
 | `pnpm lint` | Lint with ESLint |
 | `pnpm test` | Run unit tests (Vitest, single run) |
 | `pnpm test:watch` | Run unit tests in interactive watch mode |
+| `pnpm test:e2e` | Run Playwright end-to-end tests |
+| `pnpm test:e2e:ui` | Open Playwright test runner UI |
+| `pnpm test:e2e:report` | Show last Playwright HTML report |
 <!-- END AUTO-GENERATED -->
 
 ---
@@ -113,6 +116,18 @@ The backend listens on `http://localhost:3000` and the frontend dev server on `h
 | `PORT` | No | `3000` | HTTP server port |
 | `NODE_ENV` | No | `development` | Runtime environment: `development`, `production`, `test` |
 | `CORS_ORIGINS` | No | `*` | Allowed CORS origins (comma-separated or `*`) |
+| `SENTRY_DSN` | No | — | Backend Sentry DSN (leave empty to disable) |
+| `VITE_SENTRY_DSN` | No | — | Frontend Sentry DSN (build-time, leave empty to disable) |
+| `SENTRY_TRACES_SAMPLE_RATE` | No | `0.05` (prod) / `1.0` (dev) | Sentry trace sampling rate (0–1) |
+| `PADDLE_API_KEY` | No | — | Paddle Billing server-side API key |
+| `PADDLE_CLIENT_TOKEN` | No | — | Paddle Billing client-side token (for checkout overlay) |
+| `PADDLE_WEBHOOK_SECRET` | No | — | Paddle webhook HMAC-SHA256 signing secret |
+| `PADDLE_SANDBOX` | No | `true` | Use Paddle sandbox environment (`true`/`false`) |
+| `PADDLE_PRICE_IDS` | No | — | JSON map overriding default Paddle price IDs (e.g. `{"starter_monthly":"pri_xxx"}`) |
+| `RESEND_API_KEY` | No | — | Resend API key for transactional emails |
+| `EMAIL_FROM` | No | `WashFlow <noreply@washflow.app>` | Sender address for outgoing emails |
+| `FRONTEND_URL` | No | `http://localhost:5173` | Frontend URL for password reset links and email redirects |
+| `METRICS_TOKEN` | No | — | Bearer token protecting `/metrics` endpoint (leave empty for public access) |
 
 **Example values** (from `.env.example`):
 ```
@@ -125,6 +140,12 @@ JWT_REFRESH_EXPIRATION="7d"
 PORT=3000
 NODE_ENV="development"
 CORS_ORIGINS="*"
+SENTRY_DSN=""
+VITE_SENTRY_DSN=""
+FRONTEND_URL="http://localhost:5173"
+RESEND_API_KEY=""
+EMAIL_FROM="WashFlow <noreply@washflow.app>"
+METRICS_TOKEN=""
 ```
 <!-- END AUTO-GENERATED -->
 
@@ -146,6 +167,9 @@ pnpm test:e2e
 
 # Frontend unit tests
 cd frontend && pnpm test
+
+# Frontend E2E tests (Playwright)
+cd frontend && pnpm test:e2e
 ```
 
 ### Writing Tests
@@ -207,3 +231,81 @@ Pre-commit: run `pnpm lint && pnpm format` before committing.
 - [ ] New code has test coverage ≥ 80%
 - [ ] No hardcoded secrets or credentials
 - [ ] PR description explains the **why**, not just the what
+
+---
+
+## Production Runbook
+
+### Deployment
+
+```bash
+# 1. Copy and fill environment
+cp .env.docker.example .env
+
+# 2. Build & start
+docker compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml up -d
+
+# 3. Verify
+curl http://localhost:3000/api/v1/health
+```
+
+Startup order (enforced by Docker healthchecks): PostgreSQL → Redis → Backend (`prisma migrate deploy` + NestJS) → Frontend (nginx).
+
+### Health Checks
+
+| Endpoint | Auth | Checks |
+|----------|------|--------|
+| `GET /api/v1/health` | Public | PostgreSQL ping, Redis ping |
+| `GET /api/v1/metrics` | Public / Bearer token when `METRICS_TOKEN` is set | Prometheus metrics (request duration, count, Node.js defaults) |
+
+Healthy response returns HTTP 200 with `{ "status": "ok", "info": { "database": { "status": "up" }, "redis": { "status": "up" } } }`.
+
+### Prometheus Scrape Config
+
+```yaml
+scrape_configs:
+  - job_name: washflow-backend
+    metrics_path: /api/v1/metrics
+    static_configs:
+      - targets: ['backend:3000']
+```
+
+### Common Issues
+
+| Issue | Symptom | Fix |
+|-------|---------|-----|
+| Migration failure | Backend restart loop | `docker compose exec backend npx prisma migrate status` — resolve conflicts |
+| Redis connection refused | Health check `redis: down` | Check container logs, verify `REDIS_PASSWORD` matches |
+| Paddle webhooks not processing | Subscription status stale | Verify `PADDLE_WEBHOOK_SECRET`; inspect Redis keys `paddle:webhook:*` |
+| Frontend blank page | nginx 200 but empty | Check build args (`VITE_SENTRY_DSN`), browser console for JS errors |
+
+### Rollback
+
+```bash
+# Tag before deploy
+docker tag washflow/app:latest washflow/app:rollback
+
+# Restore if needed
+docker tag washflow/app:rollback washflow/app:latest
+docker compose -f docker-compose.prod.yml up -d --no-deps backend frontend
+```
+
+Database migrations are forward-only — write a new revert migration instead of using `prisma migrate reset`.
+
+### Key Configuration
+
+| Setting | Production | Development |
+|---------|-----------|-------------|
+| Sentry `sendDefaultPii` | `false` | `true` |
+| Sentry `tracesSampleRate` | 5% (override via `SENTRY_TRACES_SAMPLE_RATE`) | 100% |
+| HTTP request timeout | 30s (`server.setTimeout`) | 30s |
+
+### Alerting Recommendations
+
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| Health check failing | `/api/v1/health` non-200 > 1 min | Critical |
+| High error rate | 5xx > 5% of total requests | High |
+| High latency | p95 > 2s | Medium |
+| Container restarts | > 3 restarts in 10 min | High |

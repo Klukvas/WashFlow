@@ -19,6 +19,8 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import type { JwtPayload } from '../../common/types/jwt-payload.type';
 
 const REFRESH_COOKIE = 'refresh_token';
@@ -94,9 +96,10 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(
     @CurrentUser('sub') userId: string,
+    @CurrentUser('tenantId') tenantId: string,
     @Res({ passthrough: true }) res: Response,
   ) {
-    await this.authService.logout(userId);
+    await this.authService.logout(userId, tenantId);
     res.clearCookie(REFRESH_COOKIE, { path: COOKIE_PATH });
   }
 
@@ -107,6 +110,24 @@ export class AuthController {
     @Body() dto: ChangePasswordDto,
   ) {
     return this.authService.changePassword(userId, dto);
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ short: { limit: 3, ttl: 60000 } })
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    await this.authService.forgotPassword(dto);
+    return { message: 'If the email exists, a reset link has been sent' };
+  }
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ short: { limit: 5, ttl: 60000 } })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    await this.authService.resetPassword(dto);
+    return { message: 'Password has been reset successfully' };
   }
 
   private setRefreshCookie(res: Response, token: string): void {

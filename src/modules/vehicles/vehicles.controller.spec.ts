@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException } from '@nestjs/common';
 import { VehiclesController } from './vehicles.controller';
 import { VehiclesService } from './vehicles.service';
 import type { CreateVehicleDto } from './dto/create-vehicle.dto';
@@ -15,6 +16,7 @@ const mockVehiclesService = {
   update: jest.fn(),
   softDelete: jest.fn(),
   restore: jest.fn(),
+  updatePhoto: jest.fn(),
 };
 
 describe('VehiclesController', () => {
@@ -136,6 +138,42 @@ describe('VehiclesController', () => {
         VEHICLE_ID,
       );
       expect(result).toBe(expected);
+    });
+  });
+
+  describe('uploadPhoto', () => {
+    it('calls vehiclesService.updatePhoto with constructed photoUrl when file is present', async () => {
+      const expected = {
+        id: VEHICLE_ID,
+        photoUrl: '/uploads/vehicles/photo.jpg',
+      };
+      mockVehiclesService.updatePhoto.mockResolvedValue(expected);
+
+      const file = {
+        filename: 'photo.jpg',
+      } as Express.Multer.File;
+
+      const result = await controller.uploadPhoto(TENANT_ID, VEHICLE_ID, file);
+
+      expect(mockVehiclesService.updatePhoto).toHaveBeenCalledTimes(1);
+      expect(mockVehiclesService.updatePhoto).toHaveBeenCalledWith(
+        TENANT_ID,
+        VEHICLE_ID,
+        '/uploads/vehicles/photo.jpg',
+      );
+      expect(result).toBe(expected);
+    });
+
+    it('throws BadRequestException when no file is provided', async () => {
+      await expect(
+        controller.uploadPhoto(TENANT_ID, VEHICLE_ID, undefined as any),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        controller.uploadPhoto(TENANT_ID, VEHICLE_ID, undefined as any),
+      ).rejects.toThrow('File is required');
+
+      expect(mockVehiclesService.updatePhoto).not.toHaveBeenCalled();
     });
   });
 });

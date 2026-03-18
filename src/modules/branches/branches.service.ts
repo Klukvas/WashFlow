@@ -48,7 +48,10 @@ export class BranchesService {
   }
 
   async softDelete(tenantId: string, id: string) {
-    await this.findById(tenantId, id);
+    const branch = await this.findById(tenantId, id);
+    if (branch.deletedAt !== null) {
+      throw new BadRequestException('Branch is already deleted');
+    }
     return this.branchesRepo.softDelete(tenantId, id);
   }
 
@@ -63,7 +66,21 @@ export class BranchesService {
 
   async getBookingSettings(tenantId: string, branchId: string) {
     await this.findById(tenantId, branchId);
-    return this.branchesRepo.getBookingSettings(tenantId, branchId);
+    const settings = await this.branchesRepo.getBookingSettings(
+      tenantId,
+      branchId,
+    );
+    if (settings === null) {
+      return {
+        workingDays: [1, 2, 3, 4, 5],
+        workStartTime: '09:00',
+        workEndTime: '18:00',
+        slotDuration: 60,
+        maxAdvanceBookingDays: 30,
+        requireConfirmation: false,
+      };
+    }
+    return settings;
   }
 
   async updateBookingSettings(

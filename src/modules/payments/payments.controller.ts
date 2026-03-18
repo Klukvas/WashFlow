@@ -8,10 +8,12 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { IdempotencyInterceptor } from '../idempotency/idempotency.interceptor';
 import { PaymentsService } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
@@ -31,13 +33,15 @@ export class PaymentsController {
   }
 
   @Post()
+  @Throttle({ short: { limit: 5, ttl: 60000 } })
   @Permissions('payments.create')
   @UseInterceptors(IdempotencyInterceptor)
   create(
     @CurrentTenant() tenantId: string,
     @Param('orderId', ParseUUIDPipe) orderId: string,
     @Body() dto: CreatePaymentDto,
+    @CurrentUser() user: { sub: string },
   ) {
-    return this.paymentsService.create(tenantId, orderId, dto);
+    return this.paymentsService.create(tenantId, orderId, dto, user.sub);
   }
 }

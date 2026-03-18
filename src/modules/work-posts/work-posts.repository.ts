@@ -56,6 +56,13 @@ export class WorkPostsRepository {
     });
   }
 
+  async findByIdIncludeDeleted(tenantId: string, id: string) {
+    return this.db(tenantId).workPost.findFirst({
+      where: { id, _includeDeleted: true } as any,
+      include: { branch: true },
+    });
+  }
+
   async softDelete(tenantId: string, id: string) {
     return this.db(tenantId).workPost.update({
       where: { id } as Prisma.WorkPostWhereUniqueInput,

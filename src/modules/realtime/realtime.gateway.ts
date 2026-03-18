@@ -3,21 +3,47 @@ import {
   WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
 } from '@nestjs/websockets';
-import { Logger } from '@nestjs/common';
+import { Logger, OnModuleDestroy } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Server, Socket } from 'socket.io';
 import { JwtPayload } from '../../common/types/jwt-payload.type';
+
+function buildCorsOrigin(
+  config: ConfigService,
+):
+  | boolean
+  | string[]
+  | ((
+      origin: string,
+      cb: (err: Error | null, allow?: boolean) => void,
+    ) => void) {
+  const raw = config.get<string>('corsOrigins', '');
+  if (!raw || raw === '*') {
+    const nodeEnv = config.get<string>('nodeEnv', 'development');
+    if (nodeEnv === 'production') {
+      return false;
+    }
+    return true;
+  }
+  return raw.split(',').map((o) => o.trim());
+}
 
 @WebSocketGateway({
   namespace: '/events',
   cors: { origin: true, credentials: true },
 })
 export class RealtimeGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
+  implements
+    OnGatewayConnection,
+    OnGatewayDisconnect,
+    OnGatewayInit,
+    OnModuleDestroy
 {
   private readonly logger = new Logger(RealtimeGateway.name);
+  private tokenCheckInterval: ReturnType<typeof setInterval> | null = null;
 
   @WebSocketServer()
   server: Server;
@@ -28,26 +54,28 @@ export class RealtimeGateway
   ) {}
 
   afterInit() {
-    const corsOrigins = this.config.get<string>('corsOrigins', '');
-    if (corsOrigins && corsOrigins !== '*' && this.server?.engine?.opts) {
-      const origins = corsOrigins.split(',').map((o) => o.trim());
-      this.server.engine.opts.cors = { origin: origins, credentials: true };
+    const corsOrigin = buildCorsOrigin(this.config);
+    if (this.server?.engine?.opts) {
+      this.server.engine.opts.cors = { origin: corsOrigin, credentials: true };
+    }
+
+    if (this.tokenCheckInterval) {
+      clearInterval(this.tokenCheckInterval);
+    }
+    this.tokenCheckInterval = setInterval(() => {
+      this.disconnectExpiredClients();
+    }, 60_000);
+  }
+
+  onModuleDestroy() {
+    if (this.tokenCheckInterval) {
+      clearInterval(this.tokenCheckInterval);
+      this.tokenCheckInterval = null;
     }
   }
 
   async handleConnection(client: Socket) {
     try {
-      // Validate origin against allowed CORS origins
-      const origin = client.handshake.headers?.origin;
-      const corsOrigins = this.config.get<string>('corsOrigins', '');
-      if (corsOrigins && corsOrigins !== '*' && origin) {
-        const allowed = corsOrigins.split(',').map((o) => o.trim());
-        if (!allowed.includes(origin)) {
-          client.disconnect(true);
-          return;
-        }
-      }
-
       const token =
         client.handshake.auth?.token ||
         client.handshake.headers?.authorization?.split(' ')[1];
@@ -61,16 +89,26 @@ export class RealtimeGateway
         secret: this.config.get<string>('jwt.accessSecret'),
       });
 
+      // Reject non-access tokens (e.g. refresh tokens)
+      if (payload.type !== 'access') {
+        client.disconnect(true);
+        return;
+      }
+
       // Join tenant room
       client.join(`tenant:${payload.tenantId}`);
 
       // Store user data on socket
       client.data.user = payload;
+      client.data.token = token;
 
       this.logger.debug(
         `Client connected: ${client.id} (tenant: ${payload.tenantId})`,
       );
-    } catch {
+    } catch (error) {
+      this.logger.warn(
+        `Rejected WebSocket connection from ${client.id}: ${(error as Error).message}`,
+      );
       client.disconnect(true);
     }
   }
@@ -80,10 +118,31 @@ export class RealtimeGateway
   }
 
   emitToTenant(tenantId: string, event: string, data: unknown) {
+    if (!this.server) return;
     this.server.to(`tenant:${tenantId}`).emit(event, data);
   }
 
   emitToBranch(branchId: string, event: string, data: unknown) {
+    if (!this.server) return;
     this.server.to(`branch:${branchId}`).emit(event, data);
+  }
+
+  private disconnectExpiredClients() {
+    const sockets = this.server?.sockets?.sockets;
+    if (!sockets) return;
+
+    for (const [, socket] of sockets) {
+      const token = socket.data?.token as string | undefined;
+      if (!token) continue;
+
+      try {
+        this.jwtService.verify(token, {
+          secret: this.config.get<string>('jwt.accessSecret'),
+        });
+      } catch {
+        this.logger.debug(`Disconnecting client ${socket.id}: token expired`);
+        socket.disconnect(true);
+      }
+    }
   }
 }

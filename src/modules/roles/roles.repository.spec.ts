@@ -37,6 +37,7 @@ describe('RolesRepository', () => {
   };
 
   const prisma: Record<string, jest.Mock> = {
+    $transaction: jest.fn().mockImplementation(async (fn) => fn(prisma)),
     rolePermission: {
       deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
       createMany: jest.fn().mockResolvedValue({ count: 2 }),
@@ -90,6 +91,25 @@ describe('RolesRepository', () => {
     it('returns null when role not found', async () => {
       tenantClient.role.findFirst.mockResolvedValue(null);
       const result = await repo.findById(tenantId, roleId);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('findByIdIncludeDeleted', () => {
+    it('returns role with flattened permissions when found', async () => {
+      tenantClient.role.findFirst.mockResolvedValue(mockRoleRaw);
+      const result = await repo.findByIdIncludeDeleted(tenantId, roleId);
+      expect(tenantClient.role.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ id: roleId }),
+        }),
+      );
+      expect(result!.permissions).toEqual(mockRoleFlat.permissions);
+    });
+
+    it('returns null when role not found', async () => {
+      tenantClient.role.findFirst.mockResolvedValue(null);
+      const result = await repo.findByIdIncludeDeleted(tenantId, roleId);
       expect(result).toBeNull();
     });
   });

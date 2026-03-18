@@ -4,7 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 describe('IdempotencyRepository', () => {
   let repo: IdempotencyRepository;
-  let prisma: Record<string, jest.Mock>;
+  let prisma: any;
 
   const tenantId = 'tenant-1';
   const key = 'idem-key-123';
@@ -31,7 +31,7 @@ describe('IdempotencyRepository', () => {
         upsert: jest.fn().mockResolvedValue(mockRecord),
         deleteMany: jest.fn().mockResolvedValue({ count: 5 }),
       },
-    };
+    } as any;
 
     jest.clearAllMocks();
     mockTx.$queryRaw.mockResolvedValue([{ id: 'idem-1' }]);

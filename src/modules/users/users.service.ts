@@ -11,12 +11,14 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { PaginationDto } from '../../common/utils/pagination.dto';
 import { paginatedResponse } from '../../common/utils/pagination.util';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     private readonly usersRepo: UsersRepository,
     private readonly limits: SubscriptionLimitsService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async findAll(
@@ -38,8 +40,40 @@ export class UsersService {
     return user;
   }
 
+  private async validateRoleBelongsToTenant(
+    tenantId: string,
+    roleId: string,
+  ): Promise<void> {
+    const role = await this.prisma.role.findFirst({
+      where: { id: roleId, tenantId },
+    });
+    if (!role) {
+      throw new BadRequestException('Role not found in this tenant');
+    }
+  }
+
+  private async validateBranchBelongsToTenant(
+    tenantId: string,
+    branchId: string,
+  ): Promise<void> {
+    const branch = await this.prisma.branch.findFirst({
+      where: { id: branchId, tenantId },
+    });
+    if (!branch) {
+      throw new BadRequestException('Branch not found in this tenant');
+    }
+  }
+
   async create(tenantId: string, dto: CreateUserDto) {
     await this.limits.checkLimit(tenantId, 'users');
+
+    if (dto.roleId) {
+      await this.validateRoleBelongsToTenant(tenantId, dto.roleId);
+    }
+    if (dto.branchId) {
+      await this.validateBranchBelongsToTenant(tenantId, dto.branchId);
+    }
+
     const passwordHash = await argon2.hash(dto.password);
     const { password, ...rest } = dto;
 
@@ -52,10 +86,17 @@ export class UsersService {
   async update(tenantId: string, id: string, dto: UpdateUserDto) {
     await this.findById(tenantId, id);
 
+    if (dto.roleId) {
+      await this.validateRoleBelongsToTenant(tenantId, dto.roleId);
+    }
+    if (dto.branchId) {
+      await this.validateBranchBelongsToTenant(tenantId, dto.branchId);
+    }
+
     const raw = { ...dto } as Record<string, unknown>;
     const updateData: Record<string, unknown> = {};
 
-    if (raw.password) {
+    if (raw.password !== undefined) {
       updateData.passwordHash = await argon2.hash(raw.password as string);
     }
 
@@ -69,7 +110,11 @@ export class UsersService {
   async resetPassword(tenantId: string, id: string, dto: ResetPasswordDto) {
     await this.findById(tenantId, id);
     const passwordHash = await argon2.hash(dto.newPassword);
-    await this.usersRepo.update(tenantId, id, { passwordHash });
+    // Increment tokenVersion to invalidate all existing refresh tokens
+    await this.usersRepo.update(tenantId, id, {
+      passwordHash,
+      tokenVersion: { increment: 1 },
+    });
   }
 
   async softDelete(tenantId: string, id: string) {

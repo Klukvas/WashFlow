@@ -4,19 +4,31 @@ import {
   Injectable,
   ForbiddenException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { ModuleRef } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
 import { JwtPayload } from '../types/jwt-payload.type.js';
+import { PrismaService } from '../../prisma/prisma.service.js';
+import { EventDispatcherService } from '../events/event-dispatcher.service.js';
+import { SuperAdminTenantAccessEvent } from '../events/auth-events.js';
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 @Injectable()
 export class TenantGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  private readonly logger = new Logger(TenantGuard.name);
+  private prisma: PrismaService | null = null;
+  private eventDispatcher: EventDispatcherService | null = null;
 
-  canActivate(context: ExecutionContext): boolean {
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly moduleRef: ModuleRef,
+  ) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -44,7 +56,23 @@ export class TenantGuard implements CanActivate {
             'x-tenant-id header must be a valid UUID',
           );
         }
+
+        const prisma = this.getPrisma();
+        const tenant = await prisma.tenant.findUnique({
+          where: { id: headerTenantId },
+        });
+        if (!tenant) {
+          throw new BadRequestException('Tenant not found');
+        }
+
         request.user = { ...user, tenantId: headerTenantId };
+
+        this.getEventDispatcher()?.dispatch(
+          new SuperAdminTenantAccessEvent(headerTenantId, {
+            superAdminId: user.sub,
+            targetTenantId: headerTenantId,
+          }),
+        );
       }
 
       return true;
@@ -55,5 +83,29 @@ export class TenantGuard implements CanActivate {
     }
 
     return true;
+  }
+
+  private getPrisma(): PrismaService {
+    if (!this.prisma) {
+      this.prisma = this.moduleRef.get(PrismaService, { strict: false });
+    }
+    return this.prisma!;
+  }
+
+  private getEventDispatcher(): EventDispatcherService | null {
+    if (!this.eventDispatcher) {
+      try {
+        this.eventDispatcher = this.moduleRef.get(EventDispatcherService, {
+          strict: false,
+        });
+      } catch (err) {
+        this.logger.error(
+          'EventDispatcherService unavailable',
+          (err as Error).stack,
+        );
+        return null;
+      }
+    }
+    return this.eventDispatcher;
   }
 }

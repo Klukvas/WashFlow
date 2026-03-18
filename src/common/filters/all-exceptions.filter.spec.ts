@@ -225,14 +225,14 @@ describe('AllExceptionsFilter', () => {
       expect(body.message).toBe('Internal server error');
     });
 
-    it('exposes the error message in "test" mode (only production hides it)', () => {
+    it('hides the error message in "test" mode (only development exposes it)', () => {
       process.env.NODE_ENV = 'test';
       const { host, mockJson } = buildHost();
       filter.catch(new Error('Sensitive detail'), host as never);
       const body = captureBody(mockJson);
-      // The implementation guards only on NODE_ENV === 'production';
-      // every other value, including 'test', exposes the real message.
-      expect(body.message).toBe('Sensitive detail');
+      // The implementation exposes the message only when NODE_ENV === 'development';
+      // every other value, including 'test', returns the generic message.
+      expect(body.message).toBe('Internal server error');
     });
 
     it('responds with HTTP 500', () => {

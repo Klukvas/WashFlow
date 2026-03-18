@@ -4,7 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 describe('PermissionsRepository', () => {
   let repo: PermissionsRepository;
-  let prisma: Record<string, jest.Mock>;
+  let prisma: any;
 
   const mockPermission = { id: 'perm-1', module: 'orders', action: 'read' };
 
@@ -13,7 +13,7 @@ describe('PermissionsRepository', () => {
       permission: {
         findMany: jest.fn().mockResolvedValue([mockPermission]),
       },
-    };
+    } as any;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [

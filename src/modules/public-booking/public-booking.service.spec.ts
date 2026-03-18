@@ -22,6 +22,7 @@ describe('PublicBookingService', () => {
   let branchesRepo: { findActive: jest.Mock };
   let prisma: {
     $transaction: jest.Mock;
+    branch: { findFirst: jest.Mock };
     client: { findFirst: jest.Mock; create: jest.Mock };
     vehicle: { findFirst: jest.Mock; create: jest.Mock };
     bookingSettings: { findUnique: jest.Mock; findFirst: jest.Mock };
@@ -70,6 +71,7 @@ describe('PublicBookingService', () => {
         .mockImplementation((fn) =>
           fn({ client: clientMock, vehicle: vehicleMock }),
         ),
+      branch: { findFirst: jest.fn().mockResolvedValue({ id: 'branch-1' }) },
       client: clientMock,
       vehicle: vehicleMock,
       bookingSettings: { findUnique: jest.fn(), findFirst: jest.fn() },

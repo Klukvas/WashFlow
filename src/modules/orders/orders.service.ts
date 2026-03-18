@@ -62,6 +62,21 @@ export class OrdersService {
   ) {
     this.validateBranchScope(dto.branchId, userBranchId);
 
+    if (dto.scheduledStart && new Date(dto.scheduledStart) < new Date()) {
+      throw new BadRequestException('Cannot schedule orders in the past');
+    }
+
+    if (dto.assignedEmployeeId) {
+      const employee = await this.prisma.user.findFirst({
+        where: { id: dto.assignedEmployeeId, tenantId },
+      });
+      if (!employee) {
+        throw new BadRequestException(
+          'Assigned employee not found in this tenant',
+        );
+      }
+    }
+
     const { services, totalPrice, totalDuration } =
       await this.resolveServicesAndPricing(tenantId, dto.serviceIds);
 
@@ -214,20 +229,36 @@ export class OrdersService {
     userId: string,
     branchId: string | null = null,
   ) {
-    const order = await this.findById(tenantId, orderId, branchId);
+    const { order, updated } = await this.prisma.$transaction(
+      async (tx) => {
+        const current = await tx.order.findFirst({
+          where:
+            branchId !== null
+              ? { id: orderId, tenantId, branchId }
+              : { id: orderId, tenantId },
+        });
+        if (!current) throw new NotFoundException('Order not found');
 
-    const allowed = VALID_STATUS_TRANSITIONS[order.status];
-    if (!allowed.includes(dto.status)) {
-      throw new BadRequestException(
-        `Cannot transition from ${order.status} to ${dto.status}`,
-      );
-    }
+        const allowed = VALID_STATUS_TRANSITIONS[current.status];
+        if (!allowed.includes(dto.status)) {
+          throw new BadRequestException(
+            `Cannot transition from ${current.status} to ${dto.status}`,
+          );
+        }
 
-    const updated = await this.ordersRepo.updateStatus(
-      tenantId,
-      orderId,
-      dto.status,
-      dto.cancellationReason,
+        const data: Prisma.OrderUpdateInput = { status: dto.status };
+        if (dto.cancellationReason) {
+          data.cancellationReason = dto.cancellationReason;
+        }
+
+        const result = await tx.order.update({
+          where: { id: orderId, tenantId } as Prisma.OrderWhereUniqueInput,
+          data,
+        });
+
+        return { order: current, updated: result };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
 
     this.eventDispatcher.dispatch(
@@ -271,30 +302,54 @@ export class OrdersService {
     }
     if (!order.deletedAt) throw new BadRequestException('Order is not deleted');
 
-    const terminalStatuses = ['COMPLETED', 'CANCELLED', 'NO_SHOW'];
-    if (
+    const terminalStatuses = Object.entries(VALID_STATUS_TRANSITIONS)
+      .filter(([, v]) => v.length === 0)
+      .map(([k]) => k);
+    const needsOverlapCheck =
       order.workPostId &&
       order.scheduledStart &&
       order.scheduledEnd &&
-      !terminalStatuses.includes(order.status)
-    ) {
+      !terminalStatuses.includes(order.status);
+
+    if (needsOverlapCheck) {
       const bookingSettings = await resolveBookingSettings(
         this.prisma,
         tenantId,
         order.branchId,
       );
-      const noOverlap = await this.schedulingService.validateNoOverlap(
-        tenantId,
-        order.workPostId,
-        order.scheduledStart,
-        order.scheduledEnd,
-        bookingSettings.bufferTimeMinutes,
-      );
-      if (!noOverlap) {
-        throw new ConflictException(
-          'Cannot restore: the time slot is now occupied by another order',
+
+      return this.prisma.$transaction(async (tx) => {
+        const { bufferTimeMinutes } = bookingSettings;
+        const bufferedStart = new Date(
+          order.scheduledStart!.getTime() - bufferTimeMinutes * 60000,
         );
-      }
+        const bufferedEnd = new Date(
+          order.scheduledEnd!.getTime() + bufferTimeMinutes * 60000,
+        );
+
+        const conflicts = await tx.order.count({
+          where: {
+            tenantId,
+            workPostId: order.workPostId!,
+            id: { not: id },
+            deletedAt: null,
+            status: { notIn: ['CANCELLED', 'NO_SHOW', 'COMPLETED'] },
+            scheduledStart: { lt: bufferedEnd },
+            scheduledEnd: { gt: bufferedStart },
+          },
+        });
+
+        if (conflicts > 0) {
+          throw new ConflictException(
+            'Cannot restore: the time slot is now occupied by another order',
+          );
+        }
+
+        return tx.order.update({
+          where: { id } as Prisma.OrderWhereUniqueInput,
+          data: { deletedAt: null },
+        });
+      });
     }
 
     return this.ordersRepo.restore(tenantId, id);

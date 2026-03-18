@@ -44,7 +44,6 @@ jobs:
 
       - name: Lint
         run: pnpm lint
-        continue-on-error: true
 
   frontend-lint:
     name: Frontend Lint
@@ -69,7 +68,6 @@ jobs:
 
       - name: Lint
         run: pnpm lint
-        continue-on-error: true
 
   # ──────────────────────────────────────────────────────────────────
   # 2. Unit tests (backend + frontend in parallel)
@@ -168,6 +166,8 @@ jobs:
       JWT_REFRESH_EXPIRATION: '7d'
       NODE_ENV: 'test'
       CORS_ORIGINS: '*'
+      RESEND_API_KEY: ''
+      FRONTEND_URL: 'http://localhost:5173'
     steps:
       - uses: actions/checkout@v4
 
@@ -193,7 +193,6 @@ jobs:
 
       - name: Run E2E tests
         run: pnpm test:e2e --runInBand --forceExit
-        continue-on-error: true
 
   frontend-e2e:
     name: Frontend E2E Tests
@@ -232,6 +231,8 @@ jobs:
       NODE_ENV: 'test'
       CORS_ORIGINS: 'http://localhost:5173'
       PORT: '3003'
+      RESEND_API_KEY: ''
+      FRONTEND_URL: 'http://localhost:5173'
     steps:
       - uses: actions/checkout@v4
 
@@ -292,7 +293,6 @@ jobs:
       - name: Run Playwright E2E tests
         run: npx playwright test --reporter=list
         working-directory: frontend
-        continue-on-error: true
         env:
           CI: 'true'
 
@@ -402,6 +402,16 @@ jobs:
             echo "DOCKER_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/washflow"
             echo "DOCKER_IMAGE_FRONTEND=${{ secrets.DOCKERHUB_USERNAME }}/washflow-frontend"
             echo "DOCKER_TAG=${{ needs.build-and-push.outputs.image_tag }}"
+            echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}"
+            echo "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}"
+            echo "PADDLE_API_KEY=${{ secrets.PADDLE_API_KEY }}"
+            echo "PADDLE_CLIENT_TOKEN=${{ secrets.PADDLE_CLIENT_TOKEN }}"
+            echo "PADDLE_WEBHOOK_SECRET=${{ secrets.PADDLE_WEBHOOK_SECRET }}"
+            echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}"
+            echo "VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}"
+            echo "GRAFANA_LOKI_HOST=${{ secrets.GRAFANA_LOKI_HOST }}"
+            echo "GRAFANA_LOKI_USERNAME=${{ secrets.GRAFANA_LOKI_USERNAME }}"
+            echo "GRAFANA_LOKI_PASSWORD=${{ secrets.GRAFANA_LOKI_PASSWORD }}"
           } > .env.production
           chmod 600 .env.production
 

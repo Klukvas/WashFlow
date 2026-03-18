@@ -39,8 +39,15 @@ function buildPrismaMock() {
   return {
     subscription: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       upsert: jest.fn(),
+      update: jest.fn(),
       delete: jest.fn(),
+    },
+    subscriptionAddon: {
+      upsert: jest.fn(),
+      deleteMany: jest.fn(),
+      findMany: jest.fn(),
     },
     user: { count: jest.fn() },
     branch: { count: jest.fn() },
@@ -153,6 +160,150 @@ describe('SubscriptionsRepository', () => {
 
       expect(prisma.subscription.delete).toHaveBeenCalledWith({
         where: { tenantId: TENANT_ID },
+      });
+    });
+  });
+
+  // =========================================================================
+  // findByTenantIdWithAddons
+  // =========================================================================
+
+  describe('findByTenantIdWithAddons', () => {
+    it('calls findUnique with include addons', async () => {
+      const subWithAddons = { ...mockSubscription, addons: [] };
+      prisma.subscription.findUnique.mockResolvedValue(subWithAddons);
+
+      const result = await repo.findByTenantIdWithAddons(TENANT_ID);
+
+      expect(prisma.subscription.findUnique).toHaveBeenCalledWith({
+        where: { tenantId: TENANT_ID },
+        include: { addons: true },
+      });
+      expect(result).toEqual(subWithAddons);
+    });
+  });
+
+  // =========================================================================
+  // findByPaddleSubscriptionId
+  // =========================================================================
+
+  describe('findByPaddleSubscriptionId', () => {
+    it('calls findFirst with paddleSubscriptionId', async () => {
+      prisma.subscription.findFirst.mockResolvedValue(mockSubscription);
+
+      const result = await repo.findByPaddleSubscriptionId('paddle-sub-1');
+
+      expect(prisma.subscription.findFirst).toHaveBeenCalledWith({
+        where: { paddleSubscriptionId: 'paddle-sub-1' },
+        include: { addons: true },
+      });
+      expect(result).toEqual(mockSubscription);
+    });
+  });
+
+  // =========================================================================
+  // update
+  // =========================================================================
+
+  describe('update', () => {
+    it('calls prisma.subscription.update with tenantId and data', async () => {
+      const data = { status: 'ACTIVE' as const };
+      prisma.subscription.update.mockResolvedValue({
+        ...mockSubscription,
+        ...data,
+      });
+
+      await repo.update(TENANT_ID, data);
+
+      expect(prisma.subscription.update).toHaveBeenCalledWith({
+        where: { tenantId: TENANT_ID },
+        data,
+      });
+    });
+  });
+
+  // =========================================================================
+  // updateLimits
+  // =========================================================================
+
+  describe('updateLimits', () => {
+    it('calls update with all 4 limit fields', async () => {
+      const limits = {
+        maxUsers: 50,
+        maxBranches: 10,
+        maxWorkPosts: 30,
+        maxServices: 100,
+      };
+      prisma.subscription.update.mockResolvedValue({
+        ...mockSubscription,
+        ...limits,
+      });
+
+      await repo.updateLimits(TENANT_ID, limits);
+
+      expect(prisma.subscription.update).toHaveBeenCalledWith({
+        where: { tenantId: TENANT_ID },
+        data: limits,
+      });
+    });
+  });
+
+  // =========================================================================
+  // upsertAddon
+  // =========================================================================
+
+  describe('upsertAddon', () => {
+    it('calls upsert with composite key', async () => {
+      prisma.subscriptionAddon.upsert.mockResolvedValue({});
+
+      await repo.upsertAddon('sub-1', 'branches', 3, 'pri_addon');
+
+      expect(prisma.subscriptionAddon.upsert).toHaveBeenCalledWith({
+        where: {
+          subscriptionId_resource: {
+            subscriptionId: 'sub-1',
+            resource: 'branches',
+          },
+        },
+        create: {
+          subscriptionId: 'sub-1',
+          resource: 'branches',
+          quantity: 3,
+          paddlePriceId: 'pri_addon',
+        },
+        update: { quantity: 3, paddlePriceId: 'pri_addon' },
+      });
+    });
+  });
+
+  // =========================================================================
+  // deleteAddon
+  // =========================================================================
+
+  describe('deleteAddon', () => {
+    it('calls deleteMany with subscriptionId and resource', async () => {
+      prisma.subscriptionAddon.deleteMany.mockResolvedValue({ count: 1 });
+
+      await repo.deleteAddon('sub-1', 'users');
+
+      expect(prisma.subscriptionAddon.deleteMany).toHaveBeenCalledWith({
+        where: { subscriptionId: 'sub-1', resource: 'users' },
+      });
+    });
+  });
+
+  // =========================================================================
+  // findAddons
+  // =========================================================================
+
+  describe('findAddons', () => {
+    it('calls findMany with subscriptionId', async () => {
+      prisma.subscriptionAddon.findMany.mockResolvedValue([]);
+
+      await repo.findAddons('sub-1');
+
+      expect(prisma.subscriptionAddon.findMany).toHaveBeenCalledWith({
+        where: { subscriptionId: 'sub-1' },
       });
     });
   });
@@ -278,6 +429,83 @@ describe('SubscriptionsRepository', () => {
       const result = await repo.checkLimitAtomic(TENANT_ID, 'users');
 
       expect(result).not.toHaveProperty('trialExpired');
+    });
+
+    it('returns subscriptionInactive when cancelled with future cancelEffectiveAt past now', async () => {
+      prisma._txClient.subscription.findUnique.mockResolvedValue({
+        ...mockSubscription,
+        status: 'CANCELLED',
+        cancelEffectiveAt: new Date('2020-01-01'), // past
+      });
+
+      const result = await repo.checkLimitAtomic(TENANT_ID, 'users');
+
+      expect(result).toEqual({
+        allowed: false,
+        current: 0,
+        max: null,
+        subscriptionInactive: true,
+      });
+    });
+
+    it('allows creation when cancelled but cancelEffectiveAt is in the future', async () => {
+      prisma._txClient.subscription.findUnique.mockResolvedValue({
+        ...mockSubscription,
+        status: 'CANCELLED',
+        cancelEffectiveAt: new Date('2099-01-01'), // future
+      });
+      prisma._txClient.user.count.mockResolvedValue(5);
+
+      const result = await repo.checkLimitAtomic(TENANT_ID, 'users');
+
+      expect(result.allowed).toBe(true);
+      expect(result).not.toHaveProperty('subscriptionInactive');
+    });
+
+    it('returns subscriptionInactive when status is PAUSED', async () => {
+      prisma._txClient.subscription.findUnique.mockResolvedValue({
+        ...mockSubscription,
+        status: 'PAUSED',
+      });
+
+      const result = await repo.checkLimitAtomic(TENANT_ID, 'users');
+
+      expect(result).toEqual({
+        allowed: false,
+        current: 0,
+        max: null,
+        subscriptionInactive: true,
+      });
+    });
+
+    it('returns allowed when max is null (unlimited)', async () => {
+      prisma._txClient.subscription.findUnique.mockResolvedValue({
+        ...mockSubscription,
+        maxUsers: null,
+        status: 'ACTIVE',
+      });
+      prisma._txClient.user.count.mockResolvedValue(999);
+
+      const result = await repo.checkLimitAtomic(TENANT_ID, 'users');
+
+      expect(result).toEqual({ allowed: true, current: 999, max: null });
+    });
+
+    it('returns subscriptionInactive when cancelled with null cancelEffectiveAt', async () => {
+      prisma._txClient.subscription.findUnique.mockResolvedValue({
+        ...mockSubscription,
+        status: 'CANCELLED',
+        cancelEffectiveAt: null,
+      });
+
+      const result = await repo.checkLimitAtomic(TENANT_ID, 'users');
+
+      expect(result).toEqual({
+        allowed: false,
+        current: 0,
+        max: null,
+        subscriptionInactive: true,
+      });
     });
 
     it('does not mark trialExpired when trial has not ended yet', async () => {

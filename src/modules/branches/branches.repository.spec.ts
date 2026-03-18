@@ -58,14 +58,14 @@ describe('BranchesRepository', () => {
 
   describe('findAll', () => {
     it('returns paginated branches without branchId scope', async () => {
-      const query: PaginationDto = { page: 1, limit: 10 };
+      const query: PaginationDto = { page: 1, limit: 10, sortOrder: 'asc' };
       const result = await repo.findAll(tenantId, query, null);
       expect(tenantClient.branch.findMany).toHaveBeenCalled();
       expect(result).toEqual({ items: [mockBranch], total: 1 });
     });
 
     it('applies id scope when userBranchId is provided', async () => {
-      const query: PaginationDto = { page: 1, limit: 10 };
+      const query: PaginationDto = { page: 1, limit: 10, sortOrder: 'asc' };
       await repo.findAll(tenantId, query, branchId);
       const callArgs = tenantClient.branch.findMany.mock.calls[0][0];
       expect(callArgs.where.id).toBe(branchId);
@@ -96,6 +96,26 @@ describe('BranchesRepository', () => {
       const result = await repo.findById(tenantId, branchId, otherBranchId);
       expect(result).toBeNull();
       expect(tenantClient.branch.findFirst).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('findByIdIncludeDeleted', () => {
+    it('returns branch including deleted ones', async () => {
+      tenantClient.branch.findFirst.mockResolvedValue(mockBranch);
+      const result = await repo.findByIdIncludeDeleted(tenantId, branchId);
+      expect(tenantClient.branch.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ id: branchId }),
+          include: { workPosts: true },
+        }),
+      );
+      expect(result).toEqual(mockBranch);
+    });
+
+    it('returns null when branch not found', async () => {
+      tenantClient.branch.findFirst.mockResolvedValue(null);
+      const result = await repo.findByIdIncludeDeleted(tenantId, branchId);
+      expect(result).toBeNull();
     });
   });
 

@@ -52,6 +52,14 @@ export interface OnlineBookingStats {
   onlineRate: number;
 }
 
+const ALERT_THRESHOLDS = {
+  LOW_BOOKINGS_WEEKLY: 20,
+  HIGH_CANCELLATION_RATE: 40,
+  LOW_UTILIZATION: 50,
+  HIGH_NO_SHOW_RATE: 30,
+  SLOW_AVG_COMPLETION_MINUTES: 60,
+} as const;
+
 @Injectable()
 export class AnalyticsRepository {
   constructor(private readonly tenantPrisma: TenantPrismaService) {}
@@ -222,6 +230,8 @@ export class AnalyticsRepository {
     );
     const workPostBase = applyBranchScope({ isActive: true }, eBranchId);
 
+    const prisma = this.tenantPrisma.forTenant(tenantId);
+
     const [
       ordersToday,
       cancelledToday,
@@ -229,6 +239,7 @@ export class AnalyticsRepository {
       distinctClients,
       completedWithTimes,
       workPostCount,
+      avgDurationResult,
     ] = await Promise.all([
       db.order.count({ where: todayBase }),
       db.order.count({ where: { ...todayBase, status: 'CANCELLED' } }),
@@ -249,6 +260,16 @@ export class AnalyticsRepository {
         select: { scheduledStart: true, scheduledEnd: true },
       }),
       db.workPost.count({ where: workPostBase }),
+      prisma.$queryRaw<[{ avg: number | null }]>`
+        SELECT AVG(EXTRACT(EPOCH FROM ("scheduledEnd" - "scheduledStart")) / 60) as avg
+        FROM orders
+        WHERE "tenantId" = ${tenantId}
+          AND status = 'COMPLETED'
+          AND "scheduledStart" >= ${todayStart}
+          AND "scheduledStart" <= ${todayEnd}
+          AND "deletedAt" IS NULL
+          ${eBranchId ? Prisma.sql`AND "branchId" = ${eBranchId}` : Prisma.empty}
+      `,
     ]);
 
     const revenueToday = Number(revenueAgg._sum.totalPrice ?? 0);
@@ -258,20 +279,10 @@ export class AnalyticsRepository {
         ? Math.round((cancelledToday / ordersToday) * 100 * 10) / 10
         : 0;
 
-    // avg duration in minutes (JS aggregate — single query on indexed field)
-    let avgOrderDuration = 0;
-    if (completedWithTimes.length > 0) {
-      const totalMs = completedWithTimes.reduce(
-        (sum, o) =>
-          sum +
-          (o.scheduledEnd
-            ? o.scheduledEnd.getTime() - o.scheduledStart.getTime()
-            : 0),
-        0,
-      );
-      avgOrderDuration =
-        Math.round((totalMs / completedWithTimes.length / 60_000) * 10) / 10;
-    }
+    // avg duration in minutes via SQL aggregation
+    const rawAvg = avgDurationResult[0]?.avg;
+    const avgOrderDuration =
+      rawAvg != null ? Math.round(Number(rawAvg) * 10) / 10 : 0;
 
     // occupancy = scheduled minutes / (work posts × elapsed minutes today)
     const utcNow = new Date();
@@ -376,8 +387,10 @@ export class AnalyticsRepository {
   async getBranchPerformance(
     tenantId: string,
     query: AnalyticsQueryDto,
+    branchId: string | null = null,
   ): Promise<BranchPerformanceRow[]> {
     const db = this.db(tenantId);
+    const eBranchId = this.effectiveBranchId(branchId, query.branchId);
 
     const scheduledStartFilter: Prisma.DateTimeFilter | undefined =
       query.dateFrom || query.dateTo
@@ -386,10 +399,15 @@ export class AnalyticsRepository {
             ...(query.dateTo ? { lte: new Date(query.dateTo) } : {}),
           }
         : undefined;
-    const dateWhere: Prisma.OrderWhereInput = {
-      deletedAt: null,
-      ...(scheduledStartFilter ? { scheduledStart: scheduledStartFilter } : {}),
-    };
+    const dateWhere: Prisma.OrderWhereInput = applyBranchScope(
+      {
+        deletedAt: null,
+        ...(scheduledStartFilter
+          ? { scheduledStart: scheduledStartFilter }
+          : {}),
+      },
+      eBranchId,
+    );
 
     const [branches, grouped] = await Promise.all([
       db.branch.findMany({
@@ -598,10 +616,13 @@ export class AnalyticsRepository {
     // 1. High cancel rate today
     if (ordersToday > 0) {
       const cancelRate = (cancelledToday / ordersToday) * 100;
-      if (cancelRate > 20) {
+      if (cancelRate > ALERT_THRESHOLDS.LOW_BOOKINGS_WEEKLY) {
         alerts.push({
           type: 'HIGH_CANCEL_RATE',
-          severity: cancelRate > 40 ? 'CRITICAL' : 'HIGH',
+          severity:
+            cancelRate > ALERT_THRESHOLDS.HIGH_CANCELLATION_RATE
+              ? 'CRITICAL'
+              : 'HIGH',
           messageKey: 'dashboard.alert.highCancelRate',
           payload: { rate: Math.round(cancelRate * 10) / 10 },
         });
@@ -613,10 +634,11 @@ export class AnalyticsRepository {
     const prevRev = Number(prevRevenue._sum.totalPrice ?? 0);
     if (prevRev > 0) {
       const dropPct = ((prevRev - currRev) / prevRev) * 100;
-      if (dropPct > 20) {
+      if (dropPct > ALERT_THRESHOLDS.LOW_BOOKINGS_WEEKLY) {
         alerts.push({
           type: 'REVENUE_DROP',
-          severity: dropPct > 50 ? 'HIGH' : 'MEDIUM',
+          severity:
+            dropPct > ALERT_THRESHOLDS.LOW_UTILIZATION ? 'HIGH' : 'MEDIUM',
           messageKey: 'dashboard.alert.revenueDrop',
           payload: { pct: Math.round(dropPct * 10) / 10 },
         });
@@ -627,10 +649,13 @@ export class AnalyticsRepository {
     if (lastWeekOrders > 0) {
       const declinePct =
         ((lastWeekOrders - thisWeekOrders) / lastWeekOrders) * 100;
-      if (declinePct > 30) {
+      if (declinePct > ALERT_THRESHOLDS.HIGH_NO_SHOW_RATE) {
         alerts.push({
           type: 'BOOKING_DECLINE',
-          severity: declinePct > 60 ? 'HIGH' : 'MEDIUM',
+          severity:
+            declinePct > ALERT_THRESHOLDS.SLOW_AVG_COMPLETION_MINUTES
+              ? 'HIGH'
+              : 'MEDIUM',
           messageKey: 'dashboard.alert.bookingDecline',
           payload: { pct: Math.round(declinePct * 10) / 10 },
         });

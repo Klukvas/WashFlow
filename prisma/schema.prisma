@@ -48,6 +48,26 @@ enum AuditAction {
   MERGE
 }
 
+enum PlanTier {
+  TRIAL
+  STARTER
+  BUSINESS
+  ENTERPRISE
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  PAUSED
+  CANCELLED
+}
+
 // ─── MODELS ─────────────────────────────────────────────
 
 model Tenant {
@@ -130,8 +150,10 @@ model User {
   phone        String?
   isActive     Boolean   @default(true)
   isSuperAdmin  Boolean   @default(false)
-  tokenVersion  Int       @default(0)
-  roleId        String?
+  tokenVersion        Int       @default(0)
+  failedLoginAttempts Int       @default(0)
+  accountLockedUntil  DateTime? @db.Timestamptz
+  roleId              String?
   role          Role?     @relation(fields: [roleId], references: [id])
   createdAt     DateTime  @default(now()) @db.Timestamptz
   updatedAt     DateTime  @updatedAt @db.Timestamptz
@@ -223,6 +245,7 @@ model Vehicle {
   model        String?
   color        String?
   year         Int?
+  photoUrl     String?
   createdAt    DateTime  @default(now()) @db.Timestamptz
   updatedAt    DateTime  @updatedAt @db.Timestamptz
   deletedAt    DateTime? @db.Timestamptz
@@ -411,21 +434,57 @@ model EmployeeProfile {
 }
 
 model Subscription {
-  id                   String    @id @default(uuid())
-  tenantId             String    @unique
-  tenant               Tenant    @relation(fields: [tenantId], references: [id])
-  maxUsers             Int       @default(5)
-  maxBranches          Int       @default(2)
-  maxWorkPosts         Int       @default(5)
-  maxServices          Int       @default(20)
-  isTrial              Boolean   @default(false)
-  trialEndsAt          DateTime? @db.Timestamptz
+  id                   String             @id @default(uuid())
+  tenantId             String             @unique
+  tenant               Tenant             @relation(fields: [tenantId], references: [id])
+  planTier             PlanTier           @default(TRIAL)
+  billingInterval      BillingInterval?
+  status               SubscriptionStatus @default(TRIALING)
+  maxUsers             Int?
+  maxBranches          Int?
+  maxWorkPosts         Int?
+  maxServices          Int?
+  isTrial              Boolean            @default(false)
+  trialEndsAt          DateTime?          @db.Timestamptz
   paddleSubscriptionId String?
   paddleCustomerId     String?
   paddleStatus         String?
-  currentPeriodEnd     DateTime? @db.Timestamptz
-  createdAt            DateTime  @default(now()) @db.Timestamptz
-  updatedAt            DateTime  @updatedAt @db.Timestamptz
+  paddlePriceId        String?
+  currentPeriodStart   DateTime?          @db.Timestamptz
+  currentPeriodEnd     DateTime?          @db.Timestamptz
+  cancelledAt          DateTime?          @db.Timestamptz
+  cancelEffectiveAt    DateTime?          @db.Timestamptz
+  createdAt            DateTime           @default(now()) @db.Timestamptz
+  updatedAt            DateTime           @updatedAt @db.Timestamptz
+
+  addons SubscriptionAddon[]
 
   @@map("subscriptions")
+}
+
+model SubscriptionAddon {
+  id             String       @id @default(uuid())
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  resource       String       // 'branches' | 'workPosts' | 'users' | 'services'
+  quantity       Int          @default(1)
+  paddlePriceId  String?
+  createdAt      DateTime     @default(now()) @db.Timestamptz
+  updatedAt      DateTime     @updatedAt @db.Timestamptz
+
+  @@unique([subscriptionId, resource])
+  @@map("subscription_addons")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime  @db.Timestamptz
+  usedAt    DateTime? @db.Timestamptz
+  createdAt DateTime  @default(now()) @db.Timestamptz
+
+  @@index([token])
+  @@index([userId])
+  @@map("password_reset_tokens")
 }

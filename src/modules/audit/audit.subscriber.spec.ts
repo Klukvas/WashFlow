@@ -103,7 +103,7 @@ describe('AuditSubscriber', () => {
         expect.objectContaining({
           entityId: 'order-3',
           action: AuditAction.STATUS_CHANGE,
-          oldValue: null,
+          oldValue: { status: 'unknown' },
           newValue: { status: 'CANCELLED', reason: 'Customer request' },
           performedById: 'user-2',
         }),

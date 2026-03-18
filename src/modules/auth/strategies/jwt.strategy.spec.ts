@@ -17,6 +17,9 @@ describe('JwtStrategy', () => {
     const payload: JwtPayload = {
       sub: 'user-1',
       tenantId: 'tenant-1',
+      branchId: null,
+      email: 'user@example.com',
+      tokenVersion: 1,
       type: 'access',
       isSuperAdmin: false,
       permissions: [],
@@ -28,6 +31,9 @@ describe('JwtStrategy', () => {
     const payload: JwtPayload = {
       sub: 'user-1',
       tenantId: 'tenant-1',
+      branchId: null,
+      email: 'user@example.com',
+      tokenVersion: 1,
       type: 'refresh',
       isSuperAdmin: false,
       permissions: [],
@@ -39,6 +45,9 @@ describe('JwtStrategy', () => {
     const payload: JwtPayload = {
       sub: 'user-1',
       tenantId: 'tenant-1',
+      branchId: null,
+      email: 'user@example.com',
+      tokenVersion: 1,
       type: 'refresh',
       isSuperAdmin: false,
       permissions: [],

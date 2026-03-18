@@ -1,12 +1,23 @@
 import { ExecutionContext } from '@nestjs/common';
 import { CustomThrottlerGuard } from './custom-throttler.guard';
 
+function makeGuard(): CustomThrottlerGuard {
+  const guard = Object.create(CustomThrottlerGuard.prototype);
+  guard.config = {
+    get: (key: string) => {
+      if (key === 'nodeEnv') return process.env.NODE_ENV;
+      return undefined;
+    },
+  };
+  return guard as CustomThrottlerGuard;
+}
+
 describe('CustomThrottlerGuard', () => {
   let guard: CustomThrottlerGuard;
   const mockContext = {} as ExecutionContext;
 
   beforeEach(() => {
-    guard = Object.create(CustomThrottlerGuard.prototype);
+    guard = makeGuard();
   });
 
   describe('shouldSkip', () => {

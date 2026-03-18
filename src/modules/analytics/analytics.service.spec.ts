@@ -559,6 +559,7 @@ describe('AnalyticsService', () => {
       expect(analyticsRepo.getBranchPerformance).toHaveBeenCalledWith(
         TENANT_ID,
         query,
+        null,
       );
     });
 

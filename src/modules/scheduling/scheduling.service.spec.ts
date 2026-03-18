@@ -369,7 +369,7 @@ describe('SchedulingService', () => {
         tenantId,
         branchId,
         date,
-        durationMinutes: undefined,
+        durationMinutes: 0,
       });
 
       // 08:00 to 20:00 = 720 minutes / 30 minutes per slot = 24 slots

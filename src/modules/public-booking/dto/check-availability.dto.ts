@@ -1,4 +1,11 @@
-import { IsUUID, IsDateString, IsOptional, IsInt, Min } from 'class-validator';
+import {
+  IsUUID,
+  IsDateString,
+  IsOptional,
+  IsInt,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CheckAvailabilityDto {
@@ -16,5 +23,6 @@ export class CheckAvailabilityDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(480)
   durationMinutes?: number;
 }

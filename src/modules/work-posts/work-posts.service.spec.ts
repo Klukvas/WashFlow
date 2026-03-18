@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { WorkPostsService } from './work-posts.service';
 import { WorkPostsRepository } from './work-posts.repository';
 import { SubscriptionLimitsService } from '../subscriptions/subscription-limits.service';
@@ -20,12 +24,23 @@ describe('WorkPostsService', () => {
     name: 'Post A',
   };
 
+  const mockDeletedWorkPost = {
+    id: workPostId,
+    tenantId,
+    branchId,
+    name: 'Post A',
+    deletedAt: new Date('2026-01-01'),
+  };
+
   beforeEach(async () => {
     repo = {
       findByBranch: jest.fn().mockResolvedValue([mockWorkPost]),
       findById: jest.fn().mockResolvedValue(mockWorkPost),
+      findByIdIncludeDeleted: jest.fn().mockResolvedValue(mockDeletedWorkPost),
       create: jest.fn().mockResolvedValue(mockWorkPost),
       update: jest.fn().mockResolvedValue(mockWorkPost),
+      softDelete: jest.fn().mockResolvedValue(mockWorkPost),
+      restore: jest.fn().mockResolvedValue(mockWorkPost),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -216,6 +231,103 @@ describe('WorkPostsService', () => {
       expect(repo.update).toHaveBeenCalledWith(tenantId, workPostId, {
         ...dto,
       });
+    });
+  });
+
+  describe('softDelete', () => {
+    it('should soft-delete the work post when userBranchId is null', async () => {
+      const result = await service.softDelete(tenantId, workPostId, null);
+      expect(repo.findById).toHaveBeenCalledWith(tenantId, workPostId, null);
+      expect(repo.softDelete).toHaveBeenCalledWith(tenantId, workPostId);
+      expect(result).toEqual(mockWorkPost);
+    });
+
+    it('should soft-delete when userBranchId matches workPost.branchId', async () => {
+      const result = await service.softDelete(tenantId, workPostId, branchId);
+      expect(result).toEqual(mockWorkPost);
+    });
+
+    it('should default userBranchId to null', async () => {
+      await service.softDelete(tenantId, workPostId);
+      expect(repo.findById).toHaveBeenCalledWith(tenantId, workPostId, null);
+    });
+
+    it('should throw ForbiddenException when userBranchId does not match workPost.branchId', async () => {
+      await expect(
+        service.softDelete(tenantId, workPostId, otherBranchId),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw with correct message when branch mismatch', async () => {
+      await expect(
+        service.softDelete(tenantId, workPostId, otherBranchId),
+      ).rejects.toThrow('Cannot delete work posts from a different branch');
+    });
+
+    it('should not call softDelete when branch validation fails', async () => {
+      await service
+        .softDelete(tenantId, workPostId, otherBranchId)
+        .catch(() => undefined);
+      expect(repo.softDelete).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException when work post does not exist', async () => {
+      repo.findById.mockResolvedValue(null);
+      await expect(service.softDelete(tenantId, workPostId)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('restore', () => {
+    it('should restore the work post when userBranchId is null', async () => {
+      const result = await service.restore(tenantId, workPostId, null);
+      expect(repo.restore).toHaveBeenCalledWith(tenantId, workPostId);
+      expect(result).toEqual(mockWorkPost);
+    });
+
+    it('should restore when userBranchId matches workPost.branchId', async () => {
+      const result = await service.restore(tenantId, workPostId, branchId);
+      expect(result).toEqual(mockWorkPost);
+    });
+
+    it('should default userBranchId to null', async () => {
+      await service.restore(tenantId, workPostId);
+      expect(repo.restore).toHaveBeenCalledWith(tenantId, workPostId);
+    });
+
+    it('should throw NotFoundException when work post is not found', async () => {
+      repo.findByIdIncludeDeleted.mockResolvedValue(null);
+      await expect(service.restore(tenantId, workPostId)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw NotFoundException with correct message', async () => {
+      repo.findByIdIncludeDeleted.mockResolvedValue(null);
+      await expect(service.restore(tenantId, workPostId)).rejects.toThrow(
+        'Work post not found',
+      );
+    });
+
+    it('should throw ForbiddenException when userBranchId does not match', async () => {
+      repo.findByIdIncludeDeleted.mockResolvedValue({
+        ...mockDeletedWorkPost,
+        branchId,
+      });
+      await expect(
+        service.restore(tenantId, workPostId, otherBranchId),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw with correct message when branch mismatch on restore', async () => {
+      repo.findByIdIncludeDeleted.mockResolvedValue({
+        ...mockDeletedWorkPost,
+        branchId,
+      });
+      await expect(
+        service.restore(tenantId, workPostId, otherBranchId),
+      ).rejects.toThrow('Cannot restore work posts from a different branch');
     });
   });
 });

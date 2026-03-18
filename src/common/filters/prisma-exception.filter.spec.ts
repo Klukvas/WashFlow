@@ -72,41 +72,39 @@ describe('PrismaExceptionFilter', () => {
       expect(mockStatus).toHaveBeenCalledWith(HttpStatus.CONFLICT);
     });
 
-    it('includes the conflicting field name in the message', () => {
+    it('does not leak field names in the message', () => {
       const { host, mockJson } = buildHost();
       filter.catch(
         buildPrismaError('P2002', { target: ['email'] }),
         host as never,
       );
       const body = mockJson.mock.calls[0][0] as Record<string, unknown>;
-      expect(body.message).toBe('A record with this email already exists');
+      expect(body.message).toBe('A record with this value already exists');
+      expect(body.message).not.toContain('email');
     });
 
-    it('joins multiple conflicting fields with ", "', () => {
+    it('uses generic message regardless of field count', () => {
       const { host, mockJson } = buildHost();
       filter.catch(
         buildPrismaError('P2002', { target: ['email', 'phone'] }),
         host as never,
       );
       const body = mockJson.mock.calls[0][0] as Record<string, unknown>;
-      expect(body.message).toBe(
-        'A record with this email, phone already exists',
-      );
+      expect(body.message).toBe('A record with this value already exists');
     });
 
-    it('falls back to "field" when meta.target is absent', () => {
+    it('uses generic message when meta.target is absent', () => {
       const { host, mockJson } = buildHost();
       filter.catch(buildPrismaError('P2002'), host as never);
       const body = mockJson.mock.calls[0][0] as Record<string, unknown>;
-      expect(body.message).toBe('A record with this field already exists');
+      expect(body.message).toBe('A record with this value already exists');
     });
 
-    it('falls back to "field" when meta.target is an empty array', () => {
+    it('uses generic message when meta.target is an empty array', () => {
       const { host, mockJson } = buildHost();
       filter.catch(buildPrismaError('P2002', { target: [] }), host as never);
       const body = mockJson.mock.calls[0][0] as Record<string, unknown>;
-      // An empty join produces "" which is falsy → falls back to 'field'
-      expect(body.message).toBe('A record with this field already exists');
+      expect(body.message).toBe('A record with this value already exists');
     });
 
     it('sets statusCode to 409 in the response body', () => {

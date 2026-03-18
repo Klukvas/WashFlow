@@ -29,6 +29,12 @@ export class SubscriptionLimitsService {
       throw new ForbiddenException('Trial has expired');
     }
 
+    if (result.subscriptionInactive) {
+      throw new ForbiddenException(
+        'Subscription is inactive. Please renew your subscription to continue.',
+      );
+    }
+
     if (!result.allowed) {
       throw new ForbiddenException(
         `Subscription limit reached: maximum ${result.max} ${RESOURCE_LABELS[resource]} allowed`,
@@ -38,7 +44,7 @@ export class SubscriptionLimitsService {
 
   /**
    * Returns subscription limits + current usage for all resources.
-   * Only exposes limit fields — Paddle billing fields are stripped.
+   * Includes plan tier, status, and addons info.
    */
   async getUsage(tenantId: string) {
     const [
@@ -48,7 +54,7 @@ export class SubscriptionLimitsService {
       workPostsCount,
       servicesCount,
     ] = await Promise.all([
-      this.subscriptionsRepo.findByTenantId(tenantId),
+      this.subscriptionsRepo.findByTenantIdWithAddons(tenantId),
       this.subscriptionsRepo.countUsers(tenantId),
       this.subscriptionsRepo.countBranches(tenantId),
       this.subscriptionsRepo.countWorkPosts(tenantId),
@@ -58,12 +64,24 @@ export class SubscriptionLimitsService {
     return {
       subscription: subscription
         ? {
+            planTier: subscription.planTier,
+            status: subscription.status,
+            billingInterval: subscription.billingInterval,
             maxUsers: subscription.maxUsers,
             maxBranches: subscription.maxBranches,
             maxWorkPosts: subscription.maxWorkPosts,
             maxServices: subscription.maxServices,
             isTrial: subscription.isTrial,
             trialEndsAt: subscription.trialEndsAt?.toISOString() ?? null,
+            currentPeriodEnd:
+              subscription.currentPeriodEnd?.toISOString() ?? null,
+            cancelEffectiveAt:
+              subscription.cancelEffectiveAt?.toISOString() ?? null,
+            hasActiveSubscription: !!subscription.paddleSubscriptionId,
+            addons: subscription.addons.map((a) => ({
+              resource: a.resource,
+              quantity: a.quantity,
+            })),
           }
         : null,
       usage: {

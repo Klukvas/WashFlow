@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { RolesRepository } from './roles.repository';
+import { PermissionsRepository } from '../permissions/permissions.repository';
 import { RolesService } from './roles.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -44,14 +45,17 @@ const buildRepoMock = () => ({
 describe('RolesService', () => {
   let service: RolesService;
   let repoMock: ReturnType<typeof buildRepoMock>;
+  let permissionsRepoMock: { findByIds: jest.Mock };
 
   beforeEach(async () => {
     repoMock = buildRepoMock();
+    permissionsRepoMock = { findByIds: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RolesService,
         { provide: RolesRepository, useValue: repoMock },
+        { provide: PermissionsRepository, useValue: permissionsRepoMock },
       ],
     }).compile();
 
@@ -334,6 +338,11 @@ describe('RolesService', () => {
       });
 
       repoMock.findById.mockResolvedValue(existing);
+      permissionsRepoMock.findByIds.mockResolvedValue([
+        { id: 'perm-1' },
+        { id: 'perm-2' },
+        { id: 'perm-3' },
+      ]);
       repoMock.assignPermissions.mockResolvedValue(roleWithPerms);
 
       const result = await service.assignPermissions(
@@ -343,6 +352,9 @@ describe('RolesService', () => {
       );
 
       expect(repoMock.findById).toHaveBeenCalledWith(TENANT_ID, ROLE_ID);
+      expect(permissionsRepoMock.findByIds).toHaveBeenCalledWith(
+        PERMISSION_IDS,
+      );
       expect(repoMock.assignPermissions).toHaveBeenCalledWith(
         ROLE_ID,
         PERMISSION_IDS,
@@ -381,9 +393,26 @@ describe('RolesService', () => {
       ).rejects.toThrow('Role not found');
     });
 
+    it('throws BadRequestException when one or more permission IDs are invalid', async () => {
+      const existing = buildRole();
+      repoMock.findById.mockResolvedValue(existing);
+      // Only 2 found but 3 requested — invalid
+      permissionsRepoMock.findByIds.mockResolvedValue([
+        { id: 'perm-1' },
+        { id: 'perm-2' },
+      ]);
+
+      await expect(
+        service.assignPermissions(TENANT_ID, ROLE_ID, PERMISSION_IDS),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(repoMock.assignPermissions).not.toHaveBeenCalled();
+    });
+
     it('propagates repository errors during permission assignment', async () => {
       const existing = buildRole();
       repoMock.findById.mockResolvedValue(existing);
+      permissionsRepoMock.findByIds.mockResolvedValue([{ id: 'bad-perm-id' }]);
       repoMock.assignPermissions.mockRejectedValue(
         new Error('Foreign key constraint failed'),
       );

@@ -30,6 +30,7 @@ describe('AnalyticsRepository', () => {
     user: {
       findMany: jest.fn(),
     },
+    $queryRaw: jest.fn(),
   };
 
   const tenantPrisma = {
@@ -50,6 +51,7 @@ describe('AnalyticsRepository', () => {
     tenantClient.workPost.count.mockResolvedValue(0);
     tenantClient.branch.findMany.mockResolvedValue([]);
     tenantClient.user.findMany.mockResolvedValue([]);
+    tenantClient.$queryRaw.mockResolvedValue([{ avg: null }]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -120,6 +122,60 @@ describe('AnalyticsRepository', () => {
 
       const countArgs = tenantClient.order.count.mock.calls[0][0];
       expect(countArgs.where.branchId).toBe('branch-2');
+    });
+
+    it('applies dateFrom filter to scheduledStart', async () => {
+      tenantClient.order.count.mockResolvedValue(0);
+      tenantClient.order.aggregate.mockResolvedValue({
+        _sum: { totalPrice: null },
+      });
+
+      await repo.getDashboardStats(tenantId, {
+        dateFrom: '2026-01-01',
+      });
+
+      const countArgs = tenantClient.order.count.mock.calls[0][0];
+      expect(countArgs.where.scheduledStart).toBeDefined();
+      expect(countArgs.where.scheduledStart.gte).toEqual(
+        new Date('2026-01-01'),
+      );
+    });
+
+    it('applies dateTo filter to scheduledStart', async () => {
+      tenantClient.order.count.mockResolvedValue(0);
+      tenantClient.order.aggregate.mockResolvedValue({
+        _sum: { totalPrice: null },
+      });
+
+      await repo.getDashboardStats(tenantId, {
+        dateTo: '2026-12-31',
+      });
+
+      const countArgs = tenantClient.order.count.mock.calls[0][0];
+      expect(countArgs.where.scheduledStart).toBeDefined();
+      expect(countArgs.where.scheduledStart.lte).toEqual(
+        new Date('2026-12-31'),
+      );
+    });
+
+    it('applies both dateFrom and dateTo filters', async () => {
+      tenantClient.order.count.mockResolvedValue(0);
+      tenantClient.order.aggregate.mockResolvedValue({
+        _sum: { totalPrice: null },
+      });
+
+      await repo.getDashboardStats(tenantId, {
+        dateFrom: '2026-01-01',
+        dateTo: '2026-12-31',
+      });
+
+      const countArgs = tenantClient.order.count.mock.calls[0][0];
+      expect(countArgs.where.scheduledStart.gte).toEqual(
+        new Date('2026-01-01'),
+      );
+      expect(countArgs.where.scheduledStart.lte).toEqual(
+        new Date('2026-12-31'),
+      );
     });
   });
 
@@ -395,6 +451,53 @@ describe('AnalyticsRepository', () => {
       expect(alert).toBeDefined();
       expect(alert?.severity).toBe('MEDIUM');
     });
+
+    it('generates BOOKING_DECLINE alert when decline exceeds 30%', async () => {
+      tenantClient.order.count
+        .mockResolvedValueOnce(0) // ordersToday
+        .mockResolvedValueOnce(0) // cancelledToday
+        .mockResolvedValueOnce(5) // thisWeekOrders
+        .mockResolvedValueOnce(10); // lastWeekOrders (50% decline)
+      tenantClient.order.aggregate
+        .mockResolvedValueOnce({ _sum: { totalPrice: 0 } })
+        .mockResolvedValueOnce({ _sum: { totalPrice: 0 } });
+
+      const result = await repo.getAlerts(tenantId, query);
+      const alert = result.find((a) => a.type === 'BOOKING_DECLINE');
+      expect(alert).toBeDefined();
+      expect(alert?.severity).toBe('MEDIUM');
+    });
+
+    it('generates HIGH severity BOOKING_DECLINE alert when decline exceeds 60%', async () => {
+      tenantClient.order.count
+        .mockResolvedValueOnce(0) // ordersToday
+        .mockResolvedValueOnce(0) // cancelledToday
+        .mockResolvedValueOnce(2) // thisWeekOrders
+        .mockResolvedValueOnce(10); // lastWeekOrders (80% decline)
+      tenantClient.order.aggregate
+        .mockResolvedValueOnce({ _sum: { totalPrice: 0 } })
+        .mockResolvedValueOnce({ _sum: { totalPrice: 0 } });
+
+      const result = await repo.getAlerts(tenantId, query);
+      const alert = result.find((a) => a.type === 'BOOKING_DECLINE');
+      expect(alert).toBeDefined();
+      expect(alert?.severity).toBe('HIGH');
+    });
+
+    it('does not generate BOOKING_DECLINE when decline is under 30%', async () => {
+      tenantClient.order.count
+        .mockResolvedValueOnce(0) // ordersToday
+        .mockResolvedValueOnce(0) // cancelledToday
+        .mockResolvedValueOnce(8) // thisWeekOrders
+        .mockResolvedValueOnce(10); // lastWeekOrders (20% decline)
+      tenantClient.order.aggregate
+        .mockResolvedValueOnce({ _sum: { totalPrice: 0 } })
+        .mockResolvedValueOnce({ _sum: { totalPrice: 0 } });
+
+      const result = await repo.getAlerts(tenantId, query);
+      const alert = result.find((a) => a.type === 'BOOKING_DECLINE');
+      expect(alert).toBeUndefined();
+    });
   });
 
   // ─── getOnlineBookingStats ───────────────────────────────────────────────────
@@ -485,6 +588,7 @@ describe('AnalyticsRepository', () => {
           },
         ]);
       tenantClient.workPost.count.mockResolvedValue(0);
+      tenantClient.$queryRaw.mockResolvedValue([{ avg: 60 }]);
 
       const result = await repo.getKpi(tenantId, query);
       expect(result.avgOrderDuration).toBe(60);

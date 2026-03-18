@@ -35,7 +35,7 @@ describe('UsersController', () => {
 
   describe('findAll', () => {
     it('should delegate to service.findAll with tenantId, query, and branchId', async () => {
-      const query: PaginationDto = { page: 1, limit: 10 };
+      const query: PaginationDto = { page: 1, limit: 10, sortOrder: 'asc' };
 
       await controller.findAll(tenantId, branchId, query);
 
@@ -43,7 +43,7 @@ describe('UsersController', () => {
     });
 
     it('should pass null branchId when no branch context is set', async () => {
-      const query: PaginationDto = { page: 1, limit: 10 };
+      const query: PaginationDto = { page: 1, limit: 10, sortOrder: 'asc' };
 
       await controller.findAll(tenantId, null, query);
 

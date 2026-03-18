@@ -18,6 +18,7 @@ const buildUser = (overrides: Partial<JwtPayload> = {}): JwtPayload => ({
   email: 'user@example.com',
   isSuperAdmin: false,
   permissions: [],
+  tokenVersion: 1,
   type: 'access',
   ...overrides,
 });
@@ -107,8 +108,8 @@ describe('PermissionsGuard', () => {
   describe('when the user is a super admin', () => {
     it('returns true regardless of required permissions', () => {
       reflector.getAllAndOverride.mockReturnValue([
-        'orders:read',
-        'orders:write',
+        'orders.read',
+        'orders.write',
       ]);
       const superAdmin = buildUser({ isSuperAdmin: true, permissions: [] });
       const context = buildContext(superAdmin);
@@ -131,17 +132,17 @@ describe('PermissionsGuard', () => {
 
   describe('when the user has all required permissions', () => {
     it('returns true for a single matching permission', () => {
-      reflector.getAllAndOverride.mockReturnValue(['orders:read']);
-      const user = buildUser({ permissions: ['orders:read'] });
+      reflector.getAllAndOverride.mockReturnValue(['orders.read']);
+      const user = buildUser({ permissions: ['orders.read'] });
       const context = buildContext(user);
 
       expect(guard.canActivate(context)).toBe(true);
     });
 
     it('returns true when user holds a superset of required permissions', () => {
-      reflector.getAllAndOverride.mockReturnValue(['orders:read']);
+      reflector.getAllAndOverride.mockReturnValue(['orders.read']);
       const user = buildUser({
-        permissions: ['orders:read', 'orders:write', 'clients:read'],
+        permissions: ['orders.read', 'orders.write', 'clients.read'],
       });
       const context = buildContext(user);
 
@@ -150,12 +151,12 @@ describe('PermissionsGuard', () => {
 
     it('returns true when ALL of multiple required permissions are present', () => {
       reflector.getAllAndOverride.mockReturnValue([
-        'orders:read',
-        'orders:write',
-        'clients:read',
+        'orders.read',
+        'orders.write',
+        'clients.read',
       ]);
       const user = buildUser({
-        permissions: ['orders:read', 'orders:write', 'clients:read'],
+        permissions: ['orders.read', 'orders.write', 'clients.read'],
       });
       const context = buildContext(user);
 
@@ -169,14 +170,14 @@ describe('PermissionsGuard', () => {
 
   describe('when there is no user on the request', () => {
     it('throws ForbiddenException with the correct message', () => {
-      reflector.getAllAndOverride.mockReturnValue(['orders:read']);
+      reflector.getAllAndOverride.mockReturnValue(['orders.read']);
       const context = buildContext(null);
 
       expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
     });
 
     it('throws with message "No authenticated user found"', () => {
-      reflector.getAllAndOverride.mockReturnValue(['orders:read']);
+      reflector.getAllAndOverride.mockReturnValue(['orders.read']);
       const context = buildContext(null);
 
       expect(() => guard.canActivate(context)).toThrow(
@@ -191,7 +192,7 @@ describe('PermissionsGuard', () => {
 
   describe('when the user is missing required permissions', () => {
     it('throws ForbiddenException when user has no permissions at all', () => {
-      reflector.getAllAndOverride.mockReturnValue(['orders:read']);
+      reflector.getAllAndOverride.mockReturnValue(['orders.read']);
       const user = buildUser({ permissions: [] });
       const context = buildContext(user);
 
@@ -199,7 +200,7 @@ describe('PermissionsGuard', () => {
     });
 
     it('throws with message "Insufficient permissions"', () => {
-      reflector.getAllAndOverride.mockReturnValue(['orders:read']);
+      reflector.getAllAndOverride.mockReturnValue(['orders.read']);
       const user = buildUser({ permissions: [] });
       const context = buildContext(user);
 
@@ -210,25 +211,25 @@ describe('PermissionsGuard', () => {
 
     it('throws when user has some but not all required permissions', () => {
       reflector.getAllAndOverride.mockReturnValue([
-        'orders:read',
-        'orders:write',
+        'orders.read',
+        'orders.write',
       ]);
-      const user = buildUser({ permissions: ['orders:read'] });
+      const user = buildUser({ permissions: ['orders.read'] });
       const context = buildContext(user);
 
       expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
     });
 
     it('throws when user has completely different permissions', () => {
-      reflector.getAllAndOverride.mockReturnValue(['orders:read']);
-      const user = buildUser({ permissions: ['clients:read'] });
+      reflector.getAllAndOverride.mockReturnValue(['orders.read']);
+      const user = buildUser({ permissions: ['clients.read'] });
       const context = buildContext(user);
 
       expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
     });
 
     it('does not allow partial prefix matches (e.g. "orders" does not satisfy "orders:read")', () => {
-      reflector.getAllAndOverride.mockReturnValue(['orders:read']);
+      reflector.getAllAndOverride.mockReturnValue(['orders.read']);
       const user = buildUser({ permissions: ['orders'] });
       const context = buildContext(user);
 

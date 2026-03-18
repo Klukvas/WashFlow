@@ -17,6 +17,7 @@ describe('CleanupService', () => {
   let mockClientDeleteMany: jest.Mock;
   let mockRoleDeleteMany: jest.Mock;
   let mockServiceDeleteMany: jest.Mock;
+  let mockWorkPostDeleteMany: jest.Mock;
   let mockBranchDeleteMany: jest.Mock;
 
   beforeEach(async () => {
@@ -27,6 +28,7 @@ describe('CleanupService', () => {
     mockClientDeleteMany = jest.fn().mockResolvedValue({ count: 0 });
     mockRoleDeleteMany = jest.fn().mockResolvedValue({ count: 0 });
     mockServiceDeleteMany = jest.fn().mockResolvedValue({ count: 0 });
+    mockWorkPostDeleteMany = jest.fn().mockResolvedValue({ count: 0 });
     mockBranchDeleteMany = jest.fn().mockResolvedValue({ count: 0 });
 
     const mockTx = {
@@ -37,6 +39,7 @@ describe('CleanupService', () => {
       client: { deleteMany: mockClientDeleteMany },
       role: { deleteMany: mockRoleDeleteMany },
       service: { deleteMany: mockServiceDeleteMany },
+      workPost: { deleteMany: mockWorkPostDeleteMany },
       branch: { deleteMany: mockBranchDeleteMany },
     };
 
@@ -70,19 +73,19 @@ describe('CleanupService', () => {
   describe('transaction callback', () => {
     it('should call $queryRaw for order_services cleanup', async () => {
       await service.handleHardDeleteCleanup();
-      expect(mockQueryRaw).toHaveBeenCalledTimes(3);
+      expect(mockQueryRaw).toHaveBeenCalledTimes(4);
     });
 
     it('should call $queryRaw for payments cleanup', async () => {
       await service.handleHardDeleteCleanup();
-      // $queryRaw called 3 times: order_services, payments, role_permissions
+      // $queryRaw called 4 times: order_services, payments, employee_profiles, role_permissions
       const calls = mockQueryRaw.mock.calls;
-      expect(calls).toHaveLength(3);
+      expect(calls).toHaveLength(4);
     });
 
     it('should call $queryRaw for role_permissions cleanup', async () => {
       await service.handleHardDeleteCleanup();
-      expect(mockQueryRaw).toHaveBeenCalledTimes(3);
+      expect(mockQueryRaw).toHaveBeenCalledTimes(4);
     });
 
     it('should call order.deleteMany within the transaction', async () => {

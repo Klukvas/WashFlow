@@ -5,3 +5,4 @@ coverage
 .env.docker
 *.excalidraw
 .DS_Store
+uploads/

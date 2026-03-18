@@ -7,8 +7,10 @@ import {
   Matches,
   MaxLength,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class CreateUserDto {
+  @Transform(({ value }) => (value as string).toLowerCase().trim())
   @IsEmail()
   @MaxLength(255)
   email: string;
@@ -23,13 +25,17 @@ export class CreateUserDto {
   password: string;
 
   @IsString()
+  @MaxLength(100)
   firstName: string;
 
   @IsString()
+  @MaxLength(100)
   lastName: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(20)
+  @Matches(/^\+?[\d\s()-]{7,20}$/, { message: 'Invalid phone format' })
   phone?: string;
 
   @IsOptional()

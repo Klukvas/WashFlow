@@ -72,7 +72,7 @@ function makeCreateDto(
     clientId: 'client-uuid-1',
     vehicleId: 'vehicle-uuid-1',
     workPostId: WORK_POST_ID,
-    scheduledStart: '2026-03-01T10:00:00Z',
+    scheduledStart: '2027-03-01T10:00:00Z',
     serviceIds: [SERVICE_ID_1],
     ...overrides,
   } as CreateOrderDto;
@@ -90,9 +90,15 @@ describe('OrdersService', () => {
     $transaction: jest.Mock;
     bookingSettings: { findUnique: jest.Mock; findFirst: jest.Mock };
     workPost: { findMany: jest.Mock };
+    user: { findFirst: jest.Mock };
   };
   let mockTx: {
-    order: { create: jest.Mock };
+    order: {
+      create: jest.Mock;
+      findFirst: jest.Mock;
+      update: jest.Mock;
+      count: jest.Mock;
+    };
     employeeProfile: { count: jest.Mock; findFirst: jest.Mock };
     workPost: { findMany: jest.Mock };
   };
@@ -118,7 +124,12 @@ describe('OrdersService', () => {
 
   beforeEach(async () => {
     mockTx = {
-      order: { create: jest.fn() },
+      order: {
+        create: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue(makeOrder()),
+        update: jest.fn().mockResolvedValue(makeOrder()),
+        count: jest.fn().mockResolvedValue(0),
+      },
       employeeProfile: {
         count: jest.fn().mockResolvedValue(0), // zero profiles → skip auto-assign
         findFirst: jest.fn().mockResolvedValue(null),
@@ -143,6 +154,11 @@ describe('OrdersService', () => {
         findFirst: jest.fn().mockResolvedValue(defaultBookingSettings),
       },
       workPost: { findMany: jest.fn().mockResolvedValue([]) },
+      user: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({ id: 'user-id', tenantId: TENANT_ID }),
+      },
     };
 
     ordersRepo = {
@@ -720,9 +736,9 @@ describe('OrdersService', () => {
 
     it('updates status and dispatches OrderStatusChangedEvent', async () => {
       const order = makeOrder({ status: 'BOOKED' });
-      ordersRepo.findById.mockResolvedValue(order);
+      mockTx.order.findFirst.mockResolvedValue(order);
       const updated = makeOrder({ status: 'IN_PROGRESS' });
-      ordersRepo.updateStatus.mockResolvedValue(updated);
+      mockTx.order.update.mockResolvedValue(updated);
       const dto = makeUpdateDto('IN_PROGRESS');
 
       const result = await service.updateStatus(
@@ -740,8 +756,8 @@ describe('OrdersService', () => {
 
     it('dispatches OrderStatusChangedEvent with correct payload fields', async () => {
       const order = makeOrder({ status: 'BOOKED' });
-      ordersRepo.findById.mockResolvedValue(order);
-      ordersRepo.updateStatus.mockResolvedValue(
+      mockTx.order.findFirst.mockResolvedValue(order);
+      mockTx.order.update.mockResolvedValue(
         makeOrder({ status: 'IN_PROGRESS' }),
       );
       const dto = makeUpdateDto('IN_PROGRESS');
@@ -764,10 +780,8 @@ describe('OrdersService', () => {
 
     it('dispatches both OrderStatusChangedEvent and OrderCancelledEvent when status is CANCELLED', async () => {
       const order = makeOrder({ status: 'BOOKED' });
-      ordersRepo.findById.mockResolvedValue(order);
-      ordersRepo.updateStatus.mockResolvedValue(
-        makeOrder({ status: 'CANCELLED' }),
-      );
+      mockTx.order.findFirst.mockResolvedValue(order);
+      mockTx.order.update.mockResolvedValue(makeOrder({ status: 'CANCELLED' }));
       const dto = makeUpdateDto('CANCELLED', 'Client request');
 
       await service.updateStatus(TENANT_ID, ORDER_ID, dto, USER_ID);
@@ -783,10 +797,8 @@ describe('OrdersService', () => {
 
     it('dispatches OrderCancelledEvent with correct payload when cancelled', async () => {
       const order = makeOrder({ status: 'BOOKED' });
-      ordersRepo.findById.mockResolvedValue(order);
-      ordersRepo.updateStatus.mockResolvedValue(
-        makeOrder({ status: 'CANCELLED' }),
-      );
+      mockTx.order.findFirst.mockResolvedValue(order);
+      mockTx.order.update.mockResolvedValue(makeOrder({ status: 'CANCELLED' }));
       const dto = makeUpdateDto('CANCELLED', 'Client request');
 
       await service.updateStatus(TENANT_ID, ORDER_ID, dto, USER_ID);
@@ -807,8 +819,8 @@ describe('OrdersService', () => {
 
     it('does not dispatch OrderCancelledEvent for non-CANCELLED transitions', async () => {
       const order = makeOrder({ status: 'BOOKED' });
-      ordersRepo.findById.mockResolvedValue(order);
-      ordersRepo.updateStatus.mockResolvedValue(
+      mockTx.order.findFirst.mockResolvedValue(order);
+      mockTx.order.update.mockResolvedValue(
         makeOrder({ status: 'IN_PROGRESS' }),
       );
       const dto = makeUpdateDto('IN_PROGRESS');
@@ -821,19 +833,23 @@ describe('OrdersService', () => {
       );
     });
 
-    it('passes branchId to findById for scoped access', async () => {
-      ordersRepo.findById.mockResolvedValue(makeOrder({ status: 'BOOKED' }));
-      ordersRepo.updateStatus.mockResolvedValue(
+    it('passes branchId into the transaction query for scoped access', async () => {
+      mockTx.order.findFirst.mockResolvedValue(makeOrder({ status: 'BOOKED' }));
+      mockTx.order.update.mockResolvedValue(
         makeOrder({ status: 'IN_PROGRESS' }),
       );
       const dto = makeUpdateDto('IN_PROGRESS');
 
       await service.updateStatus(TENANT_ID, ORDER_ID, dto, USER_ID, BRANCH_ID);
 
-      expect(ordersRepo.findById).toHaveBeenCalledWith(
-        TENANT_ID,
-        ORDER_ID,
-        BRANCH_ID,
+      expect(mockTx.order.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: ORDER_ID,
+            tenantId: TENANT_ID,
+            branchId: BRANCH_ID,
+          }),
+        }),
       );
     });
 
@@ -853,8 +869,8 @@ describe('OrdersService', () => {
       it.each(validTransitions)(
         'allows transition from %s to %s',
         async (from, to) => {
-          ordersRepo.findById.mockResolvedValue(makeOrder({ status: from }));
-          ordersRepo.updateStatus.mockResolvedValue(makeOrder({ status: to }));
+          mockTx.order.findFirst.mockResolvedValue(makeOrder({ status: from }));
+          mockTx.order.update.mockResolvedValue(makeOrder({ status: to }));
 
           await expect(
             service.updateStatus(
@@ -887,7 +903,7 @@ describe('OrdersService', () => {
       it.each(invalidTransitions)(
         'throws BadRequestException for invalid transition from %s to %s',
         async (from, to) => {
-          ordersRepo.findById.mockResolvedValue(makeOrder({ status: from }));
+          mockTx.order.findFirst.mockResolvedValue(makeOrder({ status: from }));
 
           await expect(
             service.updateStatus(
@@ -902,8 +918,8 @@ describe('OrdersService', () => {
         },
       );
 
-      it('does not call updateStatus repository when transition is invalid', async () => {
-        ordersRepo.findById.mockResolvedValue(
+      it('does not call tx.order.update when transition is invalid', async () => {
+        mockTx.order.findFirst.mockResolvedValue(
           makeOrder({ status: 'COMPLETED' }),
         );
 
@@ -916,12 +932,12 @@ describe('OrdersService', () => {
           ),
         ).rejects.toThrow(BadRequestException);
 
-        expect(ordersRepo.updateStatus).not.toHaveBeenCalled();
+        expect(mockTx.order.update).not.toHaveBeenCalled();
       });
     });
 
     it('throws NotFoundException when order does not exist', async () => {
-      ordersRepo.findById.mockResolvedValue(null);
+      mockTx.order.findFirst.mockResolvedValue(null);
 
       await expect(
         service.updateStatus(
@@ -1012,22 +1028,26 @@ describe('OrdersService', () => {
   // =========================================================================
 
   describe('restore', () => {
-    it('restores a soft-deleted order', async () => {
+    it('restores a soft-deleted order with scheduled time via transaction', async () => {
+      // makeOrder() has status: 'BOOKED' and workPostId/scheduledStart/End set,
+      // so the service enters the $transaction path using tx.order.count + tx.order.update
       const deletedOrder = makeOrder({ deletedAt: new Date('2026-01-01') });
       ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
+      mockTx.order.count.mockResolvedValue(0); // no conflicts
       const restored = makeOrder({ deletedAt: null });
-      ordersRepo.restore.mockResolvedValue(restored);
+      mockTx.order.update.mockResolvedValue(restored);
 
       const result = await service.restore(TENANT_ID, ORDER_ID);
 
       expect(result).toEqual(restored);
-      expect(ordersRepo.restore).toHaveBeenCalledWith(TENANT_ID, ORDER_ID);
+      expect(prisma.$transaction).toHaveBeenCalled();
     });
 
     it('calls findByIdIncludeDeleted to look up the order', async () => {
       const deletedOrder = makeOrder({ deletedAt: new Date() });
       ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
-      ordersRepo.restore.mockResolvedValue(makeOrder());
+      mockTx.order.count.mockResolvedValue(0);
+      mockTx.order.update.mockResolvedValue(makeOrder());
 
       await service.restore(TENANT_ID, ORDER_ID);
 
@@ -1063,7 +1083,8 @@ describe('OrdersService', () => {
         deletedAt: new Date(),
       });
       ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
-      ordersRepo.restore.mockResolvedValue(makeOrder());
+      mockTx.order.count.mockResolvedValue(0);
+      mockTx.order.update.mockResolvedValue(makeOrder());
 
       await expect(
         service.restore(TENANT_ID, ORDER_ID, null),
@@ -1076,7 +1097,8 @@ describe('OrdersService', () => {
         deletedAt: new Date(),
       });
       ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
-      ordersRepo.restore.mockResolvedValue(makeOrder());
+      mockTx.order.count.mockResolvedValue(0);
+      mockTx.order.update.mockResolvedValue(makeOrder());
 
       await expect(
         service.restore(TENANT_ID, ORDER_ID, BRANCH_ID),
@@ -1122,7 +1144,7 @@ describe('OrdersService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('validates no overlap for non-terminal status orders with scheduled times', async () => {
+    it('validates no overlap for non-terminal status orders via tx.order.count', async () => {
       const deletedOrder = makeOrder({
         status: 'BOOKED',
         deletedAt: new Date(),
@@ -1131,16 +1153,18 @@ describe('OrdersService', () => {
         scheduledEnd: new Date('2026-03-01T11:00:00Z'),
       });
       ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
-      ordersRepo.restore.mockResolvedValue(makeOrder());
+      mockTx.order.count.mockResolvedValue(0); // no conflicts
+      mockTx.order.update.mockResolvedValue(makeOrder());
 
       await service.restore(TENANT_ID, ORDER_ID);
 
-      expect(schedulingService.validateNoOverlap).toHaveBeenCalledWith(
-        TENANT_ID,
-        WORK_POST_ID,
-        deletedOrder.scheduledStart,
-        deletedOrder.scheduledEnd,
-        expect.any(Number),
+      expect(mockTx.order.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tenantId: TENANT_ID,
+            workPostId: WORK_POST_ID,
+          }),
+        }),
       );
     });
 
@@ -1153,7 +1177,7 @@ describe('OrdersService', () => {
         scheduledEnd: new Date('2026-03-01T11:00:00Z'),
       });
       ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
-      schedulingService.validateNoOverlap.mockResolvedValue(false);
+      mockTx.order.count.mockResolvedValue(1); // conflict exists
 
       await expect(service.restore(TENANT_ID, ORDER_ID)).rejects.toThrow(
         new ConflictException(
@@ -1171,7 +1195,7 @@ describe('OrdersService', () => {
         scheduledEnd: new Date('2026-03-01T11:00:00Z'),
       });
       ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
-      schedulingService.validateNoOverlap.mockResolvedValue(false);
+      mockTx.order.count.mockResolvedValue(1); // conflict exists
 
       await expect(service.restore(TENANT_ID, ORDER_ID)).rejects.toThrow(
         ConflictException,
@@ -1179,7 +1203,7 @@ describe('OrdersService', () => {
       expect(ordersRepo.restore).not.toHaveBeenCalled();
     });
 
-    it('skips overlap validation for COMPLETED orders', async () => {
+    it('skips $transaction and calls repo.restore for COMPLETED orders', async () => {
       const deletedOrder = makeOrder({
         status: 'COMPLETED',
         deletedAt: new Date(),
@@ -1192,11 +1216,11 @@ describe('OrdersService', () => {
 
       await service.restore(TENANT_ID, ORDER_ID);
 
-      expect(schedulingService.validateNoOverlap).not.toHaveBeenCalled();
+      expect(mockTx.order.count).not.toHaveBeenCalled();
       expect(ordersRepo.restore).toHaveBeenCalled();
     });
 
-    it('skips overlap validation for CANCELLED orders', async () => {
+    it('skips overlap check and calls repo.restore for CANCELLED orders', async () => {
       const deletedOrder = makeOrder({
         status: 'CANCELLED',
         deletedAt: new Date(),
@@ -1209,10 +1233,10 @@ describe('OrdersService', () => {
 
       await service.restore(TENANT_ID, ORDER_ID);
 
-      expect(schedulingService.validateNoOverlap).not.toHaveBeenCalled();
+      expect(mockTx.order.count).not.toHaveBeenCalled();
     });
 
-    it('skips overlap validation for NO_SHOW orders', async () => {
+    it('skips overlap check and calls repo.restore for NO_SHOW orders', async () => {
       const deletedOrder = makeOrder({
         status: 'NO_SHOW',
         deletedAt: new Date(),
@@ -1225,10 +1249,10 @@ describe('OrdersService', () => {
 
       await service.restore(TENANT_ID, ORDER_ID);
 
-      expect(schedulingService.validateNoOverlap).not.toHaveBeenCalled();
+      expect(mockTx.order.count).not.toHaveBeenCalled();
     });
 
-    it('skips overlap validation when workPostId is null', async () => {
+    it('skips overlap check and calls repo.restore when workPostId is null', async () => {
       const deletedOrder = makeOrder({
         status: 'BOOKED',
         deletedAt: new Date(),
@@ -1241,7 +1265,7 @@ describe('OrdersService', () => {
 
       await service.restore(TENANT_ID, ORDER_ID);
 
-      expect(schedulingService.validateNoOverlap).not.toHaveBeenCalled();
+      expect(mockTx.order.count).not.toHaveBeenCalled();
     });
   });
 
@@ -1251,7 +1275,7 @@ describe('OrdersService', () => {
 
   describe('create — booking constraints', () => {
     it('throws BadRequestException when scheduled on a non-working day', async () => {
-      // 2026-03-01 is a Sunday (day 0)
+      // 2027-03-07 is a Sunday (day 0) and is in the future
       const svc = makeService(SERVICE_ID_1, 50, 30);
       servicesRepo.findByIds.mockResolvedValue([svc]);
       // Remove Sunday (0) from working days
@@ -1265,7 +1289,7 @@ describe('OrdersService', () => {
         allowOnlineBooking: true,
       });
       const dto = makeCreateDto({
-        scheduledStart: '2026-03-01T10:00:00Z',
+        scheduledStart: '2027-03-07T10:00:00Z',
       });
 
       await expect(service.create(TENANT_ID, dto, USER_ID)).rejects.toThrow(

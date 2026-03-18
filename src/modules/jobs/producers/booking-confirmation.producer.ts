@@ -18,8 +18,10 @@ export class BookingConfirmationProducer {
       { orderId, tenantId },
       {
         delay: timeoutMinutes * 60000,
-        attempts: 1,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
         removeOnComplete: 100,
+        removeOnFail: 500,
       },
     );
   }

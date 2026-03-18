@@ -3,7 +3,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 import { VehiclesRepository } from './vehicles.repository';
+import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
 import { VehicleQueryDto } from './dto/vehicle-query.dto';
@@ -11,7 +14,10 @@ import { paginatedResponse } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class VehiclesService {
-  constructor(private readonly vehiclesRepo: VehiclesRepository) {}
+  constructor(
+    private readonly vehiclesRepo: VehiclesRepository,
+    private readonly tenantPrisma: TenantPrismaService,
+  ) {}
 
   async findAll(tenantId: string, query: VehicleQueryDto) {
     const { items, total } = await this.vehiclesRepo.findAll(tenantId, query);
@@ -29,7 +35,20 @@ export class VehiclesService {
   }
 
   async create(tenantId: string, dto: CreateVehicleDto) {
+    await this.validateClientBelongsToTenant(tenantId, dto.clientId);
     return this.vehiclesRepo.create(tenantId, { ...dto });
+  }
+
+  private async validateClientBelongsToTenant(
+    tenantId: string,
+    clientId: string,
+  ) {
+    const client = await this.tenantPrisma
+      .forTenant(tenantId)
+      .client.findFirst({ where: { id: clientId } });
+    if (!client) {
+      throw new BadRequestException('Client not found in this tenant');
+    }
   }
 
   async update(tenantId: string, id: string, dto: UpdateVehicleDto) {
@@ -51,5 +70,14 @@ export class VehiclesService {
     if (!vehicle.deletedAt)
       throw new BadRequestException('Vehicle is not deleted');
     return this.vehiclesRepo.restore(tenantId, id);
+  }
+
+  async updatePhoto(tenantId: string, id: string, photoUrl: string) {
+    const vehicle = await this.findById(tenantId, id);
+    if (vehicle.photoUrl) {
+      const oldFilePath = path.join(process.cwd(), vehicle.photoUrl);
+      await fs.promises.unlink(oldFilePath).catch(() => {});
+    }
+    return this.vehiclesRepo.update(tenantId, id, { photoUrl });
   }
 }

@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { VehiclesService } from './vehicles.service';
 import { VehiclesRepository } from './vehicles.repository';
+import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 
 describe('VehiclesService', () => {
   let service: VehiclesService;
@@ -19,6 +20,8 @@ describe('VehiclesService', () => {
     deletedAt: null,
   };
 
+  let tenantPrisma: { forTenant: jest.Mock };
+
   beforeEach(async () => {
     repo = {
       findAll: jest.fn().mockResolvedValue({ items: [mockVehicle], total: 1 }),
@@ -31,10 +34,19 @@ describe('VehiclesService', () => {
       restore: jest.fn().mockResolvedValue(mockVehicle),
     };
 
+    tenantPrisma = {
+      forTenant: jest.fn().mockReturnValue({
+        client: {
+          findFirst: jest.fn().mockResolvedValue({ id: 'client-1' }),
+        },
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         VehiclesService,
         { provide: VehiclesRepository, useValue: repo },
+        { provide: TenantPrismaService, useValue: tenantPrisma },
       ],
     }).compile();
 
@@ -136,6 +148,32 @@ describe('VehiclesService', () => {
       await expect(service.restore(tenantId, vehicleId)).rejects.toThrow(
         BadRequestException,
       );
+    });
+  });
+
+  describe('updatePhoto', () => {
+    it('should find vehicle then call repo.update with photoUrl and return result', async () => {
+      const photoUrl = '/uploads/vehicles/photo.jpg';
+      const updated = { ...mockVehicle, photoUrl };
+      repo.update.mockResolvedValue(updated);
+
+      const result = await service.updatePhoto(tenantId, vehicleId, photoUrl);
+
+      expect(repo.findById).toHaveBeenCalledWith(tenantId, vehicleId);
+      expect(repo.update).toHaveBeenCalledWith(tenantId, vehicleId, {
+        photoUrl,
+      });
+      expect(result).toEqual(updated);
+    });
+
+    it('should throw NotFoundException when vehicle does not exist', async () => {
+      repo.findById.mockResolvedValue(null);
+
+      await expect(
+        service.updatePhoto(tenantId, vehicleId, '/uploads/vehicles/photo.jpg'),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(repo.update).not.toHaveBeenCalled();
     });
   });
 });

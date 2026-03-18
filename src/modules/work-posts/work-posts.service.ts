@@ -84,13 +84,22 @@ export class WorkPostsService {
     id: string,
     userBranchId: string | null = null,
   ) {
-    const workPost = await this.workPostsRepo.restore(tenantId, id);
+    // Find the deleted work post first (before restoring)
+    const workPost = await this.workPostsRepo.findByIdIncludeDeleted(
+      tenantId,
+      id,
+    );
     if (!workPost) throw new NotFoundException('Work post not found');
+    if (!workPost.deletedAt)
+      throw new BadRequestException('Work post is not deleted');
+    // Check branch permission before restoring
     if (userBranchId !== null && workPost.branchId !== userBranchId) {
       throw new ForbiddenException(
         'Cannot restore work posts from a different branch',
       );
     }
-    return workPost;
+    // Check subscription limit before restoring
+    await this.limits.checkLimit(tenantId, 'workPosts');
+    return this.workPostsRepo.restore(tenantId, id);
   }
 }

@@ -1,4 +1,4 @@
-import { IsBoolean, IsOptional, IsUUID } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { PaginationDto } from '../../../common/utils/pagination.dto';
 
@@ -11,4 +11,9 @@ export class EmployeeProfileQueryDto extends PaginationDto {
   @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   active?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['createdAt', 'updatedAt', 'position', 'active'])
+  declare sortBy?: 'createdAt' | 'updatedAt' | 'position' | 'active';
 }

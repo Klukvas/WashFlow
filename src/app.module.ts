@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { SentryModule } from '@sentry/nestjs/setup';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 import { LoggerModule } from 'nestjs-pino';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -9,6 +10,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ScheduleModule } from '@nestjs/schedule';
 import configuration from './config/configuration';
 import { PrismaModule } from './prisma/prisma.module';
+import { EmailModule } from './modules/email/email.module';
 import { EventsModule } from './common/events/events.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { TenantGuard } from './common/guards/tenant.guard';
@@ -34,24 +36,63 @@ import { JobsModule } from './modules/jobs/jobs.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { CleanupModule } from './modules/cleanup/cleanup.module';
 import { HealthModule } from './modules/health/health.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
 
 @Module({
   imports: [
+    // Sentry (must be first)
+    SentryModule.forRoot(),
+
     // Configuration
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
     }),
 
-    // Structured logging (JSON in production, pretty in dev)
+    // Structured logging (JSON in production, pretty in dev, optional Grafana Loki)
     LoggerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const isDev = config.get<string>('nodeEnv') !== 'production';
+        const lokiHost = config.get<string>('grafanaLoki.host', '');
+        const lokiUsername = config.get<string>('grafanaLoki.username', '');
+        const lokiPassword = config.get<string>('grafanaLoki.password', '');
+        const hasLoki = !!(lokiHost && lokiUsername && lokiPassword);
+
+        const getTransport = () => {
+          if (isDev) {
+            return { target: 'pino-pretty' };
+          }
+          if (hasLoki) {
+            return {
+              targets: [
+                {
+                  target: 'pino-loki',
+                  options: {
+                    batching: true,
+                    interval: 5,
+                    host: lokiHost,
+                    basicAuth: {
+                      username: lokiUsername,
+                      password: lokiPassword,
+                    },
+                    labels: { app: 'washflow', env: 'production' },
+                  },
+                },
+                {
+                  target: 'pino/file',
+                  options: { destination: 1 },
+                },
+              ],
+            };
+          }
+          return undefined;
+        };
+
         return {
           pinoHttp: {
             level: isDev ? 'debug' : 'info',
-            ...(isDev ? { transport: { target: 'pino-pretty' } } : {}),
+            transport: getTransport(),
           },
         };
       },
@@ -94,6 +135,9 @@ import { HealthModule } from './modules/health/health.module';
     // Database
     PrismaModule,
 
+    // Email
+    EmailModule,
+
     // Domain events
     EventsModule,
 
@@ -120,6 +164,7 @@ import { HealthModule } from './modules/health/health.module';
     JobsModule,
     CleanupModule,
     HealthModule,
+    MetricsModule,
   ],
   providers: [
     // Apply JwtAuthGuard globally — use @Public() to skip

@@ -5,6 +5,7 @@ import {
   IsDateString,
   IsArray,
   ArrayMinSize,
+  ArrayMaxSize,
   IsOptional,
   IsEmail,
   MaxLength,
@@ -24,6 +25,7 @@ export class CreateBookingDto {
 
   @IsArray()
   @ArrayMinSize(1)
+  @ArrayMaxSize(10)
   @IsUUID('4', { each: true })
   serviceIds: string[];
 

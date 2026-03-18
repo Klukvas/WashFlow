@@ -37,7 +37,7 @@ describe('PublicBookingController', () => {
       const dto: CheckAvailabilityDto = {
         date: '2026-03-01',
         serviceId: 'svc-uuid-1',
-      } as CheckAvailabilityDto;
+      } as unknown as CheckAvailabilityDto;
       const expected = { slots: [] };
       mockPublicBookingService.checkAvailability.mockResolvedValue(expected);
 
@@ -93,7 +93,7 @@ describe('PublicBookingController', () => {
       const dto: CreateBookingDto = {
         serviceId: 'svc-uuid-1',
         slotId: 'slot-uuid-1',
-      } as CreateBookingDto;
+      } as unknown as CreateBookingDto;
       const idempotencyKey = 'idem-key-abc123';
       const expected = { bookingId: 'booking-uuid-1' };
       mockPublicBookingService.createBooking.mockResolvedValue(expected);
@@ -117,7 +117,7 @@ describe('PublicBookingController', () => {
       const dto: CreateBookingDto = {
         serviceId: 'svc-uuid-1',
         slotId: 'slot-uuid-1',
-      } as CreateBookingDto;
+      } as unknown as CreateBookingDto;
       const expected = { bookingId: 'booking-uuid-2' };
       mockPublicBookingService.createBooking.mockResolvedValue(expected);
 

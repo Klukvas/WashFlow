@@ -8,6 +8,7 @@ import {
   Body,
   Query,
   Headers,
+  HttpCode,
   ParseUUIDPipe,
   UseGuards,
 } from '@nestjs/common';
@@ -73,6 +74,7 @@ export class OrdersController {
   }
 
   @Post()
+  @HttpCode(201)
   @Permissions('orders.create')
   create(
     @CurrentTenant() tenantId: string,

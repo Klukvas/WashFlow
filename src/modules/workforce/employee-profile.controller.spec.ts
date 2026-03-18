@@ -30,7 +30,7 @@ function buildMockService(): Record<string, jest.Mock> {
     findById: jest.fn().mockResolvedValue(mockProfile),
     create: jest.fn().mockResolvedValue(mockProfile),
     update: jest.fn().mockResolvedValue(mockProfile),
-    deactivate: jest.fn().mockResolvedValue(mockProfile),
+    delete: jest.fn().mockResolvedValue(mockProfile),
   };
 }
 
@@ -56,6 +56,9 @@ describe('EmployeeProfileController', () => {
   describe('findAll', () => {
     it('delegates to profileService.findAll with tenantId and query', async () => {
       const query: EmployeeProfileQueryDto = {
+        page: 1,
+        limit: 20,
+        sortOrder: 'asc',
         branchId: BRANCH_ID,
         active: true,
       };
@@ -119,14 +122,11 @@ describe('EmployeeProfileController', () => {
   });
 
   describe('deactivate', () => {
-    it('delegates to profileService.deactivate with tenantId and id', async () => {
+    it('delegates to profileService.delete with tenantId and id', async () => {
       const result = await controller.deactivate(TENANT_ID, PROFILE_ID);
 
-      expect(profileService.deactivate).toHaveBeenCalledTimes(1);
-      expect(profileService.deactivate).toHaveBeenCalledWith(
-        TENANT_ID,
-        PROFILE_ID,
-      );
+      expect(profileService.delete).toHaveBeenCalledTimes(1);
+      expect(profileService.delete).toHaveBeenCalledWith(TENANT_ID, PROFILE_ID);
       expect(result).toEqual(mockProfile);
     });
   });

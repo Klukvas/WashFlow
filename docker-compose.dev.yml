@@ -4,11 +4,11 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: washflow_dev
-      POSTGRES_USER: washflow_dev
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-washflow_dev_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-washflow}
+      POSTGRES_USER: ${POSTGRES_USER:-washflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-washflow_secret}
     ports:
-      - '5432:5432'
+      - '5433:5432'
     volumes:
       - postgres_dev:/var/lib/postgresql/data
 

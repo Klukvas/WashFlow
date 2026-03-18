@@ -9,6 +9,7 @@ describe('TenantsController', () => {
   let service: Record<string, jest.Mock>;
 
   const tenantId = 'tenant-uuid-1';
+  const mockUser = { sub: 'user-1', tenantId: tenantId, isSuperAdmin: false };
 
   beforeEach(async () => {
     service = {
@@ -38,7 +39,7 @@ describe('TenantsController', () => {
 
   describe('findOne', () => {
     it('should delegate to service.findById with id', async () => {
-      await controller.findOne(tenantId);
+      await controller.findOne(mockUser as any, tenantId);
 
       expect(service.findById).toHaveBeenCalledWith(tenantId);
     });
@@ -60,7 +61,7 @@ describe('TenantsController', () => {
         name: 'Acme Corp Updated',
       } as UpdateTenantDto;
 
-      await controller.update(tenantId, dto);
+      await controller.update(mockUser as any, tenantId, dto);
 
       expect(service.update).toHaveBeenCalledWith(tenantId, dto);
     });

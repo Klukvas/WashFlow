@@ -47,7 +47,7 @@ describe('UsersRepository', () => {
 
   describe('findAll', () => {
     it('returns paginated users without branchId scope', async () => {
-      const query: PaginationDto = { page: 1, limit: 10 };
+      const query: PaginationDto = { page: 1, limit: 10, sortOrder: 'asc' };
       const result = await repo.findAll(tenantId, query, null);
       expect(tenantClient.user.findMany).toHaveBeenCalled();
       expect(tenantClient.user.count).toHaveBeenCalled();
@@ -55,7 +55,7 @@ describe('UsersRepository', () => {
     });
 
     it('applies branchId scope when userBranchId is provided', async () => {
-      const query: PaginationDto = { page: 1, limit: 10 };
+      const query: PaginationDto = { page: 1, limit: 10, sortOrder: 'asc' };
       await repo.findAll(tenantId, query, branchId);
       const callArgs = tenantClient.user.findMany.mock.calls[0][0];
       expect(callArgs.where.branchId).toBe(branchId);

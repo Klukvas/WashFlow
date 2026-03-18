@@ -37,14 +37,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
     } else if (exception instanceof Error) {
       message =
-        process.env.NODE_ENV === 'production'
-          ? 'Internal server error'
-          : exception.message;
+        process.env.NODE_ENV === 'development'
+          ? exception.message
+          : 'Internal server error';
     }
+
+    const requestPath = request.path || request.url.split('?')[0];
 
     if (status >= 500) {
       this.logger.error(
-        `${request.method} ${request.url} ${status}`,
+        `${request.method} ${requestPath} ${status}`,
         exception instanceof Error ? exception.stack : String(exception),
       );
     }
@@ -54,7 +56,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message,
       error,
       timestamp: new Date().toISOString(),
-      path: request.url,
+      path: requestPath,
     });
   }
 }

@@ -1,16 +1,21 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { CurrentBranch } from '../../common/decorators/current-branch.decorator';
 import { AnalyticsService } from './analytics.service';
+import { AnalyticsExportService } from './analytics-export.service';
 import { AnalyticsQueryDto } from './dto/analytics-query.dto';
 
 @Controller('analytics')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class AnalyticsController {
-  constructor(private readonly analyticsService: AnalyticsService) {}
+  constructor(
+    private readonly analyticsService: AnalyticsService,
+    private readonly exportService: AnalyticsExportService,
+  ) {}
 
   @Get('dashboard')
   @Permissions('analytics.view')
@@ -65,9 +70,14 @@ export class AnalyticsController {
   @Permissions('analytics.view')
   getBranchPerformance(
     @CurrentTenant() tenantId: string,
+    @CurrentBranch() branchId: string | null,
     @Query() query: AnalyticsQueryDto,
   ) {
-    return this.analyticsService.getBranchPerformance(tenantId, query);
+    return this.analyticsService.getBranchPerformance(
+      tenantId,
+      query,
+      branchId,
+    );
   }
 
   @Get('employees')
@@ -106,5 +116,41 @@ export class AnalyticsController {
       query,
       branchId,
     );
+  }
+
+  @Get('export/orders')
+  @Permissions('analytics.view')
+  async exportOrders(
+    @CurrentTenant() tenantId: string,
+    @CurrentBranch() branchId: string | null,
+    @Query() query: AnalyticsQueryDto,
+    @Res() res: Response,
+  ) {
+    const csv = await this.exportService.exportOrdersCsv(
+      tenantId,
+      query,
+      branchId,
+    );
+    res.set('Content-Type', 'text/csv');
+    res.set('Content-Disposition', 'attachment; filename="orders-export.csv"');
+    res.end(csv);
+  }
+
+  @Get('export/clients')
+  @Permissions('analytics.view')
+  async exportClients(
+    @CurrentTenant() tenantId: string,
+    @CurrentBranch() branchId: string | null,
+    @Query() query: AnalyticsQueryDto,
+    @Res() res: Response,
+  ) {
+    const csv = await this.exportService.exportClientsCsv(
+      tenantId,
+      query,
+      branchId,
+    );
+    res.set('Content-Type', 'text/csv');
+    res.set('Content-Disposition', 'attachment; filename="clients-export.csv"');
+    res.end(csv);
   }
 }
