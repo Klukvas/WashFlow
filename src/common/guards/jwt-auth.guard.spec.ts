@@ -122,7 +122,7 @@ describe('JwtAuthGuard', () => {
         .mockReturnValue(true);
 
       const context = buildContext();
-      guard.canActivate(context);
+      void guard.canActivate(context);
 
       expect(reflector.getAllAndOverride).toHaveBeenCalledWith(
         IS_PUBLIC_KEY,
@@ -137,7 +137,7 @@ describe('JwtAuthGuard', () => {
         .mockReturnValue(true);
 
       const context = buildContext();
-      guard.canActivate(context);
+      void guard.canActivate(context);
 
       const [, targets] = reflector.getAllAndOverride.mock.calls[0];
       expect(targets).toEqual([context.getHandler(), context.getClass()]);
@@ -147,7 +147,7 @@ describe('JwtAuthGuard', () => {
       reflector.getAllAndOverride.mockReturnValue(true);
 
       const context = buildContext();
-      guard.canActivate(context);
+      void guard.canActivate(context);
 
       expect(reflector.getAllAndOverride).toHaveBeenCalledTimes(1);
     });

@@ -11,7 +11,6 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { SuperAdminGuard } from '../../common/guards/superadmin.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
@@ -24,7 +23,7 @@ import { ManageAddonDto } from './dto/manage-addon.dto';
 
 /** Tenant-scoped: only users with tenants.read can view subscription usage. */
 @Controller('subscription')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(PermissionsGuard)
 export class SubscriptionUsageController {
   constructor(
     private readonly limitsService: SubscriptionLimitsService,
@@ -87,7 +86,7 @@ export class SubscriptionUsageController {
 
 /** Admin-scoped: superAdmin manages tenant subscriptions. */
 @Controller('tenants/:tenantId/subscription')
-@UseGuards(JwtAuthGuard, SuperAdminGuard)
+@UseGuards(SuperAdminGuard)
 export class SubscriptionAdminController {
   constructor(private readonly subscriptionsService: SubscriptionsService) {}
 

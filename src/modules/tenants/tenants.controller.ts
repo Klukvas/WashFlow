@@ -10,7 +10,6 @@ import {
   ForbiddenException,
   HttpCode,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { SuperAdminGuard } from '../../common/guards/superadmin.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
@@ -21,7 +20,7 @@ import { UpdateTenantDto } from './dto/update-tenant.dto';
 import type { JwtPayload } from '../../common/types/jwt-payload.type';
 
 @Controller('tenants')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(PermissionsGuard)
 export class TenantsController {
   constructor(private readonly tenantsService: TenantsService) {}
 

@@ -12,7 +12,6 @@ import {
   ParseUUIDPipe,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
@@ -26,7 +25,7 @@ import { OrderQueryDto } from './dto/order-query.dto';
 import { SchedulingService } from '../scheduling/scheduling.service';
 
 @Controller('orders')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(PermissionsGuard)
 export class OrdersController {
   constructor(
     private readonly ordersService: OrdersService,

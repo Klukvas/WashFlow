@@ -34,7 +34,10 @@ export function ScheduleView() {
     branchId,
     limit: 50,
   });
-  const workPosts = workPostsData?.items ?? [];
+  const workPosts = useMemo(
+    () => workPostsData?.items ?? [],
+    [workPostsData?.items],
+  );
 
   const { data: branchSettings } = useBranchBookingSettings(branchId);
 

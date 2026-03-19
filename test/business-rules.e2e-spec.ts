@@ -1035,7 +1035,7 @@ describe('Business Rules (e2e)', () => {
       const res1 = await api()
         .post(`/api/v1/orders/${paymentOrderId}/payments`)
         .set('idempotency-key', key)
-        .send({ amount: 25, method: 'CASH' })
+        .send({ amount: 5, method: 'CASH' })
         .expect(201);
 
       // RxJS tap() doesn't await async callbacks — wait for idempotency save
@@ -1044,7 +1044,7 @@ describe('Business Rules (e2e)', () => {
       const res2 = await api()
         .post(`/api/v1/orders/${paymentOrderId}/payments`)
         .set('idempotency-key', key)
-        .send({ amount: 25, method: 'CASH' });
+        .send({ amount: 5, method: 'CASH' });
 
       // Should return the same payment (cached)
       expect(res2.body.data.id).toBe(res1.body.data.id);

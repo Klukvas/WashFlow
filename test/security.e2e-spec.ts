@@ -444,7 +444,9 @@ describe('Security (e2e)', () => {
 
     // --- Work Posts ---
     it('Tenant A lists work-posts — no Tenant B work-posts appear', async () => {
-      const res = await api(tokenA).get('/api/v1/work-posts').expect(200);
+      const res = await api(tokenA)
+        .get(`/api/v1/work-posts?branchId=${branchA1.id}`)
+        .expect(200);
       const ids: string[] = res.body.data.map((w: { id: string }) => w.id);
       expect(ids).not.toContain(workPostBId);
     });
@@ -933,7 +935,7 @@ describe('Security (e2e)', () => {
       const server = app.getHttpServer() as App;
       await request(server)
         .post('/api/v1/auth/refresh')
-        .set('Cookie', [`refreshToken=${tokens.refreshToken}`])
+        .set('Cookie', [`refresh_token=${tokens.refreshToken}`])
         .expect(401);
     });
   });

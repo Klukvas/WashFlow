@@ -91,6 +91,7 @@ describe('OrdersService', () => {
     bookingSettings: { findUnique: jest.Mock; findFirst: jest.Mock };
     workPost: { findMany: jest.Mock };
     user: { findFirst: jest.Mock };
+    employeeProfile: { findFirst: jest.Mock };
   };
   let mockTx: {
     order: {
@@ -158,6 +159,11 @@ describe('OrdersService', () => {
         findFirst: jest
           .fn()
           .mockResolvedValue({ id: 'user-id', tenantId: TENANT_ID }),
+      },
+      employeeProfile: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({ id: 'emp-1', tenantId: TENANT_ID }),
       },
     };
 

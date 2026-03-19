@@ -12,7 +12,6 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
@@ -22,7 +21,7 @@ import { CreateWorkPostDto } from './dto/create-work-post.dto';
 import { UpdateWorkPostDto } from './dto/update-work-post.dto';
 
 @Controller('work-posts')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(PermissionsGuard)
 export class WorkPostsController {
   constructor(private readonly workPostsService: WorkPostsService) {}
 

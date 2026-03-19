@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import cookieParser from 'cookie-parser';
 import * as argon2 from 'argon2';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -131,6 +132,20 @@ export async function createLimitedUser(
 }
 
 /**
+ * Extracts the refresh_token value from Set-Cookie headers.
+ */
+export function extractRefreshCookie(res: {
+  headers: Record<string, string | string[]>;
+}): string {
+  const cookies = res.headers['set-cookie'];
+  const cookieArr = Array.isArray(cookies) ? cookies : [cookies];
+  const match = cookieArr
+    .find((c) => c?.startsWith('refresh_token='))
+    ?.match(/^refresh_token=([^;]+)/);
+  return match?.[1] ?? '';
+}
+
+/**
  * Logs in a user and returns the tokens.
  */
 export async function loginAs(
@@ -141,12 +156,12 @@ export async function loginAs(
 ): Promise<{ accessToken: string; refreshToken: string }> {
   const res = await request(app.getHttpServer() as App)
     .post('/api/v1/auth/login')
-    .send({ tenantId, email, password })
+    .send({ email, password })
     .expect(200);
 
   return {
     accessToken: res.body.data.accessToken,
-    refreshToken: res.body.data.refreshToken,
+    refreshToken: extractRefreshCookie(res),
   };
 }
 
@@ -173,6 +188,7 @@ export async function createTestApp(slug: string): Promise<TestSetup> {
     .compile();
 
   const app = moduleFixture.createNestApplication();
+  app.use(cookieParser());
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(
     new ValidationPipe({
@@ -223,13 +239,13 @@ export async function createTestApp(slug: string): Promise<TestSetup> {
   const loginResponse = await request(app.getHttpServer())
     .post('/api/v1/auth/login')
     .send({
-      tenantId: testTenant.id,
       email: `admin@${slug}.com`,
       password: 'password123',
     })
     .expect(200);
 
-  const { accessToken, refreshToken } = loginResponse.body.data;
+  const accessToken: string = loginResponse.body.data.accessToken;
+  const refreshToken = extractRefreshCookie(loginResponse);
 
   return { app, prisma, accessToken, refreshToken, testTenant, testBranch };
 }

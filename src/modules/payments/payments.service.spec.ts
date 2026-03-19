@@ -8,6 +8,7 @@ import { EventType } from '../../common/events/event-types';
 
 const TENANT_ID = 'tenant-abc';
 const ORDER_ID = 'order-xyz';
+const USER_ID = 'user-123';
 
 const makePaymentDto = (overrides: Record<string, unknown> = {}) => ({
   amount: 150.0,
@@ -134,7 +135,12 @@ describe('PaymentsService', () => {
       const payment = makePayment();
       paymentsRepo.create.mockResolvedValue(payment);
 
-      const result = await service.create(TENANT_ID, ORDER_ID, dto as any);
+      const result = await service.create(
+        TENANT_ID,
+        ORDER_ID,
+        dto as any,
+        USER_ID,
+      );
 
       expect(result).toEqual(payment);
     });
@@ -144,7 +150,7 @@ describe('PaymentsService', () => {
       const payment = makePayment();
       paymentsRepo.create.mockResolvedValue(payment);
 
-      await service.create(TENANT_ID, ORDER_ID, dto as any);
+      await service.create(TENANT_ID, ORDER_ID, dto as any, USER_ID);
 
       expect(paymentsRepo.create).toHaveBeenCalledWith(TENANT_ID, {
         amount: dto.amount,
@@ -160,7 +166,7 @@ describe('PaymentsService', () => {
       const payment = makePayment();
       paymentsRepo.create.mockResolvedValue(payment);
 
-      await service.create(TENANT_ID, ORDER_ID, dto as any);
+      await service.create(TENANT_ID, ORDER_ID, dto as any, USER_ID);
 
       expect(eventDispatcher.dispatch).toHaveBeenCalledTimes(1);
     });
@@ -170,7 +176,7 @@ describe('PaymentsService', () => {
       const payment = makePayment();
       paymentsRepo.create.mockResolvedValue(payment);
 
-      await service.create(TENANT_ID, ORDER_ID, dto as any);
+      await service.create(TENANT_ID, ORDER_ID, dto as any, USER_ID);
 
       const [dispatchedEvent] = eventDispatcher.dispatch.mock.calls[0];
       expect(dispatchedEvent.eventType).toBe(EventType.PAYMENT_RECEIVED);
@@ -181,7 +187,7 @@ describe('PaymentsService', () => {
       const payment = makePayment({ id: 'payment-99' });
       paymentsRepo.create.mockResolvedValue(payment);
 
-      await service.create(TENANT_ID, ORDER_ID, dto as any);
+      await service.create(TENANT_ID, ORDER_ID, dto as any, USER_ID);
 
       const [dispatchedEvent] = eventDispatcher.dispatch.mock.calls[0];
       expect(dispatchedEvent.tenantId).toBe(TENANT_ID);
@@ -197,7 +203,7 @@ describe('PaymentsService', () => {
       paymentsRepo.create.mockRejectedValue(new Error('Insert failed'));
 
       await expect(
-        service.create(TENANT_ID, ORDER_ID, makePaymentDto() as any),
+        service.create(TENANT_ID, ORDER_ID, makePaymentDto() as any, USER_ID),
       ).rejects.toThrow('Insert failed');
 
       expect(eventDispatcher.dispatch).not.toHaveBeenCalled();
@@ -207,7 +213,7 @@ describe('PaymentsService', () => {
       paymentsRepo.create.mockRejectedValue(new Error('Unique constraint'));
 
       await expect(
-        service.create(TENANT_ID, ORDER_ID, makePaymentDto() as any),
+        service.create(TENANT_ID, ORDER_ID, makePaymentDto() as any, USER_ID),
       ).rejects.toThrow('Unique constraint');
     });
 
@@ -217,7 +223,7 @@ describe('PaymentsService', () => {
       paymentsRepo.create.mockResolvedValue(makePayment());
 
       await expect(
-        service.create(TENANT_ID, ORDER_ID, frozen as any),
+        service.create(TENANT_ID, ORDER_ID, frozen as any, USER_ID),
       ).resolves.not.toThrow();
     });
 
@@ -225,7 +231,7 @@ describe('PaymentsService', () => {
       orderFindFirst.mockResolvedValue(null);
 
       await expect(
-        service.create(TENANT_ID, ORDER_ID, makePaymentDto() as any),
+        service.create(TENANT_ID, ORDER_ID, makePaymentDto() as any, USER_ID),
       ).rejects.toThrow(NotFoundException);
 
       expect(tenantPrisma.forTenant).toHaveBeenCalledWith(TENANT_ID);
@@ -238,7 +244,7 @@ describe('PaymentsService', () => {
       orderFindFirst.mockResolvedValue(null);
 
       await expect(
-        service.create(TENANT_ID, ORDER_ID, makePaymentDto() as any),
+        service.create(TENANT_ID, ORDER_ID, makePaymentDto() as any, USER_ID),
       ).rejects.toThrow(NotFoundException);
 
       expect(paymentsRepo.create).not.toHaveBeenCalled();

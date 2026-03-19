@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Pencil, Power, PowerOff } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
@@ -91,6 +91,7 @@ export function WorkforcePage() {
   });
 
   // Auto-fill working hours from branch booking settings (create mode only)
+  // eslint-disable-next-line react-hooks/incompatible-library -- React Hook Form watch() is incompatible with React Compiler memoization
   const selectedBranchId = form.watch('branchId');
   const { data: branchSettings } = useBranchBookingSettings(
     !editProfile ? (selectedBranchId ?? '') : '',
@@ -143,19 +144,22 @@ export function WorkforcePage() {
     setDialogOpen(true);
   };
 
-  const openEdit = (profile: EmployeeProfile) => {
-    form.reset({
-      userId: profile.userId,
-      branchId: profile.branchId,
-      isWorker: profile.isWorker,
-      workStartTime: profile.workStartTime ?? '',
-      workEndTime: profile.workEndTime ?? '',
-    });
-    setEditProfile(profile);
-    setBranchSearch('');
-    setApiError(null);
-    setDialogOpen(true);
-  };
+  const openEdit = useCallback(
+    (profile: EmployeeProfile) => {
+      form.reset({
+        userId: profile.userId,
+        branchId: profile.branchId,
+        isWorker: profile.isWorker,
+        workStartTime: profile.workStartTime ?? '',
+        workEndTime: profile.workEndTime ?? '',
+      });
+      setEditProfile(profile);
+      setBranchSearch('');
+      setApiError(null);
+      setDialogOpen(true);
+    },
+    [form],
+  );
 
   const onSubmit = async (values: ProfileFormValues) => {
     setApiError(null);

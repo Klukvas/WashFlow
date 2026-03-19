@@ -372,6 +372,7 @@ export function PublicBookingPage() {
                       key={slot.start}
                       className={cn(
                         'rounded-md border px-3 py-2 text-center text-sm hover:bg-accent',
+                        // eslint-disable-next-line react-hooks/incompatible-library -- React Hook Form watch() is incompatible with React Compiler memoization
                         watch('scheduledStart') === slot.start &&
                           'border-primary bg-primary/10 font-semibold',
                       )}

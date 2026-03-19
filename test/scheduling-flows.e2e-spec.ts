@@ -135,12 +135,12 @@ describe('Scheduling Flows (e2e)', () => {
   // ─── Helpers ──────────────────────────────────────────
 
   /** Build a UTC date for the next occurrence of a given weekday (Mon=1..Sat=6). */
-  function nextWeekday(dayOffset: number = 1): Date {
+  function nextWeekday(n: number = 1): Date {
     const d = new Date();
-    d.setUTCDate(d.getUTCDate() + dayOffset);
-    // Skip Sunday (0) — default workingDays is [1,2,3,4,5,6]
-    while (d.getUTCDay() === 0) {
+    let count = 0;
+    while (count < n) {
       d.setUTCDate(d.getUTCDate() + 1);
+      if (d.getUTCDay() !== 0) count++;
     }
     return d;
   }

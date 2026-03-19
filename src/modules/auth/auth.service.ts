@@ -135,9 +135,11 @@ export class AuthService {
     }
 
     const permissions =
-      user.role?.permissions.map(
-        (rp) => `${rp.permission.module}.${rp.permission.action}`,
-      ) ?? [];
+      user.role && !user.role.deletedAt
+        ? user.role.permissions.map(
+            (rp) => `${rp.permission.module}.${rp.permission.action}`,
+          )
+        : [];
 
     this.eventDispatcher.dispatch(
       new AuthLoginEvent(user.tenantId, { userId: user.id, email: user.email }),
@@ -234,7 +236,10 @@ export class AuthService {
       throw error;
     }
 
-    return this.generateTokens(result.user, result.permissions);
+    return this.generateTokens(
+      result.user as Parameters<typeof this.generateTokens>[0],
+      result.permissions,
+    );
   }
 
   private async generateUniqueSlug(companyName: string): Promise<string> {
@@ -326,9 +331,11 @@ export class AuthService {
     }
 
     const permissions =
-      user.role?.permissions.map(
-        (rp) => `${rp.permission.module}.${rp.permission.action}`,
-      ) ?? [];
+      user.role && !user.role.deletedAt
+        ? user.role.permissions.map(
+            (rp) => `${rp.permission.module}.${rp.permission.action}`,
+          )
+        : [];
 
     return this.generateTokens(user, permissions);
   }

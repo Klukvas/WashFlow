@@ -10,7 +10,6 @@ import {
   ParseUUIDPipe,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
@@ -22,7 +21,7 @@ import { UpdateBookingSettingsDto } from './dto/booking-settings.dto';
 import { PaginationDto } from '../../common/utils/pagination.dto';
 
 @Controller('branches')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(PermissionsGuard)
 export class BranchesController {
   constructor(private readonly branchesService: BranchesService) {}
 

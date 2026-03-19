@@ -1,6 +1,5 @@
 import { Controller, Get, Query, UseGuards, Res } from '@nestjs/common';
 import type { Response } from 'express';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
@@ -10,7 +9,7 @@ import { AnalyticsExportService } from './analytics-export.service';
 import { AnalyticsQueryDto } from './dto/analytics-query.dto';
 
 @Controller('analytics')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(PermissionsGuard)
 export class AnalyticsController {
   constructor(
     private readonly analyticsService: AnalyticsService,

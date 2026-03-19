@@ -67,12 +67,12 @@ export class OrdersService {
     }
 
     if (dto.assignedEmployeeId) {
-      const employee = await this.prisma.user.findFirst({
+      const profile = await this.prisma.employeeProfile.findFirst({
         where: { id: dto.assignedEmployeeId, tenantId },
       });
-      if (!employee) {
+      if (!profile) {
         throw new BadRequestException(
-          'Assigned employee not found in this tenant',
+          'Assigned employee profile not found in this tenant',
         );
       }
     }

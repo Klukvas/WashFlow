@@ -51,6 +51,12 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
     tenantId = setup.testTenant.id;
     branchId = setup.testBranch.id;
 
+    // Allow enough advance booking for ~34 calendar days (29 non-Sunday days)
+    await prisma.bookingSettings.updateMany({
+      where: { tenantId },
+      data: { maxAdvanceBookingDays: 50 },
+    });
+
     // ── Work posts ────────────────────────────────────
     const p1 = await prisma.workPost.create({
       data: { tenantId, branchId, name: 'Post A' },
@@ -163,12 +169,13 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
 
   // ─── Helpers ──────────────────────────────────────────
 
-  /** Next non-Sunday date, offset days from today. */
-  function nextWeekday(dayOffset: number): Date {
+  /** Returns the Nth non-Sunday day from today (guarantees unique date per offset). */
+  function nextWeekday(n: number): Date {
     const d = new Date();
-    d.setUTCDate(d.getUTCDate() + dayOffset);
-    while (d.getUTCDay() === 0) {
+    let count = 0;
+    while (count < n) {
       d.setUTCDate(d.getUTCDate() + 1);
+      if (d.getUTCDay() !== 0) count++;
     }
     return d;
   }
@@ -1399,29 +1406,29 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
   // ═══════════════════════════════════════════════════════
 
   describe('Flow 34: maxAdvanceBookingDays exact boundary', () => {
-    it('booking at day 29 succeeds, day 31 fails', async () => {
-      // Day 29 from now (within 30-day default limit)
-      const day29 = new Date();
-      day29.setUTCDate(day29.getUTCDate() + 29);
-      while (day29.getUTCDay() === 0) {
-        day29.setUTCDate(day29.getUTCDate() - 1);
+    it('booking at day 49 succeeds, day 51 fails', async () => {
+      // Day 49 from now (within 50-day limit set in beforeAll)
+      const day49 = new Date();
+      day49.setUTCDate(day49.getUTCDate() + 49);
+      while (day49.getUTCDay() === 0) {
+        day49.setUTCDate(day49.getUTCDate() - 1);
       }
 
       await order({
         workPostId: post1Id,
-        scheduledStart: atUTC(day29, 10),
+        scheduledStart: atUTC(day49, 10),
       }).expect(201);
 
-      // Day 31 from now (beyond 30-day limit)
-      const day31 = new Date();
-      day31.setUTCDate(day31.getUTCDate() + 31);
-      while (day31.getUTCDay() === 0) {
-        day31.setUTCDate(day31.getUTCDate() + 1);
+      // Day 51 from now (beyond 50-day limit)
+      const day51 = new Date();
+      day51.setUTCDate(day51.getUTCDate() + 51);
+      while (day51.getUTCDay() === 0) {
+        day51.setUTCDate(day51.getUTCDate() + 1);
       }
 
       const res = await order({
         workPostId: post1Id,
-        scheduledStart: atUTC(day31, 10),
+        scheduledStart: atUTC(day51, 10),
       });
       expect(res.status).toBe(400);
       expect(res.body.message).toMatch(/cannot book more than/i);
@@ -1906,7 +1913,10 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
     });
 
     it('availability uses default working hours 08:00-20:00 and 30min slots', async () => {
-      const day = nextWeekday(29);
+      // Use a date within the hardcoded default maxAdvanceBookingDays (30)
+      const day = new Date();
+      day.setUTCDate(day.getUTCDate() + 20);
+      while (day.getUTCDay() === 0) day.setUTCDate(day.getUTCDate() + 1);
 
       const res = await availability({
         branchId: fallbackBranchId,
@@ -1931,7 +1941,9 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
     });
 
     it('default buffer (10min) is applied', async () => {
-      const day = nextWeekday(29);
+      const day = new Date();
+      day.setUTCDate(day.getUTCDate() + 21);
+      while (day.getUTCDay() === 0) day.setUTCDate(day.getUTCDate() + 1);
 
       // Book at 10:00 → 10:30, buffer 10min → blocked until 10:40
       await order({

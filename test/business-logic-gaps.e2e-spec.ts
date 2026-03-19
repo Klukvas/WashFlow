@@ -142,7 +142,6 @@ describe('Business Logic Gaps (e2e)', () => {
       await request(app.getHttpServer() as App)
         .post('/api/v1/auth/login')
         .send({
-          tenantId,
           email: 'resetpw@e2e-biz-gaps.com',
           password: 'oldPassword1',
         })
@@ -153,7 +152,6 @@ describe('Business Logic Gaps (e2e)', () => {
       await request(app.getHttpServer() as App)
         .post('/api/v1/auth/login')
         .send({
-          tenantId,
           email: 'resetpw@e2e-biz-gaps.com',
           password: 'newPassword99',
         })

@@ -3,7 +3,12 @@ import { App } from 'supertest/types';
 import { INestApplication } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { createTestApp, cleanupTenant, TestSetup } from './helpers/test-app';
+import {
+  createTestApp,
+  cleanupTenant,
+  extractRefreshCookie,
+  TestSetup,
+} from './helpers/test-app';
 
 /**
  * E2E tests for critical modules that lack coverage:
@@ -105,14 +110,14 @@ describe('Critical Modules (e2e)', () => {
     it('create payment for order with CASH method', async () => {
       const res = await api('post', `/orders/${orderId}/payments`)
         .send({
-          amount: 300,
+          amount: 250,
           method: 'CASH',
         })
         .expect(201);
 
       expect(res.body.data).toMatchObject({
         orderId,
-        amount: '300',
+        amount: '250',
         method: 'CASH',
         status: 'PAID',
       });
@@ -389,11 +394,10 @@ describe('Critical Modules (e2e)', () => {
         .expect(200);
     });
 
-    it('deactivate profile (DELETE endpoint)', async () => {
-      const res = await api(
-        'delete',
-        `/workforce/profiles/${profileId}`,
-      ).expect(200);
+    it('deactivate profile (PATCH active=false)', async () => {
+      const res = await api('patch', `/workforce/profiles/${profileId}`)
+        .send({ active: false })
+        .expect(200);
       expect(res.body.data.active).toBe(false);
     });
 
@@ -780,18 +784,17 @@ describe('Critical Modules (e2e)', () => {
     it('refresh token returns new access+refresh tokens', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/auth/refresh')
-        .send({ refreshToken })
+        .set('Cookie', `refresh_token=${refreshToken}`)
         .expect(200);
 
       expect(res.body.data.accessToken).toBeTruthy();
-      expect(res.body.data.refreshToken).toBeTruthy();
       expect(res.body.data.user).toBeTruthy();
     });
 
     it('refresh with invalid token returns 401', async () => {
       await request(app.getHttpServer())
         .post('/api/v1/auth/refresh')
-        .send({ refreshToken: 'invalid.jwt.token' })
+        .set('Cookie', 'refresh_token=invalid.jwt.token')
         .expect(401);
     });
 
@@ -799,7 +802,7 @@ describe('Critical Modules (e2e)', () => {
       // Access token has type: 'access', should be rejected
       await request(app.getHttpServer())
         .post('/api/v1/auth/refresh')
-        .send({ refreshToken: accessToken })
+        .set('Cookie', `refresh_token=${accessToken}`)
         .expect(401);
     });
 
@@ -815,7 +818,6 @@ describe('Critical Modules (e2e)', () => {
       const loginRes = await request(app.getHttpServer())
         .post('/api/v1/auth/login')
         .send({
-          tenantId,
           email: `admin@${SLUG}.com`,
           password: 'newPassword456',
         })
@@ -823,7 +825,7 @@ describe('Critical Modules (e2e)', () => {
 
       // Update tokens for subsequent tests
       accessToken = loginRes.body.data.accessToken;
-      refreshToken = loginRes.body.data.refreshToken;
+      refreshToken = extractRefreshCookie(loginRes);
     });
 
     it('change password fails with wrong current password', async () => {
@@ -839,7 +841,6 @@ describe('Critical Modules (e2e)', () => {
       await request(app.getHttpServer())
         .post('/api/v1/auth/login')
         .send({
-          tenantId,
           email: `admin@${SLUG}.com`,
           password: 'wrongPassword',
         })
@@ -850,7 +851,6 @@ describe('Critical Modules (e2e)', () => {
       await request(app.getHttpServer())
         .post('/api/v1/auth/login')
         .send({
-          tenantId,
           email: 'nobody@nowhere.com',
           password: 'password123',
         })

@@ -121,6 +121,7 @@ export function CreateOrderPage() {
     },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- React Hook Form watch() is incompatible with React Compiler memoization
   const branchId = watch('branchId') ?? '';
   const clientId = watch('clientId') ?? '';
   const vehicleId = watch('vehicleId') ?? '';

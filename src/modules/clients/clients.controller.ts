@@ -10,7 +10,6 @@ import {
   ParseUUIDPipe,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
@@ -23,7 +22,7 @@ import { MergeClientDto } from './dto/merge-client.dto';
 import { ClientQueryDto } from './dto/client-query.dto';
 
 @Controller('clients')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(PermissionsGuard)
 export class ClientsController {
   constructor(private readonly clientsService: ClientsService) {}
 

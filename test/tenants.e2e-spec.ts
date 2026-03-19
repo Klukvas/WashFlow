@@ -22,6 +22,28 @@ describe('Tenants (e2e)', () => {
     prisma = setup.prisma;
     accessToken = setup.accessToken;
     tenantId = setup.testTenant.id;
+
+    // Clean up leftover tenants from previous runs
+    const leftoverSlugs = [
+      'crud-tenant-e2e',
+      'unique-slug-e2e',
+      'valid-slug-123',
+    ];
+    for (const slug of leftoverSlugs) {
+      const existing = await prisma.tenant.findUnique({ where: { slug } });
+      if (existing) {
+        // These tenants are created via the API which also creates a subscription
+        await prisma.subscription
+          .deleteMany({ where: { tenantId: existing.id } })
+          .catch(() => {});
+        await prisma.bookingSettings
+          .deleteMany({ where: { tenantId: existing.id } })
+          .catch(() => {});
+        await prisma.tenant
+          .delete({ where: { id: existing.id } })
+          .catch(() => {});
+      }
+    }
   }, 30_000);
 
   afterAll(async () => {

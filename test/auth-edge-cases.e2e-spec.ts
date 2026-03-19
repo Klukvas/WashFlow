@@ -84,7 +84,6 @@ describe('Auth Edge Cases (e2e)', () => {
       await request(app.getHttpServer() as App)
         .post('/api/v1/auth/login')
         .send({
-          tenantId,
           email: 'inactive@e2e-auth-edge.com',
           password: 'password123',
         })
@@ -100,7 +99,6 @@ describe('Auth Edge Cases (e2e)', () => {
       await request(app.getHttpServer() as App)
         .post('/api/v1/auth/login')
         .send({
-          tenantId,
           email: 'deleted@e2e-auth-edge.com',
           password: 'password123',
         })
@@ -129,7 +127,7 @@ describe('Auth Edge Cases (e2e)', () => {
       // Step 3: Attempt refresh — should fail
       await request(app.getHttpServer() as App)
         .post('/api/v1/auth/refresh')
-        .send({ refreshToken })
+        .set('Cookie', `refresh_token=${refreshToken}`)
         .expect(401);
     });
   });

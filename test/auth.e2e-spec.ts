@@ -1,11 +1,13 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import cookieParser from 'cookie-parser';
 import * as argon2 from 'argon2';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
+import { extractRefreshCookie } from './helpers/test-app';
 
 describe('Auth (e2e)', () => {
   let app: INestApplication;
@@ -24,6 +26,7 @@ describe('Auth (e2e)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.use(cookieParser());
     app.setGlobalPrefix('api/v1');
     app.useGlobalPipes(
       new ValidationPipe({
@@ -77,19 +80,21 @@ describe('Auth (e2e)', () => {
     it('returns 200 with tokens on valid credentials', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/auth/login')
-        .send({ tenantId: testTenantId, email: EMAIL, password: PASSWORD })
+        .send({ email: EMAIL, password: PASSWORD })
         .expect(200);
 
       expect(res.body.data).toMatchObject({
         accessToken: expect.any(String),
-        refreshToken: expect.any(String),
+        user: expect.objectContaining({ email: EMAIL }),
       });
+      // Refresh token is set as HttpOnly cookie
+      expect(extractRefreshCookie(res)).toBeTruthy();
     });
 
     it('returns 401 on wrong password', () => {
       return request(app.getHttpServer())
         .post('/api/v1/auth/login')
-        .send({ tenantId: testTenantId, email: EMAIL, password: 'wrong-pass' })
+        .send({ email: EMAIL, password: 'wrong-pass' })
         .expect(401);
     });
 
@@ -97,17 +102,16 @@ describe('Auth (e2e)', () => {
       return request(app.getHttpServer())
         .post('/api/v1/auth/login')
         .send({
-          tenantId: testTenantId,
           email: 'nobody@example.com',
           password: PASSWORD,
         })
         .expect(401);
     });
 
-    it('returns 400 on invalid UUID tenantId', () => {
+    it('returns 400 on extra fields (forbidNonWhitelisted)', () => {
       return request(app.getHttpServer())
         .post('/api/v1/auth/login')
-        .send({ tenantId: 'not-a-uuid', email: EMAIL, password: PASSWORD })
+        .send({ extraField: 'unexpected', email: EMAIL, password: PASSWORD })
         .expect(400);
     });
 
@@ -115,7 +119,6 @@ describe('Auth (e2e)', () => {
       return request(app.getHttpServer())
         .post('/api/v1/auth/login')
         .send({
-          tenantId: testTenantId,
           email: 'not-an-email',
           password: PASSWORD,
         })
@@ -127,26 +130,26 @@ describe('Auth (e2e)', () => {
     it('returns 200 with a new access token on valid refresh token', async () => {
       const loginRes = await request(app.getHttpServer())
         .post('/api/v1/auth/login')
-        .send({ tenantId: testTenantId, email: EMAIL, password: PASSWORD })
+        .send({ email: EMAIL, password: PASSWORD })
         .expect(200);
 
-      const { refreshToken } = loginRes.body.data;
+      const refreshCookie = extractRefreshCookie(loginRes);
 
       const res = await request(app.getHttpServer())
         .post('/api/v1/auth/refresh')
-        .send({ refreshToken })
+        .set('Cookie', `refresh_token=${refreshCookie}`)
         .expect(200);
 
       expect(res.body.data).toMatchObject({
         accessToken: expect.any(String),
-        refreshToken: expect.any(String),
+        user: expect.objectContaining({ email: EMAIL }),
       });
     });
 
     it('returns 401 on invalid refresh token', () => {
       return request(app.getHttpServer())
         .post('/api/v1/auth/refresh')
-        .send({ refreshToken: 'invalid.token.here' })
+        .set('Cookie', 'refresh_token=invalid.token.here')
         .expect(401);
     });
   });
@@ -159,7 +162,7 @@ describe('Auth (e2e)', () => {
     it('returns 200 on protected route with valid token', async () => {
       const loginRes = await request(app.getHttpServer())
         .post('/api/v1/auth/login')
-        .send({ tenantId: testTenantId, email: EMAIL, password: PASSWORD })
+        .send({ email: EMAIL, password: PASSWORD })
         .expect(200);
 
       const { accessToken } = loginRes.body.data;
