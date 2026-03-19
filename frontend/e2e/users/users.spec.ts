@@ -164,6 +164,11 @@ test.describe('Users list', () => {
       test.skip(true, 'No deletable users found');
       return;
     }
+
+    // Capture the user's email before deleting (2nd column) so we can find them later
+    const userEmail =
+      (await activeRow.locator('td').nth(1).textContent())?.trim() ?? '';
+
     await rowButtons.last().click();
 
     // Confirm delete dialog
@@ -179,8 +184,26 @@ test.describe('Users list', () => {
     await page.getByText(/show deleted/i).click();
     await page.waitForLoadState('networkidle');
 
-    // At least one row should show "Deleted" badge (confirming soft-delete worked)
-    await expect(page.getByText('Deleted').first()).toBeVisible({
+    // Verify the user now shows "Deleted" badge
+    const deletedUserRow = rows.filter({ hasText: userEmail }).first();
+    await expect(deletedUserRow.getByText('Deleted')).toBeVisible({
+      timeout: 5_000,
+    });
+
+    // --- Restore the deleted user ---
+    await deletedUserRow.getByRole('button').click();
+
+    // Confirm restore dialog
+    const restoreConfirmBtn = page
+      .locator('.fixed.inset-0.z-50')
+      .last()
+      .getByRole('button', { name: /confirm|restore/i });
+    await restoreConfirmBtn.click();
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(500);
+
+    // Verify user is restored — "Deleted" badge should be gone
+    await expect(deletedUserRow.getByText('Deleted')).not.toBeVisible({
       timeout: 5_000,
     });
   });
