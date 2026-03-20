@@ -146,6 +146,21 @@ const PublicBookingPage = lazy(() =>
     default: m.PublicBookingPage,
   })),
 );
+const BlogLayout = lazy(() =>
+  import('@/features/blog/pages/BlogLayout').then((m) => ({
+    default: m.BlogLayout,
+  })),
+);
+const BlogListPage = lazy(() =>
+  import('@/features/blog/pages/BlogListPage').then((m) => ({
+    default: m.BlogListPage,
+  })),
+);
+const BlogPostPage = lazy(() =>
+  import('@/features/blog/pages/BlogPostPage').then((m) => ({
+    default: m.BlogPostPage,
+  })),
+);
 const HowToLayout = lazy(() =>
   import('@/features/how-to/pages/HowToLayout').then((m) => ({
     default: m.HowToLayout,
@@ -221,6 +236,32 @@ export const router = createBrowserRouter([
         element: (
           <SuspenseWrapper>
             <PublicBookingPage />
+          </SuspenseWrapper>
+        ),
+      },
+    ],
+  },
+  {
+    path: '/blog',
+    element: (
+      <SuspenseWrapper>
+        <BlogLayout />
+      </SuspenseWrapper>
+    ),
+    children: [
+      {
+        index: true,
+        element: (
+          <SuspenseWrapper>
+            <BlogListPage />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: ':slug',
+        element: (
+          <SuspenseWrapper>
+            <BlogPostPage />
           </SuspenseWrapper>
         ),
       },

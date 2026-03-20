@@ -1,7 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import { useParams, Link } from 'react-router';
 import { Droplets, Clock, ArrowRight } from 'lucide-react';
-import { usePublicServices, usePublicBranches } from '../hooks/usePublicBooking';
+import {
+  usePublicServices,
+  usePublicBranches,
+} from '../hooks/usePublicBooking';
 import { Card, CardContent } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Skeleton } from '@/shared/ui/skeleton';
@@ -11,12 +14,32 @@ export function PublicLandingPage() {
   const { t } = useTranslation('public-booking');
   const { slug } = useParams<{ slug: string }>();
 
-  const { data: branches, isLoading: branchesLoading } = usePublicBranches(
-    slug!,
-  );
-  const { data: services, isLoading: servicesLoading } = usePublicServices(
-    slug!,
-  );
+  const {
+    data: branches,
+    isLoading: branchesLoading,
+    isError: branchesError,
+  } = usePublicBranches(slug!);
+  const {
+    data: services,
+    isLoading: servicesLoading,
+    isError: servicesError,
+  } = usePublicServices(slug!);
+
+  if (branchesError || servicesError) {
+    return (
+      <div className="py-12 text-center">
+        <p className="text-lg text-destructive">
+          Failed to load. Please try again later.
+        </p>
+        <button
+          className="mt-4 text-sm text-primary underline"
+          onClick={() => window.location.reload()}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   if (branchesLoading || servicesLoading) {
     return (

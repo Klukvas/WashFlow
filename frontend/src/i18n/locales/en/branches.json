@@ -15,12 +15,14 @@
     "name": "Name",
     "address": "Address",
     "phone": "Phone",
+    "timezone": "Timezone",
     "status": "Status"
   },
   "placeholders": {
     "name": "Branch name",
     "address": "Branch address",
-    "phone": "Phone number"
+    "phone": "Phone number",
+    "timezone": "Select timezone"
   },
   "bookingFields": {
     "workingHoursStart": "Working Hours Start",

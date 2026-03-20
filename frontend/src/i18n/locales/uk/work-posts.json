@@ -3,9 +3,10 @@
   "addWorkPost": "Додати пост",
   "name": "Назва",
   "branch": "Філія",
+  "allBranches": "Усі філіали",
+  "emptyList": "Робочих постів не знайдено",
   "selectBranch": "-- Оберіть філію --",
   "filterByBranch": "Фільтр за філією",
-  "selectBranchPrompt": "Оберіть філію для перегляду робочих місць",
   "validation": {
     "nameRequired": "Назва обов'язкова",
     "branchRequired": "Будь ласка, оберіть філію"

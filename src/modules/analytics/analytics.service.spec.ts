@@ -99,7 +99,7 @@ const makeAlerts = () => [
   {
     type: 'HIGH_CANCEL_RATE',
     severity: 'HIGH',
-    messageKey: 'dashboard.alert.highCancelRate',
+    messageKey: 'alerts.highCancelRate',
     payload: { rate: '25.0' },
   },
 ];

@@ -27,5 +27,7 @@
       "@prisma-mod/*": ["src/prisma/*"],
       "@config/*": ["src/config/*"]
     }
-  }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "frontend", "frontend-booking"]
 }

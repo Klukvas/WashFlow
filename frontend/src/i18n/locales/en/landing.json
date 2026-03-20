@@ -50,6 +50,26 @@
       "description": "Full history of every action — who changed what and when. Stay compliant and resolve disputes with confidence."
     }
   },
+  "screenshots": {
+    "title": "See It in Action",
+    "subtitle": "A modern interface designed for speed and clarity",
+    "tabs": {
+      "orders": "Schedule",
+      "createOrder": "Create Order",
+      "clients": "Clients",
+      "vehicles": "Vehicles",
+      "users": "Team",
+      "roles": "Permissions"
+    },
+    "captions": {
+      "orders": "Visual schedule view — see all work posts and time slots at a glance. Drag & drop to reassign.",
+      "createOrder": "Step-by-step order wizard — select services, assign time slot, pick vehicle, and confirm in seconds.",
+      "clients": "Full client database with contact info, visit history, and linked vehicles. Search and filter instantly.",
+      "vehicles": "Track every vehicle — make, model, license plate, year, and owner. Per-page controls for large fleets.",
+      "users": "Manage your team — invite users, assign branches, set roles. See everyone's access level at a glance.",
+      "roles": "Granular permissions — 47 permissions across 14 modules. Create custom roles for operators, managers, and more."
+    }
+  },
   "howItWorks": {
     "title": "Up and Running in Minutes",
     "subtitle": "Three simple steps to digitize your car wash",

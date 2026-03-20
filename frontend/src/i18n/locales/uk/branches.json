@@ -15,12 +15,14 @@
     "name": "Назва",
     "address": "Адреса",
     "phone": "Телефон",
+    "timezone": "Часовий пояс",
     "status": "Статус"
   },
   "placeholders": {
     "name": "Назва філіалу",
     "address": "Адреса філіалу",
-    "phone": "Номер телефону"
+    "phone": "Номер телефону",
+    "timezone": "Оберіть часовий пояс"
   },
   "bookingFields": {
     "workingHoursStart": "Початок робочого дня",

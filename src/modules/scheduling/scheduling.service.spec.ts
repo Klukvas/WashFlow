@@ -56,6 +56,9 @@ describe('SchedulingService', () => {
               workPost: { findMany: mockWorkPostFindMany },
               employeeProfile: { findMany: mockEmployeeProfileFindMany },
               order: { findMany: mockOrderFindMany },
+              branch: {
+                findUnique: jest.fn().mockResolvedValue({ timezone: 'UTC' }),
+              },
             }),
           },
         },
@@ -685,6 +688,128 @@ describe('SchedulingService', () => {
       // 2 windows × 1 = 2 available
       const available = slots.filter((s) => s.available);
       expect(available).toHaveLength(2);
+    });
+  });
+
+  describe('timezone-aware slot generation', () => {
+    const date = new Date('2026-06-15T00:00:00Z'); // Monday, summer (DST)
+    const tenantId = 'tenant-tz';
+    const branchId = 'branch-tz';
+    const baseParams = { tenantId, branchId, date, durationMinutes: 60 };
+
+    const mockSettings = {
+      slotDurationMinutes: 60,
+      bufferTimeMinutes: 0,
+      workingHoursStart: '10:00',
+      workingHoursEnd: '12:00', // 2 hours → 2 slots
+      workingDays: [0, 1, 2, 3, 4, 5, 6],
+      maxAdvanceBookingDays: 365,
+      allowOnlineBooking: true,
+    };
+
+    beforeEach(() => {
+      prisma.bookingSettings.findUnique.mockResolvedValue(mockSettings);
+      schedulingRepo.findOrdersForWorkPostsInRange.mockResolvedValue([]);
+      workforceRepo.countProfilesForBranch.mockResolvedValue(0);
+    });
+
+    it('should generate slots in UTC when branch timezone is UTC', async () => {
+      mockWorkPostFindMany.mockResolvedValue([{ id: 'wp-1', name: 'Bay 1' }]);
+      const mockBranchFindUnique =
+        tenantPrisma.forTenant(tenantId).branch.findUnique;
+      mockBranchFindUnique.mockResolvedValue({ timezone: 'UTC' });
+
+      const slots = await service.checkAvailability(baseParams);
+
+      // Working hours 10:00-12:00 UTC → slots at 10:00 and 11:00 UTC
+      expect(slots).toHaveLength(2);
+      expect(slots[0].start.toISOString()).toBe('2026-06-15T10:00:00.000Z');
+      expect(slots[1].start.toISOString()).toBe('2026-06-15T11:00:00.000Z');
+    });
+
+    it('should offset slots for Europe/Kyiv timezone (UTC+3 in summer)', async () => {
+      mockWorkPostFindMany.mockResolvedValue([{ id: 'wp-1', name: 'Bay 1' }]);
+      const mockBranchFindUnique =
+        tenantPrisma.forTenant(tenantId).branch.findUnique;
+      mockBranchFindUnique.mockResolvedValue({ timezone: 'Europe/Kyiv' });
+
+      const slots = await service.checkAvailability(baseParams);
+
+      // Working hours 10:00-12:00 Kyiv (UTC+3) = 07:00-09:00 UTC
+      expect(slots).toHaveLength(2);
+      expect(slots[0].start.toISOString()).toBe('2026-06-15T07:00:00.000Z');
+      expect(slots[1].start.toISOString()).toBe('2026-06-15T08:00:00.000Z');
+    });
+
+    it('should offset slots for America/New_York timezone (UTC-4 in summer)', async () => {
+      mockWorkPostFindMany.mockResolvedValue([{ id: 'wp-1', name: 'Bay 1' }]);
+      const mockBranchFindUnique =
+        tenantPrisma.forTenant(tenantId).branch.findUnique;
+      mockBranchFindUnique.mockResolvedValue({ timezone: 'America/New_York' });
+
+      const slots = await service.checkAvailability(baseParams);
+
+      // Working hours 10:00-12:00 NY (UTC-4) = 14:00-16:00 UTC
+      expect(slots).toHaveLength(2);
+      expect(slots[0].start.toISOString()).toBe('2026-06-15T14:00:00.000Z');
+      expect(slots[1].start.toISOString()).toBe('2026-06-15T15:00:00.000Z');
+    });
+
+    it('should handle winter time correctly (Europe/Kyiv UTC+2)', async () => {
+      const winterDate = new Date('2026-01-12T00:00:00Z'); // Monday, winter
+      mockWorkPostFindMany.mockResolvedValue([{ id: 'wp-1', name: 'Bay 1' }]);
+      const mockBranchFindUnique =
+        tenantPrisma.forTenant(tenantId).branch.findUnique;
+      mockBranchFindUnique.mockResolvedValue({ timezone: 'Europe/Kyiv' });
+
+      const slots = await service.checkAvailability({
+        ...baseParams,
+        date: winterDate,
+      });
+
+      // Working hours 10:00-12:00 Kyiv (UTC+2 in winter) = 08:00-10:00 UTC
+      expect(slots).toHaveLength(2);
+      expect(slots[0].start.toISOString()).toBe('2026-01-12T08:00:00.000Z');
+      expect(slots[1].start.toISOString()).toBe('2026-01-12T09:00:00.000Z');
+    });
+
+    it('should not generate slots past the working hours end', async () => {
+      mockWorkPostFindMany.mockResolvedValue([{ id: 'wp-1', name: 'Bay 1' }]);
+      const mockBranchFindUnique =
+        tenantPrisma.forTenant(tenantId).branch.findUnique;
+      mockBranchFindUnique.mockResolvedValue({ timezone: 'Europe/Kyiv' });
+
+      // Override settings: end at 20:00 local, 30-min slots
+      prisma.bookingSettings.findUnique.mockResolvedValue({
+        ...mockSettings,
+        workingHoursStart: '19:00',
+        workingHoursEnd: '20:00',
+        slotDurationMinutes: 30,
+      });
+
+      const slots = await service.checkAvailability({
+        ...baseParams,
+        durationMinutes: 30,
+      });
+
+      // 19:00-20:00 Kyiv (UTC+3) = 16:00-17:00 UTC → 2 slots (16:00, 16:30)
+      expect(slots).toHaveLength(2);
+      expect(slots[0].start.toISOString()).toBe('2026-06-15T16:00:00.000Z');
+      expect(slots[1].start.toISOString()).toBe('2026-06-15T16:30:00.000Z');
+      // No slot at 17:00 UTC (20:00 Kyiv) — end of working day
+    });
+
+    it('should fallback to UTC when branch not found', async () => {
+      mockWorkPostFindMany.mockResolvedValue([{ id: 'wp-1', name: 'Bay 1' }]);
+      const mockBranchFindUnique =
+        tenantPrisma.forTenant(tenantId).branch.findUnique;
+      mockBranchFindUnique.mockResolvedValue(null);
+
+      const slots = await service.checkAvailability(baseParams);
+
+      // No timezone → UTC fallback → 10:00-12:00 UTC
+      expect(slots).toHaveLength(2);
+      expect(slots[0].start.toISOString()).toBe('2026-06-15T10:00:00.000Z');
     });
   });
 });

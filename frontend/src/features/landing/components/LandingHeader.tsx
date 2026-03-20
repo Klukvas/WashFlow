@@ -24,6 +24,12 @@ export function LandingHeader() {
         </Link>
 
         <div className="flex items-center gap-2">
+          <Link
+            to="/blog"
+            className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:inline"
+          >
+            Blog
+          </Link>
           <ThemeToggle />
           <LanguageSwitcher />
           {isAuthenticated ? (

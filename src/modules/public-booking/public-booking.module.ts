@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PublicBookingController } from './public-booking.controller';
+import { PublicBookingHeaderController } from './public-booking-header.controller';
 import { PublicBookingService } from './public-booking.service';
 import { TenantsModule } from '../tenants/tenants.module';
 import { OrdersModule } from '../orders/orders.module';
@@ -15,7 +16,7 @@ import { BranchesModule } from '../branches/branches.module';
     ServicesModule,
     BranchesModule,
   ],
-  controllers: [PublicBookingController],
+  controllers: [PublicBookingController, PublicBookingHeaderController],
   providers: [PublicBookingService],
 })
 export class PublicBookingModule {}

@@ -34,20 +34,22 @@ export function WorkPostsPage() {
   const { t } = useTranslation('work-posts');
   const { t: tc } = useTranslation('common');
   const { branchId: userBranchId, isBranchScoped } = useBranchScope();
-  const [branchId, setBranchId] = useState(userBranchId ?? '');
+  const [branchFilter, setBranchFilter] = useState(userBranchId ?? '');
   const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
     if (isBranchScoped) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setBranchId(userBranchId ?? '');
+      setBranchFilter(userBranchId ?? '');
     }
   }, [userBranchId, isBranchScoped]);
 
   const { data: branchesData } = useBranches({ limit: 100 });
   const branches = branchesData?.items ?? [];
 
-  const { data, isLoading, isError } = useWorkPosts({ branchId, limit: 100 });
+  const { data, isLoading, isError } = useWorkPosts({
+    branchId: branchFilter || undefined,
+    limit: 100,
+  });
   const { mutate: createMut, isPending } = useCreateWorkPost();
   const {
     register,
@@ -66,12 +68,25 @@ export function WorkPostsPage() {
         header: t('name'),
         render: (wp) => <span className="font-medium">{wp.name}</span>,
       },
+      ...(!isBranchScoped
+        ? [
+            {
+              key: 'branch' as const,
+              header: t('branch'),
+              render: (wp: WorkPost) => (
+                <span className="text-muted-foreground">
+                  {wp.branch?.name ?? '—'}
+                </span>
+              ),
+            },
+          ]
+        : []),
     ],
-    [t],
+    [t, isBranchScoped],
   );
 
-  const onSubmit = (data: WorkPostForm) => {
-    createMut(data, {
+  const onSubmit = (formData: WorkPostForm) => {
+    createMut(formData, {
       onSuccess: () => {
         setCreateOpen(false);
         reset();
@@ -88,7 +103,7 @@ export function WorkPostsPage() {
             <Button
               onClick={() => {
                 setCreateOpen(true);
-                if (branchId) setValue('branchId', branchId);
+                if (branchFilter) setValue('branchId', branchFilter);
               }}
             >
               <Plus className="h-4 w-4" /> {t('addWorkPost')}
@@ -101,34 +116,27 @@ export function WorkPostsPage() {
         <div className="mb-4">
           <Select
             options={[
-              { value: '', label: t('selectBranch') },
+              { value: '', label: t('allBranches') },
               ...branches.map((b) => ({ value: b.id, label: b.name })),
             ]}
-            value={branchId}
-            onChange={(e) => setBranchId(e.target.value)}
+            value={branchFilter}
+            onChange={(e) => setBranchFilter(e.target.value)}
             placeholder={t('filterByBranch')}
           />
         </div>
       )}
 
-      {branchId && isError && (
+      {isError ? (
         <div className="flex items-center justify-center p-8">
           <p className="text-sm text-destructive">{tc('errors.loadFailed')}</p>
         </div>
-      )}
-
-      {branchId && !isError && (
+      ) : (
         <DataTable
           columns={columns}
           data={data?.items ?? []}
           loading={isLoading}
+          emptyMessage={t('emptyList')}
         />
-      )}
-
-      {!branchId && !isBranchScoped && (
-        <p className="py-12 text-center text-muted-foreground">
-          {t('selectBranchPrompt')}
-        </p>
       )}
 
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)}>

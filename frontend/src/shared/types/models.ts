@@ -35,6 +35,7 @@ export interface Branch {
   name: string;
   address: string | null;
   phone: string | null;
+  timezone: string;
   isActive: boolean;
   bookingSettings?: BookingSettings;
   createdAt: string;

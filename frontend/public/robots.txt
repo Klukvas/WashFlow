@@ -1,0 +1,25 @@
+User-agent: *
+Allow: /
+Allow: /blog/
+Disallow: /dashboard
+Disallow: /orders
+Disallow: /clients
+Disallow: /vehicles
+Disallow: /services
+Disallow: /branches
+Disallow: /work-posts
+Disallow: /users
+Disallow: /roles
+Disallow: /analytics
+Disallow: /audit
+Disallow: /workforce
+Disallow: /subscription
+Disallow: /how-to
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /403
+Disallow: /404
+
+Sitemap: https://washflow.com/sitemap.xml

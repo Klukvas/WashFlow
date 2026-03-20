@@ -623,7 +623,7 @@ export class AnalyticsRepository {
             cancelRate > ALERT_THRESHOLDS.HIGH_CANCELLATION_RATE
               ? 'CRITICAL'
               : 'HIGH',
-          messageKey: 'dashboard.alert.highCancelRate',
+          messageKey: 'alerts.highCancelRate',
           payload: { rate: Math.round(cancelRate * 10) / 10 },
         });
       }
@@ -639,7 +639,7 @@ export class AnalyticsRepository {
           type: 'REVENUE_DROP',
           severity:
             dropPct > ALERT_THRESHOLDS.LOW_UTILIZATION ? 'HIGH' : 'MEDIUM',
-          messageKey: 'dashboard.alert.revenueDrop',
+          messageKey: 'alerts.revenueDrop',
           payload: { pct: Math.round(dropPct * 10) / 10 },
         });
       }
@@ -656,7 +656,7 @@ export class AnalyticsRepository {
             declinePct > ALERT_THRESHOLDS.SLOW_AVG_COMPLETION_MINUTES
               ? 'HIGH'
               : 'MEDIUM',
-          messageKey: 'dashboard.alert.bookingDecline',
+          messageKey: 'alerts.bookingDecline',
           payload: { pct: Math.round(declinePct * 10) / 10 },
         });
       }

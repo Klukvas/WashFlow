@@ -53,6 +53,7 @@ export function VehiclesPage() {
   const navigate = useNavigate();
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Vehicle | null>(null);
   const [clientSearch, setClientSearch] = useState('');
@@ -60,7 +61,7 @@ export function VehiclesPage() {
 
   const { data, isLoading, isError } = useVehicles({
     page,
-    limit: 20,
+    limit,
     includeDeleted,
   });
   const { mutate: createMut, isPending: creating } = useCreateVehicle();
@@ -219,8 +220,12 @@ export function VehiclesPage() {
           page={page}
           totalPages={data?.meta.totalPages ?? 1}
           total={data?.meta.total ?? 0}
-          limit={20}
+          limit={limit}
           onPageChange={setPage}
+          onLimitChange={(v) => {
+            setLimit(v);
+            setPage(1);
+          }}
           onRowClick={(v) => navigate(`/vehicles/${v.id}`)}
         />
       )}

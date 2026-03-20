@@ -14,6 +14,7 @@ describe('PublicBookingService', () => {
   let service: PublicBookingService;
   let tenantsRepo: {
     findBySlug: jest.Mock;
+    findById: jest.Mock;
     getBookingSettings: jest.Mock;
   };
   let schedulingService: { checkAvailability: jest.Mock };
@@ -57,6 +58,7 @@ describe('PublicBookingService', () => {
   beforeEach(async () => {
     tenantsRepo = {
       findBySlug: jest.fn(),
+      findById: jest.fn(),
       getBookingSettings: jest.fn(),
     };
     schedulingService = { checkAvailability: jest.fn() };
@@ -502,6 +504,160 @@ describe('PublicBookingService', () => {
       const result = await service.createBooking('clean-wash', baseBookingDto);
 
       expect(result).toBe(mockOrder);
+    });
+  });
+
+  describe('resolveTenantById (via ByTenantId methods)', () => {
+    it('should throw NotFoundException when tenant ID is not found', async () => {
+      tenantsRepo.findById.mockResolvedValue(null);
+
+      await expect(
+        service.getPublicServicesByTenantId('nonexistent-id'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw NotFoundException when tenant found by ID but inactive', async () => {
+      tenantsRepo.findById.mockResolvedValue(inactiveTenant);
+
+      await expect(
+        service.getPublicBranchesByTenantId(inactiveTenant.id),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw with "Car wash not found" message', async () => {
+      tenantsRepo.findById.mockResolvedValue(null);
+
+      await expect(
+        service.getPublicServicesByTenantId('nonexistent-id'),
+      ).rejects.toThrow('Car wash not found');
+    });
+  });
+
+  describe('getPublicServicesByTenantId', () => {
+    it('should resolve tenant by ID and return active services', async () => {
+      const mockServices = [{ id: 'svc-1', name: 'Basic Wash' }];
+      tenantsRepo.findById.mockResolvedValue(activeTenant);
+      servicesRepo.findActive.mockResolvedValue(mockServices);
+
+      const result = await service.getPublicServicesByTenantId(activeTenant.id);
+
+      expect(tenantsRepo.findById).toHaveBeenCalledWith(activeTenant.id);
+      expect(servicesRepo.findActive).toHaveBeenCalledWith(activeTenant.id);
+      expect(result).toBe(mockServices);
+    });
+  });
+
+  describe('getPublicBranchesByTenantId', () => {
+    it('should resolve tenant by ID and return active branches', async () => {
+      const mockBranches = [{ id: 'branch-1', name: 'Main Branch' }];
+      tenantsRepo.findById.mockResolvedValue(activeTenant);
+      branchesRepo.findActive.mockResolvedValue(mockBranches);
+
+      const result = await service.getPublicBranchesByTenantId(activeTenant.id);
+
+      expect(tenantsRepo.findById).toHaveBeenCalledWith(activeTenant.id);
+      expect(branchesRepo.findActive).toHaveBeenCalledWith(activeTenant.id);
+      expect(result).toBe(mockBranches);
+    });
+  });
+
+  describe('checkAvailabilityByTenantId', () => {
+    it('should resolve tenant by ID and delegate to scheduling', async () => {
+      const mockSlots = [
+        { start: new Date(), end: new Date(), available: true },
+      ];
+      tenantsRepo.findById.mockResolvedValue(activeTenant);
+      schedulingService.checkAvailability.mockResolvedValue(mockSlots);
+
+      const result = await service.checkAvailabilityByTenantId(
+        activeTenant.id,
+        baseAvailabilityDto,
+      );
+
+      expect(tenantsRepo.findById).toHaveBeenCalledWith(activeTenant.id);
+      expect(schedulingService.checkAvailability).toHaveBeenCalledWith({
+        tenantId: activeTenant.id,
+        branchId: baseAvailabilityDto.branchId,
+        workPostId: baseAvailabilityDto.workPostId,
+        date: new Date(baseAvailabilityDto.date),
+        durationMinutes: baseAvailabilityDto.durationMinutes,
+      });
+      expect(result).toBe(mockSlots);
+    });
+  });
+
+  describe('createBookingByTenantId', () => {
+    const mockClient = { id: 'client-1', phone: '+1234567890' };
+    const mockVehicle = { id: 'vehicle-1', licensePlate: 'ABC123' };
+    const mockOrder = { id: 'order-1' };
+
+    beforeEach(() => {
+      tenantsRepo.findById.mockResolvedValue(activeTenant);
+      prisma.bookingSettings.findUnique.mockResolvedValue({
+        allowOnlineBooking: true,
+      });
+      prisma.client.findFirst.mockResolvedValue(mockClient);
+      prisma.vehicle.findFirst.mockResolvedValue(mockVehicle);
+      ordersService.create.mockResolvedValue(mockOrder);
+    });
+
+    it('should resolve tenant by ID and create booking', async () => {
+      const result = await service.createBookingByTenantId(
+        activeTenant.id,
+        baseBookingDto,
+      );
+
+      expect(tenantsRepo.findById).toHaveBeenCalledWith(activeTenant.id);
+      expect(ordersService.create).toHaveBeenCalledWith(
+        activeTenant.id,
+        expect.objectContaining({ source: 'WEB' }),
+        null,
+        undefined,
+      );
+      expect(result).toBe(mockOrder);
+    });
+
+    it('should pass idempotency key through', async () => {
+      await service.createBookingByTenantId(
+        activeTenant.id,
+        baseBookingDto,
+        'idem-key',
+      );
+
+      expect(ordersService.create).toHaveBeenCalledWith(
+        activeTenant.id,
+        expect.anything(),
+        null,
+        'idem-key',
+      );
+    });
+
+    it('should throw ForbiddenException when allowOnlineBooking is false', async () => {
+      prisma.bookingSettings.findUnique.mockResolvedValue({
+        allowOnlineBooking: false,
+      });
+
+      await expect(
+        service.createBookingByTenantId(activeTenant.id, baseBookingDto),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(ordersService.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('checkAvailabilityByTenantId — branch validation', () => {
+    it('should throw NotFoundException when branch does not belong to tenant', async () => {
+      tenantsRepo.findById.mockResolvedValue(activeTenant);
+      prisma.branch.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.checkAvailabilityByTenantId(
+          activeTenant.id,
+          baseAvailabilityDto,
+        ),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(schedulingService.checkAvailability).not.toHaveBeenCalled();
     });
   });
 });

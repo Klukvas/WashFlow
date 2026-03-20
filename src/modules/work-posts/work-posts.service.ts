@@ -16,12 +16,12 @@ export class WorkPostsService {
     private readonly limits: SubscriptionLimitsService,
   ) {}
 
-  async findByBranch(
+  async findAll(
     tenantId: string,
-    branchId: string,
+    branchId?: string,
     userBranchId: string | null = null,
   ) {
-    return this.workPostsRepo.findByBranch(tenantId, branchId, userBranchId);
+    return this.workPostsRepo.findAll(tenantId, branchId, userBranchId);
   }
 
   async findById(

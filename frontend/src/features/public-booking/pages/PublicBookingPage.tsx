@@ -51,10 +51,16 @@ export function PublicBookingPage() {
 
   const tenantSlug = slug ?? '';
 
-  const { data: branches, isLoading: branchesLoading } =
-    usePublicBranches(tenantSlug);
-  const { data: services, isLoading: servicesLoading } =
-    usePublicServices(tenantSlug);
+  const {
+    data: branches,
+    isLoading: branchesLoading,
+    isError: branchesError,
+  } = usePublicBranches(tenantSlug);
+  const {
+    data: services,
+    isLoading: servicesLoading,
+    isError: servicesError,
+  } = usePublicServices(tenantSlug);
   const { mutate: book, isPending } = useCreateBooking(tenantSlug);
 
   const {
@@ -119,6 +125,22 @@ export function PublicBookingPage() {
     );
   };
 
+  if (branchesError || servicesError) {
+    return (
+      <div className="py-12 text-center">
+        <p className="text-lg text-destructive">
+          Failed to load. Please try again later.
+        </p>
+        <button
+          className="mt-4 text-sm text-primary underline"
+          onClick={() => window.location.reload()}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   if (branchesLoading || servicesLoading) {
     return (
       <div className="space-y-4">
@@ -137,6 +159,10 @@ export function PublicBookingPage() {
       .join(' ');
     const orderServices = order.services ?? [];
     const orderTotal = Number(order.totalPrice);
+    const orderDuration = orderServices.reduce(
+      (sum, s) => sum + s.durationMin,
+      0,
+    );
 
     // Build Google Calendar URL
     const toGCalDate = (iso: string) =>
@@ -186,7 +212,7 @@ export function PublicBookingPage() {
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">{t('duration')}</span>
               <span className="font-medium">
-                {formatDuration(totalDuration)}
+                {formatDuration(orderDuration)}
               </span>
             </div>
             <div className="flex justify-between text-sm">

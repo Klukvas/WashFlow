@@ -27,12 +27,12 @@ export class WorkPostsController {
 
   @Get()
   @Permissions('work-posts.read')
-  findByBranch(
+  findAll(
     @CurrentTenant() tenantId: string,
     @CurrentBranch() userBranchId: string | null,
-    @Query('branchId', ParseUUIDPipe) branchId: string,
+    @Query('branchId') branchId?: string,
   ) {
-    return this.workPostsService.findByBranch(tenantId, branchId, userBranchId);
+    return this.workPostsService.findAll(tenantId, branchId, userBranchId);
   }
 
   @Get(':id')

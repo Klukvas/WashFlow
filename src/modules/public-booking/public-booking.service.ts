@@ -35,23 +35,19 @@ export class PublicBookingService {
     return tenant;
   }
 
+  private async resolveTenantById(tenantId: string) {
+    const tenant = await this.tenantsRepo.findById(tenantId);
+    if (!tenant || !tenant.isActive) {
+      throw new NotFoundException('Car wash not found');
+    }
+    return tenant;
+  }
+
+  // --- Slug-based public methods (existing) ---
+
   async checkAvailability(slug: string, dto: CheckAvailabilityDto) {
     const tenant = await this.resolveTenant(slug);
-
-    const branch = await this.prisma.branch.findFirst({
-      where: { id: dto.branchId, tenantId: tenant.id },
-    });
-    if (!branch) {
-      throw new NotFoundException('Branch not found');
-    }
-
-    return this.schedulingService.checkAvailability({
-      tenantId: tenant.id,
-      branchId: dto.branchId,
-      workPostId: dto.workPostId,
-      date: new Date(dto.date),
-      durationMinutes: dto.durationMinutes || 30,
-    });
+    return this.checkAvailabilityInternal(tenant.id, dto);
   }
 
   async getPublicServices(slug: string) {
@@ -70,9 +66,67 @@ export class PublicBookingService {
     idempotencyKey?: string,
   ) {
     const tenant = await this.resolveTenant(slug);
+    return this.createBookingInternal(tenant.id, dto, idempotencyKey);
+  }
 
+  // --- Tenant-ID-based public methods (widget) ---
+
+  async checkAvailabilityByTenantId(
+    tenantId: string,
+    dto: CheckAvailabilityDto,
+  ) {
+    const tenant = await this.resolveTenantById(tenantId);
+    return this.checkAvailabilityInternal(tenant.id, dto);
+  }
+
+  async getPublicServicesByTenantId(tenantId: string) {
+    const tenant = await this.resolveTenantById(tenantId);
+    return this.servicesRepo.findActive(tenant.id);
+  }
+
+  async getPublicBranchesByTenantId(tenantId: string) {
+    const tenant = await this.resolveTenantById(tenantId);
+    return this.branchesRepo.findActive(tenant.id);
+  }
+
+  async createBookingByTenantId(
+    tenantId: string,
+    dto: CreateBookingDto,
+    idempotencyKey?: string,
+  ) {
+    const tenant = await this.resolveTenantById(tenantId);
+    return this.createBookingInternal(tenant.id, dto, idempotencyKey);
+  }
+
+  // --- Internal logic ---
+
+  private async checkAvailabilityInternal(
+    tenantId: string,
+    dto: CheckAvailabilityDto,
+  ) {
     const branch = await this.prisma.branch.findFirst({
-      where: { id: dto.branchId, tenantId: tenant.id },
+      where: { id: dto.branchId, tenantId },
+    });
+    if (!branch) {
+      throw new NotFoundException('Branch not found');
+    }
+
+    return this.schedulingService.checkAvailability({
+      tenantId,
+      branchId: dto.branchId,
+      workPostId: dto.workPostId,
+      date: new Date(dto.date),
+      durationMinutes: dto.durationMinutes || 30,
+    });
+  }
+
+  private async createBookingInternal(
+    tenantId: string,
+    dto: CreateBookingDto,
+    idempotencyKey?: string,
+  ) {
+    const branch = await this.prisma.branch.findFirst({
+      where: { id: dto.branchId, tenantId },
     });
     if (!branch) {
       throw new NotFoundException('Branch not found');
@@ -81,7 +135,7 @@ export class PublicBookingService {
     // Check if online booking is enabled (branch-level → tenant → defaults)
     const settings = await resolveBookingSettings(
       this.prisma,
-      tenant.id,
+      tenantId,
       dto.branchId,
     );
     if (!settings.allowOnlineBooking) {
@@ -93,13 +147,13 @@ export class PublicBookingService {
     const { client, vehicle } = await this.prisma.$transaction(
       async (tx) => {
         let foundClient = await tx.client.findFirst({
-          where: { tenantId: tenant.id, phone: dto.phone, deletedAt: null },
+          where: { tenantId, phone: dto.phone, deletedAt: null },
         });
 
         if (!foundClient) {
           foundClient = await tx.client.create({
             data: {
-              tenantId: tenant.id,
+              tenantId,
               firstName: dto.firstName,
               lastName: dto.lastName,
               phone: dto.phone,
@@ -110,7 +164,7 @@ export class PublicBookingService {
 
         let foundVehicle = await tx.vehicle.findFirst({
           where: {
-            tenantId: tenant.id,
+            tenantId,
             clientId: foundClient.id,
             licensePlate: dto.licensePlate,
             deletedAt: null,
@@ -120,7 +174,7 @@ export class PublicBookingService {
         if (!foundVehicle) {
           foundVehicle = await tx.vehicle.create({
             data: {
-              tenantId: tenant.id,
+              tenantId,
               clientId: foundClient.id,
               licensePlate: dto.licensePlate,
               make: dto.vehicleMake || 'Unknown',
@@ -137,7 +191,7 @@ export class PublicBookingService {
     // Delegate to OrdersService with source WEB
     try {
       return await this.ordersService.create(
-        tenant.id,
+        tenantId,
         {
           branchId: dto.branchId,
           clientId: client.id,

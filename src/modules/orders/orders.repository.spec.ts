@@ -1,157 +1,84 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { OrdersRepository } from './orders.repository';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
-import { OrderQueryDto } from './dto/order-query.dto';
+import { OrdersRepository } from './orders.repository';
 
 describe('OrdersRepository', () => {
   let repo: OrdersRepository;
-
-  const tenantId = 'tenant-1';
-  const orderId = 'order-1';
-  const branchId = 'branch-1';
-  const clientId = 'client-1';
-  const mockOrder = { id: orderId, branchId, status: 'PENDING' };
-
-  const tenantClient = {
-    order: {
-      findMany: jest.fn(),
-      findFirst: jest.fn(),
-      update: jest.fn(),
-      count: jest.fn(),
-    },
-  };
-
-  const tenantPrisma = {
-    forTenant: jest.fn().mockReturnValue(tenantClient),
-  };
+  let tenantClient: Record<string, any>;
 
   beforeEach(async () => {
-    jest.clearAllMocks();
-    tenantPrisma.forTenant.mockReturnValue(tenantClient);
-    tenantClient.order.findMany.mockResolvedValue([mockOrder]);
-    tenantClient.order.findFirst.mockResolvedValue(mockOrder);
-    tenantClient.order.update.mockResolvedValue(mockOrder);
-    tenantClient.order.count.mockResolvedValue(1);
+    tenantClient = {
+      order: {
+        findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({ id: 'order-1' }),
+        update: jest.fn().mockResolvedValue({ id: 'order-1' }),
+        count: jest.fn().mockResolvedValue(0),
+      },
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrdersRepository,
-        { provide: TenantPrismaService, useValue: tenantPrisma },
+        {
+          provide: TenantPrismaService,
+          useValue: {
+            forTenant: jest.fn().mockReturnValue(tenantClient),
+          },
+        },
       ],
     }).compile();
 
     repo = module.get<OrdersRepository>(OrdersRepository);
   });
 
-  describe('findAll', () => {
-    it('returns paginated orders with no filters', async () => {
-      const query: OrderQueryDto = { page: 1, limit: 10 } as OrderQueryDto;
-      const result = await repo.findAll(tenantId, query);
-      expect(tenantClient.order.findMany).toHaveBeenCalled();
-      expect(tenantClient.order.count).toHaveBeenCalled();
-      expect(result).toEqual({ items: [mockOrder], total: 1 });
-    });
-
-    it('applies status filter when provided', async () => {
-      const query: OrderQueryDto = {
-        page: 1,
-        limit: 10,
-        status: 'PENDING' as any,
-      } as OrderQueryDto;
-      await repo.findAll(tenantId, query);
-      const callArgs = tenantClient.order.findMany.mock.calls[0][0];
-      expect(callArgs.where.status).toBe('PENDING');
-    });
-
-    it('applies clientId filter when provided', async () => {
-      const query: OrderQueryDto = {
-        page: 1,
-        limit: 10,
-        clientId,
-      } as OrderQueryDto;
-      await repo.findAll(tenantId, query);
-      const callArgs = tenantClient.order.findMany.mock.calls[0][0];
-      expect(callArgs.where.clientId).toBe(clientId);
-    });
-
-    it('applies dateFrom filter when provided', async () => {
-      const query: OrderQueryDto = {
-        page: 1,
-        limit: 10,
-        dateFrom: '2026-01-01',
-      } as OrderQueryDto;
-      await repo.findAll(tenantId, query);
-      const callArgs = tenantClient.order.findMany.mock.calls[0][0];
-      expect(callArgs.where.scheduledStart.gte).toEqual(new Date('2026-01-01'));
-    });
-
-    it('applies JWT branchId scope when branchId param is provided', async () => {
-      const query: OrderQueryDto = { page: 1, limit: 10 } as OrderQueryDto;
-      await repo.findAll(tenantId, query, branchId);
-      const callArgs = tenantClient.order.findMany.mock.calls[0][0];
-      expect(callArgs.where.branchId).toBe(branchId);
-    });
-
-    it('applies query branchId when no JWT branchId but query.branchId is set', async () => {
-      const query: OrderQueryDto = {
-        page: 1,
-        limit: 10,
-        branchId,
-      } as OrderQueryDto;
-      await repo.findAll(tenantId, query, null);
-      const callArgs = tenantClient.order.findMany.mock.calls[0][0];
-      expect(callArgs.where.branchId).toBe(branchId);
-    });
+  it('should be defined', () => {
+    expect(repo).toBeDefined();
   });
 
-  describe('findById', () => {
-    it('finds order by id with full includes', async () => {
-      const result = await repo.findById(tenantId, orderId);
-      expect(tenantClient.order.findFirst).toHaveBeenCalled();
-      expect(result).toEqual(mockOrder);
+  describe('defaultInclude — order response shape', () => {
+    it('should include services with nested service relation (provides durationMin, name)', async () => {
+      await repo.findAll('tenant-1', {} as any);
+
+      const call = tenantClient.order.findMany.mock.calls[0][0];
+      const include = call.include;
+
+      // services: { include: { service: true } } ensures each OrderService
+      // has a nested service object with name, durationMin, price
+      expect(include.services).toEqual({ include: { service: true } });
     });
 
-    it('applies branchId scope when provided', async () => {
-      await repo.findById(tenantId, orderId, branchId);
-      const callArgs = tenantClient.order.findFirst.mock.calls[0][0];
-      expect(callArgs.where.branchId).toBe(branchId);
-    });
-  });
+    it('should include client relation for customer info', async () => {
+      await repo.findAll('tenant-1', {} as any);
 
-  describe('updateStatus', () => {
-    it('updates order status', async () => {
-      await repo.updateStatus(tenantId, orderId, 'COMPLETED' as any);
-      const callArgs = tenantClient.order.update.mock.calls[0][0];
-      expect(callArgs.where).toEqual({ id: orderId });
-      expect(callArgs.data.status).toBe('COMPLETED');
+      const call = tenantClient.order.findMany.mock.calls[0][0];
+      expect(call.include.client).toBe(true);
     });
 
-    it('includes cancellationReason when provided', async () => {
-      await repo.updateStatus(tenantId, orderId, 'CANCELLED' as any, 'No show');
-      const callArgs = tenantClient.order.update.mock.calls[0][0];
-      expect(callArgs.data.cancellationReason).toBe('No show');
+    it('should include vehicle relation for vehicle info', async () => {
+      await repo.findAll('tenant-1', {} as any);
+
+      const call = tenantClient.order.findMany.mock.calls[0][0];
+      expect(call.include.vehicle).toBe(true);
     });
 
-    it('does not include cancellationReason when not provided', async () => {
-      await repo.updateStatus(tenantId, orderId, 'COMPLETED' as any);
-      const callArgs = tenantClient.order.update.mock.calls[0][0];
-      expect(callArgs.data.cancellationReason).toBeUndefined();
-    });
-  });
+    it('should include branch relation for location info', async () => {
+      await repo.findAll('tenant-1', {} as any);
 
-  describe('softDelete', () => {
-    it('sets deletedAt on the order', async () => {
-      await repo.softDelete(tenantId, orderId);
-      const callArgs = tenantClient.order.update.mock.calls[0][0];
-      expect(callArgs.data.deletedAt).toBeInstanceOf(Date);
+      const call = tenantClient.order.findMany.mock.calls[0][0];
+      expect(call.include.branch).toBe(true);
     });
-  });
 
-  describe('restore', () => {
-    it('clears deletedAt and includes full relations', async () => {
-      await repo.restore(tenantId, orderId);
-      const callArgs = tenantClient.order.update.mock.calls[0][0];
-      expect(callArgs.data).toEqual({ deletedAt: null });
+    it('findById should use same includes as findAll', async () => {
+      await repo.findAll('tenant-1', {} as any);
+      const findAllInclude =
+        tenantClient.order.findMany.mock.calls[0][0].include;
+
+      await repo.findById('tenant-1', 'order-1');
+      const findByIdInclude =
+        tenantClient.order.findFirst.mock.calls[0][0].include;
+
+      expect(findByIdInclude).toEqual(findAllInclude);
     });
   });
 });

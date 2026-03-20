@@ -10,6 +10,8 @@ import {
   Clock,
   ArrowUpRight,
   Receipt,
+  Copy,
+  Check,
 } from 'lucide-react';
 import {
   useSubscriptionUsage,
@@ -18,6 +20,7 @@ import {
   useManageAddon,
   useCancelSubscription,
 } from '../hooks/useSubscription';
+import { useAuthStore } from '@/shared/stores/auth.store';
 import { isTrialExpired } from '../utils/trialExpiry';
 import { AddonManager } from '../components/AddonManager';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
@@ -204,6 +207,55 @@ function SubscriptionSkeleton() {
   );
 }
 
+function TenantIdCard({ tenantId }: { tenantId: string }) {
+  const { t } = useTranslation('subscription');
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(tenantId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard permission denied — silently ignore
+    }
+  };
+
+  return (
+    <Card>
+      <CardContent className="flex items-center justify-between pt-6">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium">{t('tenantId.title')}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {t('tenantId.description')}
+          </p>
+          <code className="mt-2 block truncate rounded bg-muted px-3 py-1.5 font-mono text-sm">
+            {tenantId}
+          </code>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="ml-4 shrink-0 gap-1.5"
+          onClick={handleCopy}
+        >
+          {copied ? (
+            <>
+              <Check className="h-4 w-4 text-green-600" />
+              {t('tenantId.copied')}
+            </>
+          ) : (
+            <>
+              <Copy className="h-4 w-4" />
+              {t('tenantId.title')}
+            </>
+          )}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 const POLL_INTERVAL = 2_000;
 const POLL_TIMEOUT = 30_000;
 
@@ -216,6 +268,7 @@ export function SubscriptionPage() {
   const { t } = useTranslation('subscription');
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuthStore();
   const navState = location.state as ActivatedState | null;
   const [polling, setPolling] = useState(!!navState?.activated);
   const [fromTier] = useState(navState?.fromTier);
@@ -291,6 +344,9 @@ export function SubscriptionPage() {
           )}
         </div>
       </div>
+
+      {/* Tenant ID for widget integration */}
+      {user?.tenantId && <TenantIdCard tenantId={user.tenantId} />}
 
       {/* Trial banner */}
       {subscription?.isTrial && subscription.trialEndsAt && (

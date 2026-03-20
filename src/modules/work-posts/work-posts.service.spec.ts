@@ -34,7 +34,7 @@ describe('WorkPostsService', () => {
 
   beforeEach(async () => {
     repo = {
-      findByBranch: jest.fn().mockResolvedValue([mockWorkPost]),
+      findAll: jest.fn().mockResolvedValue([mockWorkPost]),
       findById: jest.fn().mockResolvedValue(mockWorkPost),
       findByIdIncludeDeleted: jest.fn().mockResolvedValue(mockDeletedWorkPost),
       create: jest.fn().mockResolvedValue(mockWorkPost),
@@ -60,20 +60,20 @@ describe('WorkPostsService', () => {
     service = module.get<WorkPostsService>(WorkPostsService);
   });
 
-  describe('findByBranch', () => {
+  describe('findAll', () => {
     it('should return work posts for a branch', async () => {
-      const result = await service.findByBranch(tenantId, branchId);
+      const result = await service.findAll(tenantId, branchId);
       expect(result).toEqual([mockWorkPost]);
     });
 
     it('should pass tenantId and branchId to the repository', async () => {
-      await service.findByBranch(tenantId, branchId);
-      expect(repo.findByBranch).toHaveBeenCalledWith(tenantId, branchId, null);
+      await service.findAll(tenantId, branchId);
+      expect(repo.findAll).toHaveBeenCalledWith(tenantId, branchId, null);
     });
 
     it('should pass userBranchId to the repository when provided', async () => {
-      await service.findByBranch(tenantId, branchId, branchId);
-      expect(repo.findByBranch).toHaveBeenCalledWith(
+      await service.findAll(tenantId, branchId, branchId);
+      expect(repo.findAll).toHaveBeenCalledWith(
         tenantId,
         branchId,
         branchId,
@@ -81,13 +81,13 @@ describe('WorkPostsService', () => {
     });
 
     it('should default userBranchId to null when not provided', async () => {
-      await service.findByBranch(tenantId, branchId);
-      expect(repo.findByBranch).toHaveBeenCalledWith(tenantId, branchId, null);
+      await service.findAll(tenantId, branchId);
+      expect(repo.findAll).toHaveBeenCalledWith(tenantId, branchId, null);
     });
 
     it('should return an empty array when repository returns none', async () => {
-      repo.findByBranch.mockResolvedValue([]);
-      const result = await service.findByBranch(tenantId, branchId);
+      repo.findAll.mockResolvedValue([]);
+      const result = await service.findAll(tenantId, branchId);
       expect(result).toEqual([]);
     });
   });

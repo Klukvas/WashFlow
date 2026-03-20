@@ -55,8 +55,14 @@ async function bootstrap() {
     process.exit(1);
   }
   app.enableCors({
-    origin: corsOrigins === '*' ? '*' : corsOrigins.split(','),
+    origin: corsOrigins === '*' ? true : corsOrigins.split(','),
     credentials: true,
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'x-carwash-tenant-id',
+      'idempotency-key',
+    ],
   });
 
   app.useGlobalPipes(

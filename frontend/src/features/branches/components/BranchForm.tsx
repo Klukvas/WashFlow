@@ -6,16 +6,43 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
+import { Select } from '@/shared/ui/select';
 import type { Branch } from '@/shared/types/models';
 
+function buildTimezoneOptions(): Array<{ value: string; label: string }> {
+  const zones = Intl.supportedValuesOf('timeZone');
+  const now = new Date();
+  return zones.map((tz) => {
+    const offset =
+      new Intl.DateTimeFormat('en-US', {
+        timeZone: tz,
+        timeZoneName: 'shortOffset',
+      })
+        .formatToParts(now)
+        .find((p) => p.type === 'timeZoneName')?.value ?? '';
+    const city = tz.split('/').pop()?.replace(/_/g, ' ') ?? tz;
+    return { value: tz, label: `${city} (${offset})` };
+  });
+}
+
+const TIMEZONE_OPTIONS = buildTimezoneOptions();
+
 const branchSchema = z.object({
-  name: z.string().min(1, 'validation.required').max(255, 'validation.maxLength'),
-  address: z.string().max(500, 'validation.maxLength').optional().or(z.literal('')),
+  name: z
+    .string()
+    .min(1, 'validation.required')
+    .max(255, 'validation.maxLength'),
+  address: z
+    .string()
+    .max(500, 'validation.maxLength')
+    .optional()
+    .or(z.literal('')),
   phone: z
     .string()
     .max(30, 'validation.maxLength')
     .optional()
     .or(z.literal('')),
+  timezone: z.string().min(1, 'validation.required'),
 });
 
 export type BranchFormData = z.infer<typeof branchSchema>;
@@ -27,7 +54,12 @@ interface BranchFormProps {
   onCancel?: () => void;
 }
 
-export function BranchForm({ branch, onSubmit, isPending, onCancel }: BranchFormProps) {
+export function BranchForm({
+  branch,
+  onSubmit,
+  isPending,
+  onCancel,
+}: BranchFormProps) {
   const { t } = useTranslation('branches');
   const { t: tc } = useTranslation('common');
 
@@ -35,6 +67,8 @@ export function BranchForm({ branch, onSubmit, isPending, onCancel }: BranchForm
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isDirty },
   } = useForm<BranchFormData>({
     resolver: zodResolver(branchSchema),
@@ -42,6 +76,7 @@ export function BranchForm({ branch, onSubmit, isPending, onCancel }: BranchForm
       name: branch?.name ?? '',
       address: branch?.address ?? '',
       phone: branch?.phone ?? '',
+      timezone: branch?.timezone ?? '',
     },
   });
 
@@ -51,6 +86,7 @@ export function BranchForm({ branch, onSubmit, isPending, onCancel }: BranchForm
         name: branch.name,
         address: branch.address ?? '',
         phone: branch.phone ?? '',
+        timezone: branch.timezone ?? '',
       });
     }
   }, [branch, reset]);
@@ -60,6 +96,7 @@ export function BranchForm({ branch, onSubmit, isPending, onCancel }: BranchForm
       name: data.name,
       address: data.address || undefined,
       phone: data.phone || undefined,
+      timezone: data.timezone,
     });
   };
 
@@ -82,7 +119,9 @@ export function BranchForm({ branch, onSubmit, isPending, onCancel }: BranchForm
         <Input
           id="address"
           placeholder={t('placeholders.address')}
-          error={errors.address?.message ? t(errors.address.message) : undefined}
+          error={
+            errors.address?.message ? t(errors.address.message) : undefined
+          }
           {...register('address')}
         />
       </div>
@@ -98,9 +137,30 @@ export function BranchForm({ branch, onSubmit, isPending, onCancel }: BranchForm
         />
       </div>
 
+      <div className="space-y-2">
+        <Label htmlFor="timezone">{t('fields.timezone')} *</Label>
+        <Select
+          id="timezone"
+          options={TIMEZONE_OPTIONS}
+          placeholder={t('placeholders.timezone')}
+          value={watch('timezone')}
+          onChange={(e) =>
+            setValue('timezone', e.target.value, { shouldValidate: true })
+          }
+          error={
+            errors.timezone?.message ? t(errors.timezone.message) : undefined
+          }
+        />
+      </div>
+
       <div className="flex justify-end gap-3 pt-2">
         {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isPending}
+          >
             {tc('actions.cancel')}
           </Button>
         )}

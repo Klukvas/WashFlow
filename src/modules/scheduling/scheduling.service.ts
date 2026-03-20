@@ -1,5 +1,6 @@
 import { Injectable, ConflictException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { fromZonedTime } from 'date-fns-tz';
 import { SchedulingRepository } from './scheduling.repository';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
@@ -38,15 +39,32 @@ export class SchedulingService {
       durationMinutes,
     } = params;
 
-    // Load booking settings (branch-level → tenant-level → defaults)
-    const settings = await resolveBookingSettings(
-      this.prisma,
-      tenantId,
-      branchId,
-    );
+    // Load booking settings and branch timezone in parallel
+    const tenantDb = this.tenantPrisma.forTenant(tenantId);
+    const [settings, branchRecord] = await Promise.all([
+      resolveBookingSettings(this.prisma, tenantId, branchId),
+      tenantDb.branch.findUnique({
+        where: { id: branchId },
+        select: { timezone: true },
+      }),
+    ]);
+    const timezone = branchRecord?.timezone ?? 'UTC';
 
-    // Enforce workingDays: if the requested date falls on a non-working day, return []
-    const dayOfWeek = date.getUTCDay();
+    // Enforce workingDays: use local timezone day-of-week
+    const localDayStr = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      weekday: 'short',
+    }).format(date);
+    const dayMap: Record<string, number> = {
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6,
+    };
+    const dayOfWeek = dayMap[localDayStr] ?? date.getUTCDay();
     if (!settings.workingDays.includes(dayOfWeek)) {
       return [];
     }
@@ -67,9 +85,6 @@ export class SchedulingService {
     const bufferTime = settings.bufferTimeMinutes;
     const workStart = settings.workingHoursStart;
     const workEnd = settings.workingHoursEnd;
-
-    // Fetch work posts in a single query
-    const tenantDb = this.tenantPrisma.forTenant(tenantId);
     const workPosts = await tenantDb.workPost.findMany({
       where: workPostId
         ? { id: workPostId, isActive: true }
@@ -80,9 +95,9 @@ export class SchedulingService {
     const workPostIds = workPosts.map((p) => p.id);
     const nameMap = new Map(workPosts.map((p) => [p.id, p.name]));
 
-    // Build date range
-    const dayStart = this.parseTime(date, workStart);
-    const dayEnd = this.parseTime(date, workEnd);
+    // Build date range (convert local working hours to UTC)
+    const dayStart = this.parseLocalTime(date, workStart, timezone);
+    const dayEnd = this.parseLocalTime(date, workEnd, timezone);
 
     // Zero-profile fallback: if no profiles configured for branch, skip workforce cap
     const totalProfiles = await this.workforceRepo.countProfilesForBranch(
@@ -153,13 +168,25 @@ export class SchedulingService {
           : [];
 
       // 3. Compute per-slot availability in memory
+      // Helper: format a UTC Date as HH:MM in the branch timezone
+      const toLocalHHMM = (d: Date) => {
+        const raw = new Intl.DateTimeFormat('en-GB', {
+          timeZone: timezone,
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }).format(d);
+        // V8 can return "24:00" for midnight — normalise to "00:00"
+        return raw === '24:00' ? '00:00' : raw;
+      };
+
       employeeAvailabilityBySlot = new Map();
       let slotIdx = 0;
       let cursor = new Date(dayStart);
       while (cursor.getTime() + slotDuration * 60000 <= dayEnd.getTime()) {
         const slotEnd = new Date(cursor.getTime() + slotDuration * 60000);
-        const slotStartHH = `${pad(cursor.getUTCHours())}:${pad(cursor.getUTCMinutes())}`;
-        const slotEndHH = `${pad(slotEnd.getUTCHours())}:${pad(slotEnd.getUTCMinutes())}`;
+        const slotStartHH = toLocalHHMM(cursor);
+        const slotEndHH = toLocalHHMM(slotEnd);
         const bufferedStart = new Date(cursor.getTime() - bufferTime * 60000);
         const bufferedEnd = new Date(slotEnd.getTime() + bufferTime * 60000);
 
@@ -369,7 +396,12 @@ export class SchedulingService {
     };
   }
 
-  private parseTime(date: Date, timeStr: string): Date {
+  /**
+   * Convert a local time string (e.g. "20:00") on a given date
+   * into a UTC Date, accounting for the branch timezone and DST.
+   * Uses date-fns-tz for correct DST transition handling.
+   */
+  private parseLocalTime(date: Date, timeStr: string, timezone: string): Date {
     const match = /^(\d{1,2}):(\d{2})$/.exec(timeStr);
     if (!match) {
       throw new Error(`Invalid time format: "${timeStr}" (expected HH:MM)`);
@@ -379,8 +411,15 @@ export class SchedulingService {
     if (hours > 23 || minutes > 59) {
       throw new Error(`Invalid time value: "${timeStr}"`);
     }
-    const result = new Date(date);
-    result.setUTCHours(hours, minutes, 0, 0);
-    return result;
+
+    const dateStr = date.toISOString().split('T')[0];
+    const pad = (n: number) => String(n).padStart(2, '0');
+
+    // fromZonedTime interprets the date+time as wall-clock in the given timezone
+    // and returns the correct UTC instant, handling DST transitions properly.
+    return fromZonedTime(
+      `${dateStr}T${pad(hours)}:${pad(minutes)}:00`,
+      timezone,
+    );
   }
 }

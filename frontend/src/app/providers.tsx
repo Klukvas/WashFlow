@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
 import { Toaster, toast } from 'sonner';
 import type { AxiosError } from 'axios';
@@ -40,11 +41,13 @@ export { queryClient };
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        {children}
-        <Toaster richColors position="top-right" closeButton />
-      </I18nextProvider>
-    </QueryClientProvider>
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        <I18nextProvider i18n={i18n}>
+          {children}
+          <Toaster richColors position="top-right" closeButton />
+        </I18nextProvider>
+      </QueryClientProvider>
+    </HelmetProvider>
   );
 }

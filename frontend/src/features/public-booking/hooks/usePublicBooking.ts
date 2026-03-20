@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { isAxiosError } from 'axios';
 import {
   fetchPublicServices,
   fetchPublicBranches,
@@ -27,7 +28,10 @@ export function usePublicBranches(slug: string) {
   });
 }
 
-export function usePublicAvailability(slug: string, params: CheckAvailabilityParams) {
+export function usePublicAvailability(
+  slug: string,
+  params: CheckAvailabilityParams,
+) {
   return useQuery({
     queryKey: ['public', slug, 'availability', params],
     queryFn: () => fetchPublicAvailability(slug, params),
@@ -38,9 +42,16 @@ export function usePublicAvailability(slug: string, params: CheckAvailabilityPar
 
 export function useCreateBooking(slug: string) {
   return useMutation({
-    mutationFn: (payload: CreateBookingPayload) => createPublicBooking(slug, payload),
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to create booking');
+    mutationFn: (payload: CreateBookingPayload) =>
+      createPublicBooking(slug, payload),
+    onError: (error: unknown) => {
+      const message =
+        isAxiosError(error) && typeof error.response?.data?.message === 'string'
+          ? error.response.data.message
+          : error instanceof Error
+            ? error.message
+            : 'Failed to create booking';
+      toast.error(message);
     },
   });
 }

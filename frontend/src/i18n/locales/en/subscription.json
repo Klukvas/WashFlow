@@ -96,6 +96,11 @@
   },
   "paymentsDisabled": "Payments are currently disabled",
   "paymentsDisabledHint": "Contact your administrator to enable payments",
+  "tenantId": {
+    "title": "Tenant ID",
+    "description": "Use this ID to configure the standalone booking widget for your car wash.",
+    "copied": "Copied!"
+  },
   "checkout": {
     "subscribe": "Subscribe",
     "error": "Checkout failed. Please try again.",

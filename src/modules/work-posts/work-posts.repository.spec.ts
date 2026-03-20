@@ -48,27 +48,32 @@ describe('WorkPostsRepository', () => {
     repo = module.get<WorkPostsRepository>(WorkPostsRepository);
   });
 
-  describe('findByBranch', () => {
+  describe('findAll', () => {
+    const includeClause = { branch: { select: { id: true, name: true } } };
+
     it('uses branchId when userBranchId is null', async () => {
-      await repo.findByBranch(tenantId, branchId, null);
+      await repo.findAll(tenantId, branchId, null);
       expect(tenantClient.workPost.findMany).toHaveBeenCalledWith({
         where: { branchId },
+        include: includeClause,
         orderBy: { name: 'asc' },
       });
     });
 
     it('uses userBranchId when provided (overrides branchId)', async () => {
-      await repo.findByBranch(tenantId, branchId, otherBranchId);
+      await repo.findAll(tenantId, branchId, otherBranchId);
       expect(tenantClient.workPost.findMany).toHaveBeenCalledWith({
         where: { branchId: otherBranchId },
+        include: includeClause,
         orderBy: { name: 'asc' },
       });
     });
 
-    it('defaults userBranchId to null', async () => {
-      await repo.findByBranch(tenantId, branchId);
+    it('returns all when no branchId provided', async () => {
+      await repo.findAll(tenantId, undefined, null);
       expect(tenantClient.workPost.findMany).toHaveBeenCalledWith({
-        where: { branchId },
+        where: {},
+        include: includeClause,
         orderBy: { name: 'asc' },
       });
     });

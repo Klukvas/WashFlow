@@ -17,7 +17,6 @@ export function useWorkPosts(params: WorkPostQueryParams) {
   return useQuery({
     queryKey: workPostKeys.list(params),
     queryFn: () => fetchWorkPosts(params),
-    enabled: !!params.branchId,
   });
 }
 

@@ -12,7 +12,7 @@ describe('WorkPostsController', () => {
 
   beforeEach(async () => {
     service = {
-      findByBranch: jest.fn().mockResolvedValue([]),
+      findAll: jest.fn().mockResolvedValue([]),
       findById: jest.fn().mockResolvedValue({}),
       create: jest.fn().mockResolvedValue({}),
       update: jest.fn().mockResolvedValue({}),
@@ -28,10 +28,10 @@ describe('WorkPostsController', () => {
     controller = module.get<WorkPostsController>(WorkPostsController);
   });
 
-  describe('findByBranch', () => {
+  describe('findAll', () => {
     it('should delegate to service with tenantId, branchId, userBranchId', async () => {
-      await controller.findByBranch(tenantId, branchId, branchId);
-      expect(service.findByBranch).toHaveBeenCalledWith(
+      await controller.findAll(tenantId, branchId, branchId);
+      expect(service.findAll).toHaveBeenCalledWith(
         tenantId,
         branchId,
         branchId,
@@ -39,8 +39,8 @@ describe('WorkPostsController', () => {
     });
 
     it('should pass null userBranchId', async () => {
-      await controller.findByBranch(tenantId, null, branchId);
-      expect(service.findByBranch).toHaveBeenCalledWith(
+      await controller.findAll(tenantId, null, branchId);
+      expect(service.findAll).toHaveBeenCalledWith(
         tenantId,
         branchId,
         null,

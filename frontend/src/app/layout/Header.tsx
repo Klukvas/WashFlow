@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { Menu, LogOut, KeyRound } from 'lucide-react';
 import { useAuthStore } from '@/shared/stores/auth.store';
 import { Button } from '@/shared/ui/button';
@@ -16,6 +17,15 @@ export function Header({ onMenuClick }: HeaderProps) {
   const { t } = useTranslation('auth');
   const { user, logout } = useAuthStore();
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+
+  const copyToClipboard = useCallback(async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} copied`);
+    } catch {
+      toast.error(`Failed to copy ${label}`);
+    }
+  }, []);
 
   return (
     <>
@@ -42,12 +52,20 @@ export function Header({ onMenuClick }: HeaderProps) {
               <p className="font-medium">
                 {user?.firstName} {user?.lastName}
               </p>
-              <p className="text-xs text-muted-foreground">{user?.email}</p>
+              <p
+                className="cursor-pointer text-xs text-muted-foreground transition-colors hover:text-foreground"
+                title="Click to copy email"
+                onClick={() =>
+                  user?.email && copyToClipboard(user.email, 'Email')
+                }
+              >
+                {user?.email}
+              </p>
               {user?.tenantId && (
                 <p
                   className="mt-0.5 cursor-pointer font-mono text-xs text-muted-foreground/60 transition-colors hover:text-muted-foreground"
                   title="Click to copy Tenant ID"
-                  onClick={() => navigator.clipboard.writeText(user.tenantId)}
+                  onClick={() => copyToClipboard(user.tenantId, 'Tenant ID')}
                 >
                   {user.tenantId.slice(0, 8)}…
                 </p>

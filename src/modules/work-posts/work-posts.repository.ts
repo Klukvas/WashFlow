@@ -10,14 +10,15 @@ export class WorkPostsRepository {
     return this.tenantPrisma.forTenant(tenantId);
   }
 
-  async findByBranch(
+  async findAll(
     tenantId: string,
-    branchId: string,
+    branchId?: string,
     userBranchId: string | null = null,
   ) {
     const effectiveBranchId = userBranchId !== null ? userBranchId : branchId;
     return this.db(tenantId).workPost.findMany({
-      where: { branchId: effectiveBranchId },
+      where: effectiveBranchId ? { branchId: effectiveBranchId } : {},
+      include: { branch: { select: { id: true, name: true } } },
       orderBy: { name: 'asc' },
     });
   }
