@@ -142,34 +142,51 @@ test.describe('Users list', () => {
 
   test('delete and restore user', async ({ page }) => {
     test.setTimeout(30_000);
+
+    // Create a dedicated test user via API so we never delete seeded role users.
+    const refreshRes = await page.request.post('/api/v1/auth/refresh');
+    if (!refreshRes.ok()) {
+      test.skip(true, 'Could not obtain access token');
+      return;
+    }
+    const refreshBody = await refreshRes.json();
+    const accessToken =
+      refreshBody.data?.accessToken ?? refreshBody.accessToken ?? '';
+    if (!accessToken) {
+      test.skip(true, 'No access token in refresh response');
+      return;
+    }
+
+    const uniqueSuffix = Date.now();
+    const email = `e2e-del-${uniqueSuffix}@test.com`;
+
+    const createRes = await page.request.post('/api/v1/users', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      data: {
+        firstName: 'E2E',
+        lastName: `Delete${uniqueSuffix}`,
+        email,
+        password: 'TestPass123!',
+      },
+    });
+    if (!createRes.ok()) {
+      test.skip(
+        true,
+        'Could not create test user — subscription limit likely reached',
+      );
+      return;
+    }
+
     await page.goto('/users');
     await page.waitForLoadState('networkidle');
 
+    // Find the created user in the table by email
     const rows = page.locator('table tbody tr');
-    const initialCount = await rows.count();
-    if (initialCount === 0) {
-      test.skip();
-      return;
-    }
+    const targetRow = rows.filter({ hasText: email }).first();
+    await expect(targetRow).toBeVisible({ timeout: 5_000 });
 
-    // Find a non-deleted, non-admin row that has a delete button (3 buttons: Reset Password, edit, delete)
-    // Admin row has only 2 buttons, deleted rows have only 1 (restore)
-    const activeRow = rows
-      .filter({ hasNot: page.locator('text=Deleted') })
-      .filter({ hasNot: page.locator('text=Admin') })
-      .first();
-    const rowButtons = activeRow.getByRole('button');
-    const btnCount = await rowButtons.count();
-    if (btnCount < 3) {
-      test.skip(true, 'No deletable users found');
-      return;
-    }
-
-    // Capture the user's email before deleting (2nd column) so we can find them later
-    const userEmail =
-      (await activeRow.locator('td').nth(1).textContent())?.trim() ?? '';
-
-    await rowButtons.last().click();
+    // Click delete button (last button in the row)
+    await targetRow.getByRole('button').last().click();
 
     // Confirm delete dialog
     const confirmBtn = page
@@ -185,7 +202,7 @@ test.describe('Users list', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify the user now shows "Deleted" badge
-    const deletedUserRow = rows.filter({ hasText: userEmail }).first();
+    const deletedUserRow = rows.filter({ hasText: email }).first();
     await expect(deletedUserRow.getByText('Deleted')).toBeVisible({
       timeout: 5_000,
     });
@@ -208,7 +225,7 @@ test.describe('Users list', () => {
     // Re-query the row after reload — user should be active (no "Deleted" badge)
     const restoredRow = page
       .locator('table tbody tr')
-      .filter({ hasText: userEmail })
+      .filter({ hasText: email })
       .first();
 
     await expect(restoredRow).toBeVisible({ timeout: 5_000 });
