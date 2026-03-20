@@ -31,12 +31,6 @@ function jsonRecordTransform(envVarName: string) {
   };
 }
 
-/** Treat empty strings as undefined so optional URL fields don't fail validation */
-const optionalUrl = z
-  .string()
-  .transform((v) => (v === '' ? undefined : v))
-  .pipe(z.url().optional());
-
 export const envSchema = z
   .object({
     DATABASE_URL: z.url(),
