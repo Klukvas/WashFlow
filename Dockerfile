@@ -30,7 +30,7 @@ COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 # Generate Prisma client against production node_modules
 RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate
 
-RUN chown -R app:app /app
+RUN mkdir -p /app/uploads/vehicles && chown -R app:app /app
 USER app
 
 EXPOSE 3000

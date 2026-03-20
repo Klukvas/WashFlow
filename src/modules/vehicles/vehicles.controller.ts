@@ -17,7 +17,11 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import * as fs from 'fs';
+import { join } from 'path';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
+
+const UPLOADS_DIR = join(process.cwd(), 'uploads', 'vehicles');
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { VehiclesService } from './vehicles.service';
@@ -84,7 +88,7 @@ export class VehiclesController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
-        destination: './uploads/vehicles',
+        destination: UPLOADS_DIR,
         filename: (_req, file, cb) => {
           const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
           cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
