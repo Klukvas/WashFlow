@@ -209,7 +209,7 @@ describe('Security (e2e)', () => {
 
     // Role for Tenant B (used in cross-tenant isolation tests)
     const roleB = await prisma.role.create({
-      data: { tenantId: tenantB.id, timezone: 'UTC', name: 'Staff B' },
+      data: { tenantId: tenantB.id, name: 'Staff B' },
     });
     roleBId = roleB.id;
 
