@@ -432,7 +432,7 @@ describe('Business Logic Gaps (e2e)', () => {
     beforeAll(async () => {
       // Create a second branch
       const branchB = await prisma.branch.create({
-        data: { tenantId, name: 'Branch B' },
+        data: { tenantId, timezone: 'UTC', name: 'Branch B' },
       });
       branchBId = branchB.id;
 

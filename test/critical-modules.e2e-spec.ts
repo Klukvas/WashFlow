@@ -437,6 +437,7 @@ describe('Critical Modules (e2e)', () => {
         .send({
           name: 'New Test Branch',
           address: 'Test Street 1',
+          timezone: 'Europe/Kyiv',
         })
         .expect(201);
 

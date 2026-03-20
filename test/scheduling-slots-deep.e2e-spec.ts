@@ -1045,7 +1045,7 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
     beforeAll(async () => {
       // Create a branch with 3 work posts but ZERO employee profiles
       const branch = await prisma.branch.create({
-        data: { tenantId, name: 'Empty Staff Branch' },
+        data: { tenantId, timezone: 'UTC', name: 'Empty Staff Branch' },
       });
       emptyBranchId = branch.id;
 
@@ -1272,7 +1272,7 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
     beforeAll(async () => {
       // Create branch with custom settings
       const branch = await prisma.branch.create({
-        data: { tenantId, name: 'Custom Settings Branch' },
+        data: { tenantId, timezone: 'UTC', name: 'Custom Settings Branch' },
       });
       customBranchId = branch.id;
 
@@ -1613,7 +1613,7 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
 
     beforeAll(async () => {
       const branch = await prisma.branch.create({
-        data: { tenantId, name: 'No Online Branch' },
+        data: { tenantId, timezone: 'UTC', name: 'No Online Branch' },
       });
       disabledBranchId = branch.id;
 
@@ -1891,7 +1891,7 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
 
       // Create a branch with NO branch-level settings
       const branch = await prisma.branch.create({
-        data: { tenantId, name: 'Defaults Fallback Branch' },
+        data: { tenantId, timezone: 'UTC', name: 'Defaults Fallback Branch' },
       });
       fallbackBranchId = branch.id;
 

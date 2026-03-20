@@ -148,7 +148,7 @@ describe('Security (e2e)', () => {
 
     // Second branch A2 with order
     const bA2 = await prisma.branch.create({
-      data: { tenantId: tenantA.id, name: 'Branch A2' },
+      data: { tenantId: tenantA.id, timezone: 'UTC', name: 'Branch A2' },
     });
     branchA2 = bA2;
 
@@ -203,13 +203,13 @@ describe('Security (e2e)', () => {
     });
 
     const bB = await prisma.branch.create({
-      data: { tenantId: tenantB.id, name: 'Branch B' },
+      data: { tenantId: tenantB.id, timezone: 'UTC', name: 'Branch B' },
     });
     branchB = bB;
 
     // Role for Tenant B (used in cross-tenant isolation tests)
     const roleB = await prisma.role.create({
-      data: { tenantId: tenantB.id, name: 'Staff B' },
+      data: { tenantId: tenantB.id, timezone: 'UTC', name: 'Staff B' },
     });
     roleBId = roleB.id;
 

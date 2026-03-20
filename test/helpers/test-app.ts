@@ -221,7 +221,7 @@ export async function createTestApp(slug: string): Promise<TestSetup> {
   });
 
   const testBranch = await prisma.branch.create({
-    data: { tenantId: testTenant.id, name: 'Main Branch' },
+    data: { tenantId: testTenant.id, timezone: 'UTC', name: 'Main Branch' },
   });
 
   const passwordHash = await argon2.hash('password123');

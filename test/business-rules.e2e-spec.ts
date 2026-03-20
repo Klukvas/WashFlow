@@ -197,7 +197,7 @@ describe('Business Rules (e2e)', () => {
 
     // Closed branch (no online booking)
     const bClosed = await prisma.branch.create({
-      data: { tenantId: tenant.id, name: 'Closed Branch' },
+      data: { tenantId: tenant.id, timezone: 'UTC', name: 'Closed Branch' },
     });
     branchClosedId = bClosed.id;
 

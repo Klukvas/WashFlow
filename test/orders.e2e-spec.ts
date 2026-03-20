@@ -65,7 +65,7 @@ describe('Orders (e2e)', () => {
     });
 
     testBranch = await prisma.branch.create({
-      data: { tenantId: testTenant.id, name: 'Main Branch' },
+      data: { tenantId: testTenant.id, timezone: 'UTC', name: 'Main Branch' },
     });
 
     testWorkPost = await prisma.workPost.create({
