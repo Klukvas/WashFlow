@@ -33,19 +33,21 @@ async function setSubscriptionTier(
     maxUsers: number;
     maxServices: number;
   },
+  isTrial = false,
 ): Promise<void> {
   const client = new pg.Client({ connectionString: DATABASE_URL });
   await client.connect();
   try {
+    const status = isTrial ? 'TRIALING' : 'ACTIVE';
     await client.query(
       `UPDATE "subscriptions"
          SET "planTier" = $1::"PlanTier",
-             "isTrial" = false,
+             "isTrial" = $7,
              "maxBranches" = $2,
              "maxWorkPosts" = $3,
              "maxUsers" = $4,
              "maxServices" = $5,
-             "status" = 'ACTIVE'::"SubscriptionStatus"
+             "status" = $8::"SubscriptionStatus"
        WHERE "tenantId" = $6`,
       [
         tier,
@@ -54,11 +56,18 @@ async function setSubscriptionTier(
         limits.maxUsers,
         limits.maxServices,
         tenantId,
+        isTrial,
+        status,
       ],
     );
   } finally {
     await client.end();
   }
+}
+
+/** Unwrap TransformInterceptor envelope: { data: ... } → data */
+function unwrap(body: Record<string, unknown>): Record<string, unknown> {
+  return (body.data as Record<string, unknown>) ?? body;
 }
 
 // ---------------------------------------------------------------------------
@@ -76,6 +85,18 @@ test.describe('Addon → Limit Increase (Fresh Tenant)', () => {
     // We'll get the token in the first test — beforeAll just ensures the
     // describe block runs sequentially.
     await context.close();
+  });
+
+  test.afterAll(async () => {
+    // Reset subscription back to TRIAL so subscription-limits tests pass
+    if (tenantId) {
+      await setSubscriptionTier(
+        tenantId,
+        'TRIAL',
+        { maxBranches: 3, maxWorkPosts: 10, maxUsers: 15, maxServices: 20 },
+        true,
+      );
+    }
   });
 
   test('1. TRIAL rejects addon request', async ({ page }) => {
@@ -119,9 +140,10 @@ test.describe('Addon → Limit Increase (Fresh Tenant)', () => {
     });
 
     expect(res.ok()).toBe(true);
-    const body = await res.json();
+    const raw = await res.json();
+    const body = unwrap(raw);
     // STARTER base 15 + addon 2 * unitSize 10 = 35
-    expect(body.usage.services.max).toBe(35);
+    expect((body.usage as { services: { max: number } }).services.max).toBe(35);
   });
 
   test('5. Create one service under new limit → 200', async ({ page }) => {
@@ -155,7 +177,8 @@ test.describe('Addon → Limit Increase (Fresh Tenant)', () => {
     });
 
     expect(res.ok()).toBe(true);
-    const body = await res.json();
-    expect(body.usage.services.max).toBe(15);
+    const raw = await res.json();
+    const body = unwrap(raw);
+    expect((body.usage as { services: { max: number } }).services.max).toBe(15);
   });
 });

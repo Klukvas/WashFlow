@@ -8,17 +8,27 @@ test.describe('Operator Role Permissions', () => {
     const sidebar = page.locator('aside');
 
     // Operator should see: dashboard, orders, clients, vehicles, services
-    await expect(sidebar.getByText(/orders/i)).toBeVisible();
-    await expect(sidebar.getByText(/clients/i)).toBeVisible();
-    await expect(sidebar.getByText(/vehicles/i)).toBeVisible();
-    await expect(sidebar.getByText(/services/i)).toBeVisible();
+    // Use longer timeout — bootRefresh may not have completed by networkidle
+    await expect(sidebar.getByText(/orders/i)).toBeVisible({ timeout: 15_000 });
+    await expect(sidebar.getByText(/clients/i)).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(sidebar.getByText(/vehicles/i)).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(sidebar.getByText(/services/i)).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test('sidebar hides subscription link', async ({ page }) => {
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
 
+    // Wait for sidebar to fully render before asserting hidden links
     const sidebar = page.locator('aside');
+    await expect(sidebar.getByText(/orders/i)).toBeVisible({ timeout: 15_000 });
+
     // Operator does NOT have tenants.read so subscription is hidden
     await expect(sidebar.getByText(/subscription/i)).not.toBeVisible();
   });
@@ -28,6 +38,7 @@ test.describe('Operator Role Permissions', () => {
     await page.waitForLoadState('networkidle');
 
     const sidebar = page.locator('aside');
+    await expect(sidebar.getByText(/orders/i)).toBeVisible({ timeout: 15_000 });
     await expect(sidebar.getByText(/^users$/i)).not.toBeVisible();
   });
 
@@ -36,6 +47,7 @@ test.describe('Operator Role Permissions', () => {
     await page.waitForLoadState('networkidle');
 
     const sidebar = page.locator('aside');
+    await expect(sidebar.getByText(/orders/i)).toBeVisible({ timeout: 15_000 });
     await expect(sidebar.getByText(/analytics/i)).not.toBeVisible();
   });
 
@@ -44,6 +56,7 @@ test.describe('Operator Role Permissions', () => {
     await page.waitForLoadState('networkidle');
 
     const sidebar = page.locator('aside');
+    await expect(sidebar.getByText(/orders/i)).toBeVisible({ timeout: 15_000 });
     await expect(sidebar.getByText(/audit/i)).not.toBeVisible();
   });
 
@@ -52,6 +65,7 @@ test.describe('Operator Role Permissions', () => {
     await page.waitForLoadState('networkidle');
 
     const sidebar = page.locator('aside');
+    await expect(sidebar.getByText(/orders/i)).toBeVisible({ timeout: 15_000 });
     await expect(sidebar.getByText(/^roles$/i)).not.toBeVisible();
   });
 
@@ -59,20 +73,25 @@ test.describe('Operator Role Permissions', () => {
     await page.goto('/orders');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByRole('heading', { name: /orders/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /orders/i })).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test('can access clients page', async ({ page }) => {
     await page.goto('/clients');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByRole('heading', { name: /clients/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /clients/i })).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test('cannot access subscription page', async ({ page }) => {
     await page.goto('/subscription');
     // Should redirect to 403 or show access denied
     await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2_000);
 
     // Either redirected to /403 or shows access denied
     const url = page.url();
@@ -89,6 +108,6 @@ test.describe('Operator Role Permissions', () => {
 
     // Create Order button should be visible
     const createButton = page.getByRole('button', { name: /create order/i });
-    await expect(createButton).toBeVisible();
+    await expect(createButton).toBeVisible({ timeout: 15_000 });
   });
 });
