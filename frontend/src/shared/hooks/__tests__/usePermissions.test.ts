@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { usePermissions } from '../usePermissions';
+import * as authStoreModule from '@/shared/stores/auth.store';
 import { useAuthStore } from '@/shared/stores/auth.store';
 
 function makeJwt(payload: Record<string, unknown>): string {
@@ -12,8 +13,9 @@ function makeJwt(payload: Record<string, unknown>): string {
 describe('usePermissions', () => {
   beforeEach(() => {
     localStorage.clear();
+    vi.restoreAllMocks();
+    vi.spyOn(authStoreModule, 'getAccessToken').mockReturnValue(null);
     useAuthStore.setState({
-      accessToken: null,
       user: null,
       permissions: [],
       isAuthenticated: false,
@@ -28,8 +30,8 @@ describe('usePermissions', () => {
 
   it('hasPermission returns true when user has the permission', () => {
     const token = makeJwt({ permissions: ['orders.read', 'clients.read'] });
+    vi.spyOn(authStoreModule, 'getAccessToken').mockReturnValue(token);
     useAuthStore.setState({
-      accessToken: token,
       permissions: ['orders.read', 'clients.read'],
       isAuthenticated: true,
     });
@@ -41,34 +43,44 @@ describe('usePermissions', () => {
 
   it('hasAnyPermission returns true when at least one matches', () => {
     const token = makeJwt({ permissions: ['orders.read'] });
+    vi.spyOn(authStoreModule, 'getAccessToken').mockReturnValue(token);
     useAuthStore.setState({
-      accessToken: token,
       permissions: ['orders.read'],
       isAuthenticated: true,
     });
 
     const { result } = renderHook(() => usePermissions());
-    expect(result.current.hasAnyPermission(['orders.read', 'users.read'])).toBe(true);
-    expect(result.current.hasAnyPermission(['users.read', 'clients.read'])).toBe(false);
+    expect(
+      result.current.hasAnyPermission(['orders.read', 'users.read']),
+    ).toBe(true);
+    expect(
+      result.current.hasAnyPermission(['users.read', 'clients.read']),
+    ).toBe(false);
   });
 
   it('hasAllPermissions returns true only when all match', () => {
-    const token = makeJwt({ permissions: ['orders.read', 'clients.read'] });
+    const token = makeJwt({
+      permissions: ['orders.read', 'clients.read'],
+    });
+    vi.spyOn(authStoreModule, 'getAccessToken').mockReturnValue(token);
     useAuthStore.setState({
-      accessToken: token,
       permissions: ['orders.read', 'clients.read'],
       isAuthenticated: true,
     });
 
     const { result } = renderHook(() => usePermissions());
-    expect(result.current.hasAllPermissions(['orders.read', 'clients.read'])).toBe(true);
-    expect(result.current.hasAllPermissions(['orders.read', 'users.read'])).toBe(false);
+    expect(
+      result.current.hasAllPermissions(['orders.read', 'clients.read']),
+    ).toBe(true);
+    expect(
+      result.current.hasAllPermissions(['orders.read', 'users.read']),
+    ).toBe(false);
   });
 
   it('superAdmin has all permissions', () => {
     const token = makeJwt({ isSuperAdmin: true, permissions: [] });
+    vi.spyOn(authStoreModule, 'getAccessToken').mockReturnValue(token);
     useAuthStore.setState({
-      accessToken: token,
       permissions: [],
       isAuthenticated: true,
     });

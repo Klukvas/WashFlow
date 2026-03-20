@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { PermissionGate } from '../PermissionGate';
+import * as authStoreModule from '@/shared/stores/auth.store';
 import { useAuthStore } from '@/shared/stores/auth.store';
 import type { AuthUser } from '@/shared/types/auth';
 
@@ -32,8 +33,8 @@ const superAdmin: AuthUser = {
 
 function setAuthState(user: AuthUser, permissions: string[]) {
   const token = makeJwt({ permissions });
+  vi.spyOn(authStoreModule, 'getAccessToken').mockReturnValue(token);
   useAuthStore.setState({
-    accessToken: token,
     user,
     permissions,
     isAuthenticated: true,
@@ -43,8 +44,9 @@ function setAuthState(user: AuthUser, permissions: string[]) {
 describe('PermissionGate', () => {
   beforeEach(() => {
     localStorage.clear();
+    vi.restoreAllMocks();
+    vi.spyOn(authStoreModule, 'getAccessToken').mockReturnValue(null);
     useAuthStore.setState({
-      accessToken: null,
       user: null,
       permissions: [],
       isAuthenticated: false,
@@ -107,7 +109,10 @@ describe('PermissionGate', () => {
     setAuthState(regularUser, ['orders.read']);
 
     render(
-      <PermissionGate permissions={['orders.read', 'orders.create']} requireAll>
+      <PermissionGate
+        permissions={['orders.read', 'orders.create']}
+        requireAll
+      >
         <span>Hidden</span>
       </PermissionGate>,
     );
@@ -119,7 +124,10 @@ describe('PermissionGate', () => {
     setAuthState(regularUser, ['orders.read', 'orders.create']);
 
     render(
-      <PermissionGate permissions={['orders.read', 'orders.create']} requireAll>
+      <PermissionGate
+        permissions={['orders.read', 'orders.create']}
+        requireAll
+      >
         <span>Visible</span>
       </PermissionGate>,
     );
@@ -128,10 +136,9 @@ describe('PermissionGate', () => {
   });
 
   it('super admin bypasses all permission checks', () => {
-    // Include isSuperAdmin in the JWT payload so usePermissions reads it from the token
     const token = makeJwt({ permissions: [], isSuperAdmin: true });
+    vi.spyOn(authStoreModule, 'getAccessToken').mockReturnValue(token);
     useAuthStore.setState({
-      accessToken: token,
       user: superAdmin,
       permissions: [],
       isAuthenticated: true,
