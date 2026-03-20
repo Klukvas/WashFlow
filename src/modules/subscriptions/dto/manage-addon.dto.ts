@@ -1,4 +1,4 @@
-import { IsEnum, IsInt, Min } from 'class-validator';
+import { IsEnum, IsInt, Min, Max } from 'class-validator';
 
 export class ManageAddonDto {
   @IsEnum(['branches', 'workPosts', 'users', 'services'])
@@ -6,5 +6,6 @@ export class ManageAddonDto {
 
   @IsInt()
   @Min(0)
+  @Max(100)
   quantity: number;
 }

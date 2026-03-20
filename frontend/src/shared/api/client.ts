@@ -5,6 +5,7 @@ import axios, {
 } from 'axios';
 import * as Sentry from '@sentry/react';
 import { useAuthStore, getAccessToken } from '@/shared/stores/auth.store';
+import { router } from '@/app/router';
 import type {
   ApiError,
   PaginatedApiResponse,
@@ -96,6 +97,7 @@ apiClient.interceptors.response.use(
         useAuthStore.getState().setAuth(newAccessToken, user);
 
         processQueue(null, newAccessToken);
+        isRefreshing = false;
 
         originalRequest.headers = {
           ...originalRequest.headers,
@@ -104,11 +106,10 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        await useAuthStore.getState().logout();
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
-      } finally {
         isRefreshing = false;
+        await useAuthStore.getState().logout();
+        router.navigate('/login', { replace: true });
+        return Promise.reject(refreshError);
       }
     }
 
@@ -122,6 +123,15 @@ apiClient.interceptors.response.use(
           },
         },
       });
+    }
+
+    // Extract the backend error message so callers get a human-readable string
+    // instead of the generic axios "Request failed with status code 4xx".
+    const serverMessage = error.response?.data?.message;
+    if (serverMessage) {
+      error.message = Array.isArray(serverMessage)
+        ? serverMessage.join('. ')
+        : serverMessage;
     }
 
     return Promise.reject(error);

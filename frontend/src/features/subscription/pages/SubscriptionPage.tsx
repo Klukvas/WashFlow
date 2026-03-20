@@ -1,6 +1,6 @@
-import { useState, type ElementType } from 'react';
+import { useState, useEffect, useCallback, type ElementType } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import {
   Users,
   Building2,
@@ -9,13 +9,16 @@ import {
   AlertCircle,
   Clock,
   ArrowUpRight,
+  Receipt,
 } from 'lucide-react';
 import {
   useSubscriptionUsage,
+  useSubscriptionStatus,
   usePlanCatalog,
   useManageAddon,
   useCancelSubscription,
 } from '../hooks/useSubscription';
+import { isTrialExpired } from '../utils/trialExpiry';
 import { AddonManager } from '../components/AddonManager';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { PageHeader } from '@/shared/components/PageHeader';
@@ -88,10 +91,52 @@ function ResourceCard({ icon: Icon, label, current, max }: ResourceCardProps) {
   );
 }
 
-function TrialBanner({ trialEndsAt }: { trialEndsAt: string }) {
+function TrialBanner({
+  trialEndsAt,
+  onViewPlans,
+  paymentsEnabled,
+}: {
+  trialEndsAt: string;
+  onViewPlans: () => void;
+  paymentsEnabled: boolean;
+}) {
   const { t } = useTranslation('subscription');
-  const endDate = new Date(trialEndsAt);
+  const expired = isTrialExpired(trialEndsAt);
 
+  if (expired) {
+    return (
+      <Card className="mb-4 border-2 border-destructive bg-destructive/5">
+        <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-md bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                  {t('trial.badge')}
+                </span>
+              </div>
+              <p className="mt-1 text-sm font-medium text-destructive">
+                {t('trial.expiredBlocking')}
+              </p>
+            </div>
+          </div>
+          {paymentsEnabled && (
+            <Button
+              variant="destructive"
+              size="sm"
+              className="shrink-0"
+              onClick={onViewPlans}
+            >
+              {t('upgrade.button')}
+              <ArrowUpRight className="ml-1 h-4 w-4" />
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const endDate = new Date(trialEndsAt);
   if (isNaN(endDate.getTime())) {
     return null;
   }
@@ -109,39 +154,17 @@ function TrialBanner({ trialEndsAt }: { trialEndsAt: string }) {
     now.getUTCDate(),
   );
   const daysRemaining = Math.ceil((endUtcDay - nowUtcDay) / MS_PER_DAY);
-  const isExpired = daysRemaining <= 0;
 
   return (
-    <Card
-      className={cn(
-        'mb-4',
-        isExpired
-          ? 'border-destructive/50 bg-destructive/5'
-          : 'border-yellow-500/50 bg-yellow-500/5',
-      )}
-    >
+    <Card className="mb-4 border-yellow-500/50 bg-yellow-500/5">
       <CardContent className="flex items-center gap-3 pt-6">
-        <Clock
-          className={cn(
-            'h-5 w-5',
-            isExpired ? 'text-destructive' : 'text-yellow-500',
-          )}
-        />
+        <Clock className="h-5 w-5 text-yellow-500" />
         <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              'rounded-md px-2 py-0.5 text-xs font-medium',
-              isExpired
-                ? 'bg-destructive/10 text-destructive'
-                : 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
-            )}
-          >
+          <span className="rounded-md bg-yellow-500/10 px-2 py-0.5 text-xs font-medium text-yellow-700 dark:text-yellow-400">
             {t('trial.badge')}
           </span>
           <p className="text-sm text-muted-foreground">
-            {isExpired
-              ? t('trial.expired')
-              : t('trial.active', { count: daysRemaining })}
+            {t('trial.active', { count: daysRemaining })}
           </p>
         </div>
       </CardContent>
@@ -181,14 +204,51 @@ function SubscriptionSkeleton() {
   );
 }
 
+const POLL_INTERVAL = 2_000;
+const POLL_TIMEOUT = 30_000;
+
+interface ActivatedState {
+  activated?: boolean;
+  fromTier?: string;
+}
+
 export function SubscriptionPage() {
   const { t } = useTranslation('subscription');
   const navigate = useNavigate();
-  const { data, isLoading, isError } = useSubscriptionUsage();
+  const location = useLocation();
+  const navState = location.state as ActivatedState | null;
+  const [polling, setPolling] = useState(!!navState?.activated);
+  const [fromTier] = useState(navState?.fromTier);
+
+  const { paymentsEnabled } = useSubscriptionStatus();
+  const { data, isLoading, isError } = useSubscriptionUsage({
+    refetchInterval: polling ? POLL_INTERVAL : undefined,
+  });
   const { data: catalog } = usePlanCatalog();
   const manageAddonMutation = useManageAddon();
   const cancelMutation = useCancelSubscription();
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
+  const clearPolling = useCallback(() => {
+    setPolling(false);
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [navigate, location.pathname]);
+
+  // Stop polling once the plan tier changes from what it was before checkout
+  const planTier = data?.subscription?.planTier;
+  useEffect(() => {
+    if (!polling || !planTier || !fromTier) return;
+    if (planTier !== fromTier) {
+      clearPolling();
+    }
+  }, [polling, planTier, fromTier, clearPolling]);
+
+  // Hard timeout — stop polling after POLL_TIMEOUT regardless
+  useEffect(() => {
+    if (!polling) return;
+    const timer = setTimeout(clearPolling, POLL_TIMEOUT);
+    return () => clearTimeout(timer);
+  }, [polling, clearPolling]);
 
   if (isLoading) {
     return <SubscriptionSkeleton />;
@@ -212,7 +272,6 @@ export function SubscriptionPage() {
   const canManageAddons =
     subscription &&
     subscription.planTier !== 'TRIAL' &&
-    subscription.planTier !== 'ENTERPRISE' &&
     subscription.status !== 'CANCELLED';
 
   return (
@@ -235,13 +294,17 @@ export function SubscriptionPage() {
 
       {/* Trial banner */}
       {subscription?.isTrial && subscription.trialEndsAt && (
-        <TrialBanner trialEndsAt={subscription.trialEndsAt} />
+        <TrialBanner
+          trialEndsAt={subscription.trialEndsAt}
+          onViewPlans={() => navigate('/subscription/plans')}
+          paymentsEnabled={paymentsEnabled}
+        />
       )}
 
-      {/* Upgrade CTA for trial / starter users */}
-      {subscription &&
-        (subscription.planTier === 'TRIAL' ||
-          subscription.planTier === 'STARTER') && (
+      {/* Change plan CTA */}
+      {paymentsEnabled &&
+        subscription &&
+        subscription.status !== 'CANCELLED' && (
           <Card className="border-primary/30 bg-primary/5">
             <CardContent className="flex items-center justify-between pt-6">
               <div>
@@ -254,6 +317,32 @@ export function SubscriptionPage() {
                 {t('upgrade.button')}
                 <ArrowUpRight className="ml-1 h-4 w-4" />
               </Button>
+            </CardContent>
+          </Card>
+        )}
+
+      {/* Billing link */}
+      {paymentsEnabled &&
+        subscription &&
+        subscription.hasActiveSubscription &&
+        !subscription.isTrial && (
+          <Card
+            className="cursor-pointer transition-colors hover:bg-muted/50"
+            onClick={() => navigate('/subscription/billing')}
+          >
+            <CardContent className="flex items-center justify-between pt-6">
+              <div className="flex items-center gap-3">
+                <Receipt className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">
+                    {t('billing.summaryTitle')}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t('billing.viewDetails')}
+                  </p>
+                </div>
+              </div>
+              <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
             </CardContent>
           </Card>
         )}
@@ -287,7 +376,7 @@ export function SubscriptionPage() {
       </div>
 
       {/* Add-on management */}
-      {canManageAddons && catalog && (
+      {paymentsEnabled && canManageAddons && catalog && (
         <AddonManager
           addons={catalog.addons}
           currentAddons={subscription.addons}
@@ -299,7 +388,8 @@ export function SubscriptionPage() {
       )}
 
       {/* Cancel subscription */}
-      {subscription &&
+      {paymentsEnabled &&
+        subscription &&
         subscription.status === 'ACTIVE' &&
         !subscription.isTrial && (
           <Card>
@@ -336,20 +426,29 @@ export function SubscriptionPage() {
         loading={cancelMutation.isPending}
       />
 
-      {/* Cancellation info */}
-      {subscription?.cancelEffectiveAt && (
-        <Card className="border-yellow-500/50">
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">
-              {t('cancel.activeUntil', {
-                date: new Date(
-                  subscription.cancelEffectiveAt,
-                ).toLocaleDateString(),
-              })}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      {/* Cancellation info + choose plan */}
+      {subscription?.status === 'CANCELLED' &&
+        subscription.cancelEffectiveAt && (
+          <Card className="border-yellow-500/50">
+            <CardContent className="flex items-center justify-between pt-6">
+              <p className="text-sm text-muted-foreground">
+                {t('cancel.activeUntil', {
+                  date: new Date(
+                    subscription.cancelEffectiveAt,
+                  ).toLocaleDateString(),
+                })}
+              </p>
+              {paymentsEnabled && (
+                <Button
+                  size="sm"
+                  onClick={() => navigate('/subscription/plans')}
+                >
+                  {t('cancel.reactivate')}
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
     </div>
   );
 }

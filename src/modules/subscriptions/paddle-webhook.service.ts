@@ -130,10 +130,12 @@ export class PaddleWebhookService implements OnModuleDestroy {
       .digest('hex');
 
     try {
-      return timingSafeEqual(
-        Buffer.from(computedHash, 'hex'),
-        Buffer.from(receivedHash, 'hex'),
-      );
+      const computedBuf = Buffer.from(computedHash, 'hex');
+      const receivedBuf = Buffer.from(receivedHash, 'hex');
+      if (computedBuf.length !== receivedBuf.length) {
+        return false;
+      }
+      return timingSafeEqual(computedBuf, receivedBuf);
     } catch {
       return false;
     }
@@ -289,7 +291,14 @@ export class PaddleWebhookService implements OnModuleDestroy {
     const previousTier = subscription.planTier;
     const newTier = this.extractPlanTier(data);
     const billingInterval = this.extractBillingInterval(data);
-    const status = this.mapPaddleStatus(data.status as string);
+
+    const scheduledChange = data.scheduled_change as
+      | { action?: string }
+      | undefined;
+    const isPendingCancellation = scheduledChange?.action === 'cancel';
+    const status = isPendingCancellation
+      ? SubscriptionStatus.CANCELLED
+      : this.mapPaddleStatus(data.status as string);
 
     await this.subscriptionsRepo.update(subscription.tenantId, {
       planTier: newTier,
@@ -298,6 +307,9 @@ export class PaddleWebhookService implements OnModuleDestroy {
       paddleStatus: data.status as string,
       currentPeriodStart: this.extractPeriodStart(data),
       currentPeriodEnd: this.extractPeriodEnd(data),
+      ...(status === SubscriptionStatus.ACTIVE && !isPendingCancellation
+        ? { cancelledAt: null, cancelEffectiveAt: null }
+        : {}),
     });
 
     // Sync addon items from Paddle data

@@ -61,7 +61,7 @@ export const PLAN_CATALOG: readonly PlanDefinition[] = [
     monthlyPrice: 199,
     yearlyPrice: 1990,
     limits: PLAN_LIMITS[PlanTier.ENTERPRISE],
-    addonsAvailable: false,
+    addonsAvailable: true,
   },
 ] as const;
 

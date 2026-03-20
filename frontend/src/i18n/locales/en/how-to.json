@@ -3,7 +3,9 @@
     "title": "How To",
     "description": "Learn how to use WashFlow effectively",
     "topics": "Topics",
-    "flows": "Flows"
+    "flows": "Flows",
+    "noContent": "No content available",
+    "topicNav": "Topic navigation"
   },
   "topics": {
     "getting-started": {
@@ -272,6 +274,48 @@
           "heading": "Date Filters",
           "body": "Use the date range picker to analyze specific periods. You can compare months, quarters, or custom date ranges. All charts update in real time when you change the filter.",
           "tip": "The analytics permission (analytics.view) is required to access this page."
+        }
+      ]
+    },
+    "subscription": {
+      "title": "Subscription & Billing",
+      "description": "Managing your plan, add-ons, and payment details",
+      "sections": [
+        {
+          "heading": "Overview",
+          "body": "The Subscription page shows your current plan, resource usage (users, branches, work posts, services), and billing information. Access it from the sidebar under Management."
+        },
+        {
+          "heading": "Plans",
+          "body": "WashFlow offers three paid plans: Starter, Business, and Enterprise. Each plan has different resource limits and pricing. You can switch between monthly and yearly billing — yearly saves you 2 months. Visit the Plans page to compare and select a plan.",
+          "tip": "Enterprise plan has the highest limits and supports add-ons for further customization."
+        },
+        {
+          "heading": "Choosing a Plan",
+          "body": "Click 'View Plans' on the Subscription page to open the plan comparison. Select the plan that fits your needs and click 'Select Plan'. For new subscriptions, you'll be redirected to a secure Paddle checkout. After payment, your subscription activates automatically."
+        },
+        {
+          "heading": "Changing Plans",
+          "body": "You can upgrade or downgrade at any time from the Plans page. Upgrades take effect immediately. Downgrades are validated — if your current usage exceeds the target plan's limits, you'll be asked to reduce usage first (e.g. remove extra branches or users).",
+          "tip": "When downgrading, active add-ons that are not supported by the target plan will be cancelled."
+        },
+        {
+          "heading": "Add-ons",
+          "body": "Add-ons let you increase individual resource limits beyond your plan's defaults. Available add-ons: Extra Branch, Extra Work Posts, Extra Users, Extra Services. Manage add-ons directly from the Subscription page using the plus/minus controls.",
+          "tip": "Add-ons are available on all paid plans (Starter, Business, Enterprise). They are not available during the free trial."
+        },
+        {
+          "heading": "Billing & Invoices",
+          "body": "Click 'Billing Summary' on the Subscription page to view your billing details: base plan cost, add-on costs, taxes, discounts, and total. You can also see your next billing date and full payment history."
+        },
+        {
+          "heading": "Cancellation & Reactivation",
+          "body": "To cancel, click the 'Cancel' button at the bottom of the Subscription page. Your access continues until the end of the current billing period. During this time, you can reactivate your subscription — it will resume as if nothing changed.",
+          "tip": "After cancellation, you can choose a different plan from the Plans page if you want to switch instead of leaving."
+        },
+        {
+          "heading": "Free Trial",
+          "body": "New tenants start with a 30-day free trial that includes generous limits. A banner on the Subscription page shows how many days remain. When the trial expires, you must choose a paid plan to continue using the platform."
         }
       ]
     },

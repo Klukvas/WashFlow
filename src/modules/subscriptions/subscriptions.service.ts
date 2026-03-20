@@ -7,7 +7,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SubscriptionsRepository } from './subscriptions.repository';
-import { PaddleService } from './paddle.service';
+import { PaddleService, PaddleApiError } from './paddle.service';
+import { PaddlePriceCacheService } from './paddle-price-cache.service';
 import { UpsertSubscriptionDto } from './dto/upsert-subscription.dto';
 import { ChangePlanDto } from './dto/change-plan.dto';
 import { ManageAddonDto } from './dto/manage-addon.dto';
@@ -30,6 +31,7 @@ export class SubscriptionsService {
   constructor(
     private readonly subscriptionsRepo: SubscriptionsRepository,
     private readonly paddleService: PaddleService,
+    private readonly priceCacheService: PaddlePriceCacheService,
     private readonly config: ConfigService,
   ) {}
 
@@ -41,26 +43,41 @@ export class SubscriptionsService {
     return subscription;
   }
 
-  getPlanCatalog() {
-    return {
-      plans: PLAN_CATALOG.map((plan) => ({
-        tier: plan.tier,
-        name: plan.name,
-        monthlyPrice: plan.monthlyPrice,
-        yearlyPrice: plan.yearlyPrice,
-        limits: plan.limits,
-        addonsAvailable: plan.addonsAvailable,
-      })),
-      addons: ADDON_DEFINITIONS.map((addon) => ({
-        resource: addon.resource,
-        unitSize: addon.unitSize,
-        monthlyPrice: addon.monthlyPrice,
-        name: addon.name,
-      })),
-    };
+  async getBillingDetails(tenantId: string) {
+    const subscription = await this.subscriptionsRepo.findByTenantId(tenantId);
+    if (!subscription) {
+      throw new NotFoundException('Subscription not found');
+    }
+
+    if (!subscription.paddleSubscriptionId) {
+      return null;
+    }
+
+    return this.paddleService.getSubscriptionBilling(
+      subscription.paddleSubscriptionId,
+    );
   }
 
-  async createCheckout(tenantId: string, dto: ChangePlanDto) {
+  async getTransactionHistory(tenantId: string) {
+    const subscription = await this.subscriptionsRepo.findByTenantId(tenantId);
+    if (!subscription) {
+      throw new NotFoundException('Subscription not found');
+    }
+
+    if (!subscription.paddleSubscriptionId) {
+      return [];
+    }
+
+    return this.paddleService.getTransactionHistory(
+      subscription.paddleSubscriptionId,
+    );
+  }
+
+  async getPlanCatalog() {
+    return this.priceCacheService.getCachedCatalog();
+  }
+
+  async createCheckout(tenantId: string, dto: ChangePlanDto, email: string) {
     const subscription =
       await this.subscriptionsRepo.findByTenantIdWithAddons(tenantId);
     if (!subscription) {
@@ -88,6 +105,7 @@ export class SubscriptionsService {
       await this.paddleService.createCheckoutTransaction({
         items,
         customerId: subscription.paddleCustomerId ?? undefined,
+        customerEmail: email,
         customData: { tenantId },
       });
 
@@ -143,6 +161,15 @@ export class SubscriptionsService {
       },
     );
 
+    // If switching plan on a cancelled subscription, clear cancellation state
+    if (subscription.status === SubscriptionStatus.CANCELLED) {
+      await this.subscriptionsRepo.update(tenantId, {
+        status: SubscriptionStatus.ACTIVE,
+        cancelledAt: null,
+        cancelEffectiveAt: null,
+      });
+    }
+
     return {
       message: 'Plan change initiated. Updates will arrive via webhook.',
     };
@@ -155,10 +182,6 @@ export class SubscriptionsService {
       throw new NotFoundException('Subscription not found');
     }
 
-    if (subscription.planTier === PlanTier.ENTERPRISE) {
-      throw new BadRequestException('Enterprise plan does not need add-ons.');
-    }
-
     if (subscription.planTier === PlanTier.TRIAL) {
       throw new BadRequestException(
         'Add-ons are not available on trial. Please subscribe first.',
@@ -168,11 +191,33 @@ export class SubscriptionsService {
     const resource = dto.resource as ResourceKey;
     const addonPriceId = this.getAddonPriceId(resource);
 
-    // Save previous addon state for rollback
-    const previousAddon = subscription.addons.find(
-      (a) => a.resource === resource,
-    );
+    // Call Paddle FIRST (if linked) — only write to DB after Paddle confirms success
+    if (subscription.paddleSubscriptionId) {
+      // Build items with the new addon quantities applied speculatively
+      const speculativeAddons = subscription.addons
+        .filter((a) => a.resource !== resource)
+        .map((a) => ({ resource: a.resource, quantity: a.quantity }));
 
+      if (dto.quantity > 0) {
+        speculativeAddons.push({ resource, quantity: dto.quantity });
+      }
+
+      const items = this.buildAllPaddleItems({
+        planTier: subscription.planTier,
+        billingInterval: subscription.billingInterval,
+        addons: speculativeAddons,
+      });
+
+      await this.paddleService.updateSubscription(
+        subscription.paddleSubscriptionId,
+        {
+          items,
+          prorationBillingMode: 'prorated_immediately',
+        },
+      );
+    }
+
+    // Paddle succeeded (or no Paddle subscription) — now write to DB
     if (dto.quantity === 0) {
       await this.subscriptionsRepo.deleteAddon(subscription.id, resource);
     } else {
@@ -185,47 +230,6 @@ export class SubscriptionsService {
     }
 
     await this.recalculateEffectiveLimits(tenantId);
-
-    // Sync addon changes to Paddle if subscription is linked
-    if (subscription.paddleSubscriptionId) {
-      const updatedSubscription =
-        await this.subscriptionsRepo.findByTenantIdWithAddons(tenantId);
-      if (!updatedSubscription) {
-        throw new NotFoundException(
-          'Subscription disappeared during addon update — Paddle was not synced',
-        );
-      }
-      const items = this.buildAllPaddleItems(updatedSubscription);
-      try {
-        await this.paddleService.updateSubscription(
-          subscription.paddleSubscriptionId,
-          {
-            items,
-            prorationBillingMode: 'prorated_immediately',
-          },
-        );
-      } catch (error) {
-        // Rollback DB to previous addon state
-        try {
-          if (previousAddon) {
-            await this.subscriptionsRepo.upsertAddon(
-              subscription.id,
-              resource,
-              previousAddon.quantity,
-              previousAddon.paddlePriceId ?? undefined,
-            );
-          } else {
-            await this.subscriptionsRepo.deleteAddon(subscription.id, resource);
-          }
-          await this.recalculateEffectiveLimits(tenantId);
-        } catch (rollbackError) {
-          this.logger.error(
-            `Failed to rollback addon change for tenant ${tenantId}: ${String(rollbackError)}`,
-          );
-        }
-        throw error;
-      }
-    }
 
     return this.subscriptionsRepo.findByTenantIdWithAddons(tenantId);
   }
@@ -283,15 +287,74 @@ export class SubscriptionsService {
       throw new BadRequestException('Subscription is already cancelled.');
     }
 
-    await this.paddleService.cancelSubscription(
-      subscription.paddleSubscriptionId,
-      'next_billing_period',
-    );
+    try {
+      await this.paddleService.cancelSubscription(
+        subscription.paddleSubscriptionId,
+        'next_billing_period',
+      );
+    } catch (error) {
+      // If Paddle already has a pending cancellation, sync our DB and succeed
+      if (
+        error instanceof PaddleApiError &&
+        error.errorCode === 'subscription_locked_pending_changes'
+      ) {
+        this.logger.warn(
+          `Cancel for tenant ${tenantId}: Paddle already has pending cancellation, syncing DB`,
+        );
+      } else {
+        throw error;
+      }
+    }
+
+    // Optimistically update local DB so the UI reflects cancellation immediately.
+    // The webhook will later confirm/update with exact effective date.
+    await this.subscriptionsRepo.update(tenantId, {
+      status: SubscriptionStatus.CANCELLED,
+      cancelledAt: new Date(),
+      cancelEffectiveAt: subscription.currentPeriodEnd ?? new Date(),
+    });
 
     return {
       message:
         'Cancellation requested. Access continues until the end of the current billing period.',
     };
+  }
+
+  async reactivateSubscription(tenantId: string) {
+    const subscription = await this.subscriptionsRepo.findByTenantId(tenantId);
+    if (!subscription) {
+      throw new NotFoundException('Subscription not found');
+    }
+
+    if (!subscription.paddleSubscriptionId) {
+      throw new BadRequestException('No Paddle subscription to reactivate.');
+    }
+
+    if (subscription.status !== SubscriptionStatus.CANCELLED) {
+      throw new BadRequestException('Subscription is not cancelled.');
+    }
+
+    // Only allow reactivation before the effective cancellation date
+    if (
+      subscription.cancelEffectiveAt &&
+      subscription.cancelEffectiveAt <= new Date()
+    ) {
+      throw new BadRequestException(
+        'Cancellation period has ended. Please create a new subscription.',
+      );
+    }
+
+    await this.paddleService.reactivateSubscription(
+      subscription.paddleSubscriptionId,
+    );
+
+    await this.subscriptionsRepo.update(tenantId, {
+      status: SubscriptionStatus.ACTIVE,
+      cancelledAt: null,
+      cancelEffectiveAt: null,
+    });
+
+    return { message: 'Subscription reactivated successfully.' };
   }
 
   /** Called by PaddleWebhookService after processing subscription events. */

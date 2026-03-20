@@ -3,7 +3,7 @@
   "description": "Current resource usage and subscription limits",
   "noLimits": "No limits",
   "used": "used",
-  "loadError": "Failed to load subscription data. Please try again later.",
+  "loadError": "Failed to load subscription data. Please try again.",
   "resources": {
     "users": "Users",
     "branches": "Branches",
@@ -14,7 +14,9 @@
     "badge": "Trial",
     "active_one": "Free trial — {{count}} day remaining",
     "active_other": "Free trial — {{count}} days remaining",
-    "expired": "Trial expired. Please subscribe to continue."
+    "expired": "Trial expired. Please subscribe to continue.",
+    "expiredBlocking": "Your free trial has expired. Please choose a subscription plan to continue using the platform.",
+    "expiredContactAdmin": "The free trial has expired. Please contact your administrator to subscribe to a plan."
   },
   "status": {
     "TRIALING": "Trial",
@@ -41,7 +43,12 @@
   "addons": {
     "title": "Add-ons",
     "description": "Increase resource limits with add-on packages",
-    "perUnit": "per unit"
+    "perUnit": "per unit",
+    "error": "Failed to update add-on. Please try again.",
+    "updateSuccess": "Add-on updated successfully"
+  },
+  "changePlan": {
+    "error": "Failed to change plan. Please try again."
   },
   "upgrade": {
     "title": "Upgrade your plan",
@@ -54,10 +61,50 @@
     "button": "Cancel",
     "confirmTitle": "Cancel Subscription?",
     "confirmMessage": "Are you sure you want to cancel? You'll retain access until the end of your current billing period.",
-    "activeUntil": "Your subscription remains active until {{date}}"
+    "activeUntil": "Your subscription remains active until {{- date}}",
+    "reactivate": "Resume Subscription",
+    "error": "Failed to cancel subscription. Please try again.",
+    "reactivateError": "Failed to reactivate. Please try again."
   },
+  "billing": {
+    "summaryTitle": "Billing Summary",
+    "pageTitle": "Billing",
+    "pageDescription": "Your current billing details and invoice breakdown",
+    "viewDetails": "View billing details and invoices",
+    "total": "Total",
+    "discount": "Discount",
+    "tax": "Tax",
+    "nextBilling": "Next billing date: {{- date}}"
+  },
+  "downgrade": {
+    "blockedTitle": "Cannot switch to {{plan}}",
+    "blockedDescription": "Your current usage exceeds the limits of the {{plan}} plan. Reduce usage before switching.",
+    "warningTitle": "Switch to {{plan}}?",
+    "warningDescription": "Please review the following changes before switching to the {{plan}} plan.",
+    "excess": "{{current}} active, limit {{limit}} — remove {{count}}",
+    "manage": "Manage",
+    "addonsLostTitle": "Active add-ons will be cancelled",
+    "confirmSwitch": "Switch anyway",
+    "close": "Close"
+  },
+  "transactions": {
+    "title": "Payment History",
+    "empty": "No transactions yet.",
+    "payment": "Payment",
+    "showAll": "Show all ({{count}})",
+    "showLess": "Show less"
+  },
+  "paymentsDisabled": "Payments are currently disabled",
+  "paymentsDisabledHint": "Contact your administrator to enable payments",
   "checkout": {
     "subscribe": "Subscribe",
-    "error": "Checkout failed. Please try again."
+    "error": "Checkout failed. Please try again.",
+    "processing": "Processing your payment...",
+    "successTitle": "You're all set!",
+    "successMessage": "Your subscription has been activated successfully.",
+    "successButton": "Go to Subscription",
+    "errorTitle": "Payment Failed",
+    "errorMessage": "Something went wrong with your payment. Please try again.",
+    "errorButton": "Try Again"
   }
 }

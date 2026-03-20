@@ -21,6 +21,7 @@ import { usePermissions } from '@/shared/hooks/usePermissions';
 import { PERMISSIONS } from '@/shared/constants/permissions';
 import { cn } from '@/shared/utils/cn';
 import { Button } from '@/shared/ui/button';
+import washflowIcon from '@/shared/assets/washflow-icon.svg';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -152,6 +153,7 @@ function NavSection({
             key={item.to}
             to={item.to}
             end={item.to === '/dashboard'}
+            aria-label={collapsed ? t(item.labelKey) : undefined}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
@@ -162,7 +164,7 @@ function NavSection({
               )
             }
           >
-            <item.icon className="h-5 w-5 shrink-0" />
+            <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
             {!collapsed && <span>{t(item.labelKey)}</span>}
           </NavLink>
         ))}
@@ -177,25 +179,37 @@ export function Sidebar({ collapsed, mobile, onClose }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'flex h-full flex-col border-r border-sidebar-border bg-sidebar',
+        'flex h-full flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200 ease-in-out',
         collapsed ? 'w-16' : 'w-64',
         mobile && 'fixed inset-y-0 left-0 z-40 shadow-lg',
       )}
     >
       <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
-        {!collapsed && (
-          <div className="flex flex-col">
-            <span className="text-lg font-bold leading-tight text-primary">
-              WashFlow
-            </span>
-            <span className="text-[10px] leading-tight text-muted-foreground">
-              Powered by FluxLab
-            </span>
-          </div>
-        )}
+        <div className="flex items-center gap-2.5">
+          <img
+            src={washflowIcon}
+            alt="WashFlow"
+            className="h-8 w-8 shrink-0 rounded-lg"
+          />
+          {!collapsed && (
+            <div className="flex flex-col">
+              <span className="text-lg font-bold leading-tight text-primary">
+                WashFlow
+              </span>
+              <span className="text-[10px] leading-tight text-muted-foreground">
+                Powered by FluxLab
+              </span>
+            </div>
+          )}
+        </div>
         {mobile && onClose && (
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-5 w-5" />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            aria-label={t('closeSidebar')}
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
           </Button>
         )}
       </div>

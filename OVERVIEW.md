@@ -98,6 +98,7 @@ pnpm build && pnpm start:prod   # production build
 | `EMAIL_FROM` | No | `WashFlow <noreply@washflow.app>` | Sender address for transactional emails |
 | `FRONTEND_URL` | No | `http://localhost:5173` | Frontend base URL (used in password reset links) |
 | `PADDLE_ADDON_PRICE_IDS` | No | — | JSON map of addon price IDs (e.g. `{"branches":"pri_abc","users":"pri_def"}`) — overrides defaults |
+| `PAYMENTS_ENABLED` | No | `false` | Feature flag — set to `true` to enable Paddle payment mutations (checkout, change-plan, addons, cancel, reactivate); read-only subscription views always available |
 | `CLEANUP_RETENTION_DAYS` | No | `30` | Days before soft-deleted records are hard-deleted by cleanup cron |
 | `SENTRY_DSN` | No | — | Sentry DSN for error tracking |
 | `VITE_SENTRY_DSN` | No | — | Sentry DSN for frontend |
@@ -641,6 +642,7 @@ frontend/src/
 | Paddle Billing integration | Webhook-driven subscription lifecycle — backend is source of truth; Paddle.js overlay for checkout; HMAC-SHA256 signature verification; Redis-based idempotent event processing; configurable price IDs via env |
 | Add-on model | Separate `SubscriptionAddon` table with unique (subscriptionId, resource) constraint; effective limits recalculated on every change; stored in Subscription for fast enforcement |
 | Trial auto-provisioning | New tenants get 30-day trial automatically; expired trials block resource creation; trial info exposed on usage endpoint + frontend banner |
+| Trial expiration gate | When trial expires, `SubscriptionGate` in `DashboardLayout` redirects all routes to `/subscription` (except `/subscription/*`); super admins bypass; network errors/loading pass through to avoid lockout |
 | Email service (Resend) | `@Global()` module, no-op without API key — dev/test never sends real emails; best-effort (never throws); templates as pure functions |
 | Account lockout | 5 attempts / 30 min window — simple rate limiting at account level without Redis; fields on User model (not separate table) |
 | Password reset tokens | Separate `PasswordResetToken` model with 1h expiry; `usedAt` tracking prevents reuse; tokenVersion increment invalidates all existing sessions |

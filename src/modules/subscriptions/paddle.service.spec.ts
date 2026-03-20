@@ -163,6 +163,89 @@ describe('PaddleService', () => {
   });
 
   // -------------------------------------------------------------------------
+  // fetchAllPrices
+  // -------------------------------------------------------------------------
+
+  describe('fetchAllPrices()', () => {
+    it('returns empty map when no price IDs are provided', async () => {
+      const result = await service.fetchAllPrices([]);
+
+      expect(result.size).toBe(0);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('makes a GET request to /prices with id params and per_page', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        buildFetchResponse([
+          {
+            id: 'pri_001',
+            unit_price: { amount: '2900', currency_code: 'USD' },
+            name: 'Starter Monthly',
+          },
+        ]),
+      );
+
+      await service.fetchAllPrices(['pri_001']);
+
+      const [url, options] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(url).toContain('/prices?id=pri_001&status=active');
+      expect(url).toContain('per_page=200');
+      expect(options.method).toBe('GET');
+    });
+
+    it('returns a Map of priceId to PaddlePriceInfo', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        buildFetchResponse([
+          {
+            id: 'pri_001',
+            unit_price: { amount: '2900', currency_code: 'USD' },
+            name: 'Starter Monthly',
+          },
+          {
+            id: 'pri_002',
+            unit_price: { amount: '29000', currency_code: 'USD' },
+            name: 'Starter Yearly',
+          },
+        ]),
+      );
+
+      const result = await service.fetchAllPrices(['pri_001', 'pri_002']);
+
+      expect(result.size).toBe(2);
+      expect(result.get('pri_001')).toEqual({
+        amountCents: '2900',
+        currency: 'USD',
+        name: 'Starter Monthly',
+      });
+      expect(result.get('pri_002')).toEqual({
+        amountCents: '29000',
+        currency: 'USD',
+        name: 'Starter Yearly',
+      });
+    });
+
+    it('passes multiple id params in the query string', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(buildFetchResponse([]));
+
+      await service.fetchAllPrices(['pri_a', 'pri_b', 'pri_c']);
+
+      const [url] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(url).toContain('id=pri_a');
+      expect(url).toContain('id=pri_b');
+      expect(url).toContain('id=pri_c');
+    });
+
+    it('includes AbortSignal timeout in the request', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(buildFetchResponse([]));
+
+      await service.fetchAllPrices(['pri_001']);
+
+      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(options.signal).toBeDefined();
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // createCheckoutTransaction
   // -------------------------------------------------------------------------
 

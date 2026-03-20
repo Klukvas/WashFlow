@@ -3,6 +3,9 @@ import {
   useEffect,
   useRef,
   useCallback,
+  useContext,
+  createContext,
+  useId,
   type MouseEvent,
 } from 'react';
 import { cn } from '@/shared/utils/cn';
@@ -10,10 +13,18 @@ import { cn } from '@/shared/utils/cn';
 const FOCUSABLE_SELECTORS =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+interface DialogContextValue {
+  titleId: string;
+}
+
+const DialogContext = createContext<DialogContextValue>({ titleId: '' });
+
 interface DialogProps {
   open: boolean;
   onClose?: () => void;
   onOpenChange?: (open: boolean) => void;
+  /** When false, Escape key and overlay click will not close the dialog. */
+  dismissable?: boolean;
   children: ReactNode;
   className?: string;
 }
@@ -22,11 +33,15 @@ export function Dialog({
   open,
   onClose,
   onOpenChange,
+  dismissable = true,
   children,
   className,
 }: DialogProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<Element | null>(null);
+  const didLockScrollRef = useRef(false);
+  const titleId = useId();
 
   const handleClose = useCallback(() => {
     onClose?.();
@@ -35,7 +50,7 @@ export function Dialog({
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && dismissable) {
         handleClose();
         return;
       }
@@ -68,8 +83,14 @@ export function Dialog({
     }
 
     if (open) {
+      previousFocusRef.current = document.activeElement;
       document.addEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = 'hidden';
+
+      // Only lock scroll if not already locked (prevents breaking nested dialogs)
+      if (!document.body.style.overflow) {
+        document.body.style.overflow = 'hidden';
+        didLockScrollRef.current = true;
+      }
 
       // Move focus into dialog on open
       requestAnimationFrame(() => {
@@ -87,35 +108,44 @@ export function Dialog({
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = '';
+      if (didLockScrollRef.current) {
+        document.body.style.overflow = '';
+        didLockScrollRef.current = false;
+      }
+      if (previousFocusRef.current instanceof HTMLElement) {
+        previousFocusRef.current.focus();
+      }
     };
-  }, [open, handleClose]);
+  }, [open, handleClose, dismissable]);
 
   if (!open) return null;
 
   function handleOverlayClick(e: MouseEvent) {
-    if (e.target === overlayRef.current) handleClose();
+    if (dismissable && e.target === overlayRef.current) handleClose();
   }
 
   return (
-    <div
-      ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={handleOverlayClick}
-    >
+    <DialogContext.Provider value={{ titleId }}>
       <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        tabIndex={-1}
-        className={cn(
-          'w-full max-w-lg rounded-lg bg-card p-6 shadow-lg animate-in fade-in zoom-in-95',
-          className,
-        )}
+        ref={overlayRef}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        onClick={handleOverlayClick}
       >
-        {children}
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          tabIndex={-1}
+          className={cn(
+            'w-full max-w-lg rounded-lg bg-card p-6 shadow-lg animate-in fade-in zoom-in-95',
+            className,
+          )}
+        >
+          {children}
+        </div>
       </div>
-    </div>
+    </DialogContext.Provider>
   );
 }
 
@@ -136,7 +166,12 @@ export function DialogTitle({
   children: ReactNode;
   className?: string;
 }) {
-  return <h2 className={cn('text-lg font-semibold', className)}>{children}</h2>;
+  const { titleId } = useContext(DialogContext);
+  return (
+    <h2 id={titleId} className={cn('text-lg font-semibold', className)}>
+      {children}
+    </h2>
+  );
 }
 
 export function DialogFooter({

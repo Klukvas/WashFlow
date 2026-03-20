@@ -131,6 +131,11 @@ const PlansPage = lazy(() =>
     default: m.PlansPage,
   })),
 );
+const BillingPage = lazy(() =>
+  import('@/features/subscription/pages/BillingPage').then((m) => ({
+    default: m.BillingPage,
+  })),
+);
 const PublicLandingPage = lazy(() =>
   import('@/features/public-booking/pages/PublicLandingPage').then((m) => ({
     default: m.PublicLandingPage,
@@ -399,6 +404,19 @@ export const router = createBrowserRouter([
           >
             <SuspenseWrapper>
               <PlansPage />
+            </SuspenseWrapper>
+          </PermissionGate>
+        ),
+      },
+      {
+        path: 'subscription/billing',
+        element: (
+          <PermissionGate
+            permission={PERMISSIONS.TENANTS.READ}
+            fallback={<Navigate to="/403" replace />}
+          >
+            <SuspenseWrapper>
+              <BillingPage />
             </SuspenseWrapper>
           </PermissionGate>
         ),

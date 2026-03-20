@@ -35,7 +35,15 @@ function SectionCard({ section }: { section: TopicSection }) {
   );
 }
 
-function StepCard({ step, index }: { step: FlowStep; index: number }) {
+function StepCard({
+  step,
+  index,
+  isLast,
+}: {
+  step: FlowStep;
+  index: number;
+  isLast: boolean;
+}) {
   return (
     <div className="relative flex gap-4">
       {/* Vertical connector line */}
@@ -43,7 +51,7 @@ function StepCard({ step, index }: { step: FlowStep; index: number }) {
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
           {index + 1}
         </div>
-        <div className="w-px flex-1 bg-border" />
+        {!isLast && <div className="w-px flex-1 bg-border" />}
       </div>
 
       {/* Step content */}
@@ -82,7 +90,7 @@ export function TopicContent() {
   const { t } = useTranslation('how-to');
 
   useEffect(() => {
-    window.scrollTo({ top: 0 });
+    document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
   }, [topicSlug]);
 
   if (!topicSlug || !TOPIC_SLUGS.has(topicSlug)) {
@@ -98,9 +106,12 @@ export function TopicContent() {
 
   // Flows use "steps", regular topics use "sections"
   const contentKey = isFlow ? 'steps' : 'sections';
-  const items = t(`topics.${topicSlug}.${contentKey}`, {
+  const rawItems = t(`topics.${topicSlug}.${contentKey}`, {
     returnObjects: true,
-  }) as (TopicSection | FlowStep)[];
+  });
+  const items = Array.isArray(rawItems)
+    ? (rawItems as (TopicSection | FlowStep)[])
+    : [];
 
   return (
     <div className="space-y-6">
@@ -113,19 +124,26 @@ export function TopicContent() {
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       </div>
 
-      {isFlow ? (
+      {items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          {t('meta.noContent', 'No content available')}
+        </p>
+      ) : isFlow ? (
         <div>
-          {Array.isArray(items) &&
-            (items as FlowStep[]).map((step, idx) => (
-              <StepCard key={step.title || idx} step={step} index={idx} />
-            ))}
+          {(items as FlowStep[]).map((step, idx) => (
+            <StepCard
+              key={step.title || idx}
+              step={step}
+              index={idx}
+              isLast={idx === items.length - 1}
+            />
+          ))}
         </div>
       ) : (
         <div className="space-y-4">
-          {Array.isArray(items) &&
-            (items as TopicSection[]).map((section, idx) => (
-              <SectionCard key={section.heading || idx} section={section} />
-            ))}
+          {(items as TopicSection[]).map((section, idx) => (
+            <SectionCard key={section.heading || idx} section={section} />
+          ))}
         </div>
       )}
     </div>

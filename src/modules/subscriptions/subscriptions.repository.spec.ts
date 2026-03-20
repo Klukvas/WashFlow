@@ -478,6 +478,22 @@ describe('SubscriptionsRepository', () => {
       });
     });
 
+    it('returns subscriptionInactive when status is PAST_DUE', async () => {
+      prisma._txClient.subscription.findUnique.mockResolvedValue({
+        ...mockSubscription,
+        status: 'PAST_DUE',
+      });
+
+      const result = await repo.checkLimitAtomic(TENANT_ID, 'users');
+
+      expect(result).toEqual({
+        allowed: false,
+        current: 0,
+        max: null,
+        subscriptionInactive: true,
+      });
+    });
+
     it('returns allowed when max is null (unlimited)', async () => {
       prisma._txClient.subscription.findUnique.mockResolvedValue({
         ...mockSubscription,

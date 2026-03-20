@@ -11,6 +11,7 @@ import {
   HardHat,
   BarChart3,
   Globe,
+  CreditCard,
   PhoneIncoming,
   Contact,
   CalendarCheck,
@@ -38,6 +39,7 @@ export const TOPICS: readonly TopicMeta[] = [
   { slug: 'users-roles', icon: UserCog, type: 'topic' },
   { slug: 'workforce', icon: HardHat, type: 'topic' },
   { slug: 'analytics', icon: BarChart3, type: 'topic' },
+  { slug: 'subscription', icon: CreditCard, type: 'topic' },
   { slug: 'public-booking', icon: Globe, type: 'topic' },
   // ─── Step-by-Step Flows ────────────────────────
   { slug: 'flow-client-via-order', icon: PhoneIncoming, type: 'flow' },
@@ -48,5 +50,9 @@ export const TOPICS: readonly TopicMeta[] = [
 ] as const;
 
 export const TOPIC_SLUGS = new Set(TOPICS.map((t) => t.slug));
-export const REFERENCE_TOPICS = TOPICS.filter((t) => t.type === 'topic');
-export const FLOW_TOPICS = TOPICS.filter((t) => t.type === 'flow');
+export const REFERENCE_TOPICS: readonly TopicMeta[] = TOPICS.filter(
+  (t) => t.type === 'topic',
+);
+export const FLOW_TOPICS: readonly TopicMeta[] = TOPICS.filter(
+  (t) => t.type === 'flow',
+);

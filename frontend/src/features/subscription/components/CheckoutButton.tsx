@@ -31,6 +31,11 @@ export function CheckoutButton({
   const checkout = useCreateCheckout();
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
+  const onSuccessRef = useRef(onSuccess);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onSuccessRef.current = onSuccess; }, [onSuccess]);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
   useEffect(() => {
     if (!clientToken) return;
 
@@ -39,16 +44,16 @@ export function CheckoutButton({
       environment: sandbox ? 'sandbox' : 'production',
       eventCallback: (event) => {
         if (event.name === 'checkout.completed') {
-          onSuccess?.();
+          onSuccessRef.current?.();
         }
         if (event.name === 'checkout.closed') {
-          onClose?.();
+          onCloseRef.current?.();
         }
       },
     }).then((paddle) => {
       paddleRef.current = paddle ?? null;
     });
-  }, [clientToken, sandbox, onSuccess, onClose]);
+  }, [clientToken, sandbox]);
 
   const handleClick = useCallback(async () => {
     setCheckoutError(null);
@@ -63,8 +68,7 @@ export function CheckoutButton({
           transactionId: result.transactionId,
         });
       }
-    } catch (error) {
-      console.error('Checkout failed:', error);
+    } catch {
       setCheckoutError(t('checkout.error'));
     }
   }, [checkout, planTier, billingInterval, t]);

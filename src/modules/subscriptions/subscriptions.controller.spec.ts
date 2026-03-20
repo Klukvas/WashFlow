@@ -1,10 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import {
+  SubscriptionStatusController,
   SubscriptionUsageController,
   SubscriptionAdminController,
 } from './subscriptions.controller';
 import { SubscriptionsService } from './subscriptions.service';
 import { SubscriptionLimitsService } from './subscription-limits.service';
+import { SubscriptionsRepository } from './subscriptions.repository';
 import { UpsertSubscriptionDto } from './dto/upsert-subscription.dto';
 
 // ---------------------------------------------------------------------------
@@ -40,6 +43,78 @@ const mockSubscription = {
 };
 
 // ---------------------------------------------------------------------------
+// SubscriptionStatusController
+// ---------------------------------------------------------------------------
+
+describe('SubscriptionStatusController', () => {
+  let controller: SubscriptionStatusController;
+  let repo: { findByTenantId: jest.Mock };
+  let configService: { get: jest.Mock };
+
+  beforeEach(async () => {
+    repo = { findByTenantId: jest.fn() };
+    configService = { get: jest.fn() };
+
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [SubscriptionStatusController],
+      providers: [
+        { provide: SubscriptionsRepository, useValue: repo },
+        { provide: ConfigService, useValue: configService },
+      ],
+    }).compile();
+
+    controller = module.get(SubscriptionStatusController);
+  });
+
+  it('returns paymentsEnabled: true when feature is enabled', async () => {
+    configService.get.mockReturnValue(true);
+    repo.findByTenantId.mockResolvedValue(null);
+
+    const result = await controller.getStatus(TENANT_ID);
+
+    expect(result.paymentsEnabled).toBe(true);
+  });
+
+  it('returns paymentsEnabled: false when feature is disabled', async () => {
+    configService.get.mockReturnValue(false);
+    repo.findByTenantId.mockResolvedValue(null);
+
+    const result = await controller.getStatus(TENANT_ID);
+
+    expect(result.paymentsEnabled).toBe(false);
+  });
+
+  it('returns trial data from subscription', async () => {
+    configService.get.mockReturnValue(true);
+    repo.findByTenantId.mockResolvedValue({
+      isTrial: true,
+      trialEndsAt: new Date('2026-04-01'),
+    });
+
+    const result = await controller.getStatus(TENANT_ID);
+
+    expect(result).toEqual({
+      isTrial: true,
+      trialEndsAt: '2026-04-01T00:00:00.000Z',
+      paymentsEnabled: true,
+    });
+  });
+
+  it('returns defaults when no subscription found', async () => {
+    configService.get.mockReturnValue(false);
+    repo.findByTenantId.mockResolvedValue(null);
+
+    const result = await controller.getStatus(TENANT_ID);
+
+    expect(result).toEqual({
+      isTrial: false,
+      trialEndsAt: null,
+      paymentsEnabled: false,
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
 // SubscriptionUsageController
 // ---------------------------------------------------------------------------
 
@@ -57,6 +132,9 @@ describe('SubscriptionUsageController', () => {
       manageAddon: jest.fn(),
       previewPlanChange: jest.fn(),
       cancelSubscription: jest.fn(),
+      reactivateSubscription: jest.fn(),
+      getBillingDetails: jest.fn(),
+      getTransactionHistory: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -64,6 +142,10 @@ describe('SubscriptionUsageController', () => {
       providers: [
         { provide: SubscriptionLimitsService, useValue: limitsService },
         { provide: SubscriptionsService, useValue: subscriptionsService },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue(true) },
+        },
       ],
     }).compile();
 
@@ -97,30 +179,32 @@ describe('SubscriptionUsageController', () => {
   });
 
   describe('getPlanCatalog', () => {
-    it('calls subscriptionsService.getPlanCatalog', () => {
+    it('calls subscriptionsService.getPlanCatalog', async () => {
       const catalog = { plans: [], addons: [] };
-      subscriptionsService.getPlanCatalog.mockReturnValue(catalog);
+      subscriptionsService.getPlanCatalog.mockResolvedValue(catalog);
 
-      controller.getPlanCatalog();
+      await controller.getPlanCatalog();
 
       expect(subscriptionsService.getPlanCatalog).toHaveBeenCalledTimes(1);
     });
 
-    it('returns the result from service', () => {
+    it('returns the result from service', async () => {
       const catalog = { plans: [{ tier: 'STARTER' }], addons: [] };
-      subscriptionsService.getPlanCatalog.mockReturnValue(catalog);
+      subscriptionsService.getPlanCatalog.mockResolvedValue(catalog);
 
-      const result = controller.getPlanCatalog();
+      const result = await controller.getPlanCatalog();
 
       expect(result).toEqual(catalog);
     });
 
-    it('propagates errors from service', () => {
-      subscriptionsService.getPlanCatalog.mockImplementation(() => {
-        throw new Error('catalog error');
-      });
+    it('propagates errors from service', async () => {
+      subscriptionsService.getPlanCatalog.mockRejectedValue(
+        new Error('catalog error'),
+      );
 
-      expect(() => controller.getPlanCatalog()).toThrow('catalog error');
+      await expect(controller.getPlanCatalog()).rejects.toThrow(
+        'catalog error',
+      );
     });
   });
 
@@ -130,17 +214,20 @@ describe('SubscriptionUsageController', () => {
       billingInterval: 'MONTHLY' as const,
     };
 
-    it('calls service.createCheckout with tenantId and dto', async () => {
+    const EMAIL = 'test@example.com';
+
+    it('calls service.createCheckout with tenantId, dto, and email', async () => {
       subscriptionsService.createCheckout.mockResolvedValue({
         transactionId: 'txn-1',
         clientToken: 'tok-1',
       });
 
-      await controller.createCheckout(TENANT_ID, dto);
+      await controller.createCheckout(TENANT_ID, EMAIL, dto);
 
       expect(subscriptionsService.createCheckout).toHaveBeenCalledWith(
         TENANT_ID,
         dto,
+        EMAIL,
       );
     });
 
@@ -148,7 +235,7 @@ describe('SubscriptionUsageController', () => {
       const expected = { transactionId: 'txn-1', clientToken: 'tok-1' };
       subscriptionsService.createCheckout.mockResolvedValue(expected);
 
-      const result = await controller.createCheckout(TENANT_ID, dto);
+      const result = await controller.createCheckout(TENANT_ID, EMAIL, dto);
 
       expect(result).toEqual(expected);
     });
@@ -158,9 +245,9 @@ describe('SubscriptionUsageController', () => {
         new Error('checkout error'),
       );
 
-      await expect(controller.createCheckout(TENANT_ID, dto)).rejects.toThrow(
-        'checkout error',
-      );
+      await expect(
+        controller.createCheckout(TENANT_ID, EMAIL, dto),
+      ).rejects.toThrow('checkout error');
     });
   });
 
@@ -310,6 +397,104 @@ describe('SubscriptionUsageController', () => {
 
       await expect(controller.cancelSubscription(TENANT_ID)).rejects.toThrow(
         'cancel error',
+      );
+    });
+  });
+
+  describe('reactivateSubscription', () => {
+    it('delegates to service.reactivateSubscription with tenantId', async () => {
+      subscriptionsService.reactivateSubscription.mockResolvedValue({
+        message: 'Subscription reactivated successfully.',
+      });
+
+      await controller.reactivateSubscription(TENANT_ID);
+
+      expect(subscriptionsService.reactivateSubscription).toHaveBeenCalledWith(
+        TENANT_ID,
+      );
+    });
+
+    it('returns the result from service', async () => {
+      const expected = { message: 'Subscription reactivated successfully.' };
+      subscriptionsService.reactivateSubscription.mockResolvedValue(expected);
+
+      const result = await controller.reactivateSubscription(TENANT_ID);
+
+      expect(result).toEqual(expected);
+    });
+
+    it('propagates errors from service', async () => {
+      subscriptionsService.reactivateSubscription.mockRejectedValue(
+        new Error('reactivate error'),
+      );
+
+      await expect(
+        controller.reactivateSubscription(TENANT_ID),
+      ).rejects.toThrow('reactivate error');
+    });
+  });
+
+  describe('getBilling', () => {
+    it('delegates to service.getBillingDetails with tenantId', async () => {
+      subscriptionsService.getBillingDetails.mockResolvedValue({
+        currencyCode: 'USD',
+        totalCents: '7900',
+      });
+
+      await controller.getBilling(TENANT_ID);
+
+      expect(subscriptionsService.getBillingDetails).toHaveBeenCalledWith(
+        TENANT_ID,
+      );
+    });
+
+    it('returns the result from service', async () => {
+      const expected = { currencyCode: 'USD', totalCents: '7900' };
+      subscriptionsService.getBillingDetails.mockResolvedValue(expected);
+
+      const result = await controller.getBilling(TENANT_ID);
+
+      expect(result).toEqual(expected);
+    });
+
+    it('propagates errors from service', async () => {
+      subscriptionsService.getBillingDetails.mockRejectedValue(
+        new Error('billing error'),
+      );
+
+      await expect(controller.getBilling(TENANT_ID)).rejects.toThrow(
+        'billing error',
+      );
+    });
+  });
+
+  describe('getTransactions', () => {
+    it('delegates to service.getTransactionHistory with tenantId', async () => {
+      subscriptionsService.getTransactionHistory.mockResolvedValue([]);
+
+      await controller.getTransactions(TENANT_ID);
+
+      expect(subscriptionsService.getTransactionHistory).toHaveBeenCalledWith(
+        TENANT_ID,
+      );
+    });
+
+    it('returns the result from service', async () => {
+      const expected = [{ id: 'txn-001', status: 'completed' }];
+      subscriptionsService.getTransactionHistory.mockResolvedValue(expected);
+
+      const result = await controller.getTransactions(TENANT_ID);
+
+      expect(result).toEqual(expected);
+    });
+
+    it('propagates errors from service', async () => {
+      subscriptionsService.getTransactionHistory.mockRejectedValue(
+        new Error('transactions error'),
+      );
+
+      await expect(controller.getTransactions(TENANT_ID)).rejects.toThrow(
+        'transactions error',
       );
     });
   });

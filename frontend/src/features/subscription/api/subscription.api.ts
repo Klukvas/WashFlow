@@ -80,6 +80,69 @@ export interface PlanPreview {
   nextTransaction?: { amount: string; currency: string; billingDate: string };
 }
 
+export interface SubscriptionStatus {
+  isTrial: boolean;
+  trialEndsAt: string | null;
+  paymentsEnabled: boolean;
+}
+
+export async function fetchSubscriptionStatus(): Promise<SubscriptionStatus> {
+  const { data } = await apiClient.get<ApiResponse<SubscriptionStatus>>(
+    '/subscription/status',
+  );
+  return data.data;
+}
+
+export interface BillingLineItem {
+  name: string;
+  quantity: number;
+  unitPriceCents: string;
+  totalCents: string;
+}
+
+export interface BillingDetails {
+  currencyCode: string;
+  billingInterval: string;
+  billingFrequency: number;
+  subtotalCents: string;
+  taxCents: string;
+  totalCents: string;
+  discountCents: string;
+  lineItems: BillingLineItem[];
+  nextBillingDate: string | null;
+}
+
+export async function fetchBillingDetails(): Promise<BillingDetails | null> {
+  const { data } = await apiClient.get<ApiResponse<BillingDetails | null>>(
+    '/subscription/billing',
+  );
+  return data.data;
+}
+
+export interface TransactionLineItem {
+  name: string;
+  quantity: number;
+  totalCents: string;
+}
+
+export interface Transaction {
+  id: string;
+  status: string;
+  totalCents: string;
+  taxCents: string;
+  currency: string;
+  createdAt: string;
+  billingPeriod: { startsAt: string; endsAt: string } | null;
+  lineItems: TransactionLineItem[];
+}
+
+export async function fetchTransactions(): Promise<Transaction[]> {
+  const { data } = await apiClient.get<ApiResponse<Transaction[]>>(
+    '/subscription/transactions',
+  );
+  return data.data;
+}
+
 export async function fetchSubscriptionUsage(): Promise<SubscriptionUsage> {
   const { data } = await apiClient.get<ApiResponse<SubscriptionUsage>>(
     '/subscription/usage',
@@ -141,6 +204,13 @@ export async function previewPlanChange(params: {
 export async function cancelSubscription(): Promise<{ message: string }> {
   const { data } = await apiClient.post<ApiResponse<{ message: string }>>(
     '/subscription/cancel',
+  );
+  return data.data;
+}
+
+export async function reactivateSubscription(): Promise<{ message: string }> {
+  const { data } = await apiClient.post<ApiResponse<{ message: string }>>(
+    '/subscription/reactivate',
   );
   return data.data;
 }

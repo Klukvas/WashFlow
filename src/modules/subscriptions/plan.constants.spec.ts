@@ -466,8 +466,8 @@ describe('plan.constants', () => {
         expect(plan.yearlyPrice).toBe(1990);
       });
 
-      it('has addonsAvailable false', () => {
-        expect(plan.addonsAvailable).toBe(false);
+      it('has addonsAvailable true', () => {
+        expect(plan.addonsAvailable).toBe(true);
       });
 
       it('references the ENTERPRISE limits from PLAN_LIMITS', () => {

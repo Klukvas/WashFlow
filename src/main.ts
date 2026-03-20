@@ -7,7 +7,6 @@ import { ConfigService } from '@nestjs/config';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
-import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
@@ -24,8 +23,6 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api/v1');
 
-  app.use(json({ limit: '100kb' }));
-  app.use(urlencoded({ limit: '100kb', extended: true }));
   app.use(
     helmet({
       contentSecurityPolicy: {

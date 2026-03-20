@@ -62,6 +62,10 @@ export default () => {
     cleanup: {
       retentionDays: parseInt(process.env.CLEANUP_RETENTION_DAYS ?? '30', 10),
     },
+
+    features: {
+      paymentsEnabled: env.PAYMENTS_ENABLED,
+    },
   } as const;
 };
 

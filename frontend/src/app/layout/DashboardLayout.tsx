@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Outlet } from 'react-router';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary';
+import { SubscriptionGate } from '@/shared/components/SubscriptionGate';
 
 export function DashboardLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -19,8 +19,16 @@ export function DashboardLayout() {
       }
     }
     handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    let timeoutId: ReturnType<typeof setTimeout>;
+    function handleResizeDebounced() {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(handleResize, 100);
+    }
+    window.addEventListener('resize', handleResizeDebounced);
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', handleResizeDebounced);
+    };
   }, []);
 
   return (
@@ -55,7 +63,7 @@ export function DashboardLayout() {
         />
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           <ErrorBoundary>
-            <Outlet />
+            <SubscriptionGate />
           </ErrorBoundary>
         </main>
       </div>

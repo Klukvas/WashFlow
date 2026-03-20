@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="gw" cx="32%" cy="26%" r="58%">
+      <stop offset="0%" stop-color="#0EA5E9" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#0EA5E9" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#050e14"/>
+  <rect width="512" height="512" rx="112" fill="url(#gw)"/>
+  <rect width="512" height="512" rx="112" fill="none" stroke="rgba(14,165,233,0.22)" stroke-width="6.7"/>
+  <g transform="translate(162.0,131.0)">
+    <svg width="188" height="209" viewBox="0 0 52 58" overflow="visible">
+      <path d="M26 4 C26 4 8 22 8 35 C8 45.5 16.1 54 26 54 C35.9 54 44 45.5 44 35 C44 22 26 4 26 4Z"
+        fill="#0EA5E9" fill-opacity="0.12" stroke="white" stroke-width="14.3" stroke-linejoin="round" opacity="0.85"/>
+      <path d="M16 34 C16 34 15 42 22 47" fill="none" stroke="#0EA5E9" stroke-width="5.8" stroke-linecap="round" opacity="0.7"/>
+      <path d="M21 10 C23 7 27 8 28 12" fill="none" stroke="white" stroke-width="4.3" stroke-linecap="round" opacity="0.3"/>
+      <ellipse cx="26" cy="54" rx="10" ry="3.2" fill="none" stroke="#0EA5E9" stroke-width="10.2" opacity="0.55"/>
+      <ellipse cx="26" cy="54" rx="18" ry="5.5" fill="none" stroke="#0EA5E9" stroke-width="7.2" opacity="0.25"/>
+    </svg>
+  </g>
+</svg>

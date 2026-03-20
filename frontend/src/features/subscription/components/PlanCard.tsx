@@ -14,16 +14,20 @@ interface PlanCardProps {
   plan: PlanDefinition;
   billingInterval: BillingInterval;
   currentTier?: PlanTier;
+  isCancelled?: boolean;
   onSelect: (tier: PlanTier) => void;
   isLoading?: boolean;
+  paymentsEnabled?: boolean;
 }
 
 export function PlanCard({
   plan,
   billingInterval,
   currentTier,
+  isCancelled,
   onSelect,
   isLoading,
+  paymentsEnabled = true,
 }: PlanCardProps) {
   const { t } = useTranslation('subscription');
   const isCurrent = currentTier === plan.tier;
@@ -87,14 +91,26 @@ export function PlanCard({
             <LimitRow label={t('plans.addons')} value={t('plans.available')} />
           )}
         </ul>
-        <Button
-          className="w-full"
-          variant={isCurrent ? 'outline' : isPopular ? 'default' : 'outline'}
-          disabled={isCurrent || isLoading}
-          onClick={() => onSelect(plan.tier)}
-        >
-          {isCurrent ? t('plans.currentPlan') : t('plans.selectPlan')}
-        </Button>
+        {paymentsEnabled && (
+          <Button
+            className="w-full"
+            variant={
+              isCurrent && !isCancelled
+                ? 'outline'
+                : isPopular
+                  ? 'default'
+                  : 'outline'
+            }
+            disabled={(isCurrent && !isCancelled) || isLoading}
+            onClick={() => onSelect(plan.tier)}
+          >
+            {isCurrent && !isCancelled
+              ? t('plans.currentPlan')
+              : isCurrent && isCancelled
+                ? t('cancel.reactivate')
+                : t('plans.selectPlan')}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

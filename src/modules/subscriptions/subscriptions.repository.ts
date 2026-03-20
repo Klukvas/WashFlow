@@ -146,7 +146,10 @@ export class SubscriptionsRepository {
           }
         }
 
-        if (subscription.status === SubscriptionStatus.PAUSED) {
+        if (
+          subscription.status === SubscriptionStatus.PAUSED ||
+          subscription.status === SubscriptionStatus.PAST_DUE
+        ) {
           return {
             allowed: false,
             current: 0,

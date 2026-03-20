@@ -1,6 +1,6 @@
 {
-  "title": "Автомобілі",
-  "addVehicle": "Додати автомобіль",
+  "title": "Транспорт",
+  "addVehicle": "Додати транспорт",
   "makeModel": "Марка / Модель",
   "licensePlate": "Держномер",
   "year": "Рік",
@@ -10,6 +10,6 @@
   "makeRequired": "Марка *",
   "model": "Модель",
   "color": "Колір",
-  "vehicleDetails": "Дані автомобіля",
+  "vehicleDetails": "Дані транспорту",
   "owner": "Власник"
 }

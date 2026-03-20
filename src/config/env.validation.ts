@@ -85,6 +85,11 @@ export const envSchema = z
     GRAFANA_LOKI_PASSWORD: z.string().optional(),
 
     CLEANUP_RETENTION_DAYS: z.string().optional(),
+
+    PAYMENTS_ENABLED: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
   })
   .superRefine((data, ctx) => {
     const paddleFields = [

@@ -17,6 +17,11 @@ export const ROUTES = {
   ANALYTICS: '/analytics',
   AUDIT: '/audit',
   PUBLIC_BOOKING: '/public/:slug',
+  SUBSCRIPTION: '/subscription',
+  SUBSCRIPTION_PLANS: '/subscription/plans',
+  SUBSCRIPTION_BILLING: '/subscription/billing',
+  HOW_TO: '/how-to',
+  HOW_TO_TOPIC: '/how-to/:topicSlug',
   FORBIDDEN: '/403',
   NOT_FOUND: '/404',
 } as const;

@@ -20,7 +20,7 @@ export function HowToLayout() {
       <div className="flex gap-6">
         {/* Desktop: sticky left TOC with section labels */}
         <aside className="hidden w-56 shrink-0 lg:block">
-          <div className="sticky top-6">
+          <div className="h-[calc(100vh-5rem)] overflow-y-auto py-6">
             <TopicSidebar showLabels />
           </div>
         </aside>

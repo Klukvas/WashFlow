@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { SubscriptionsService } from './subscriptions.service';
 import { SubscriptionsRepository } from './subscriptions.repository';
 import { PaddleService } from './paddle.service';
+import { PaddlePriceCacheService } from './paddle-price-cache.service';
 import {
   PlanTier,
   SubscriptionStatus,
@@ -69,6 +70,30 @@ function buildPaddleMock() {
     updateSubscription: jest.fn(),
     cancelSubscription: jest.fn(),
     previewSubscriptionUpdate: jest.fn(),
+    reactivateSubscription: jest.fn(),
+    getSubscriptionBilling: jest.fn(),
+    getTransactionHistory: jest.fn(),
+  };
+}
+
+function buildPriceCacheMock() {
+  return {
+    getCachedCatalog: jest.fn().mockResolvedValue({
+      plans: PLAN_CATALOG.map((p) => ({
+        tier: p.tier,
+        name: p.name,
+        monthlyPrice: p.monthlyPrice,
+        yearlyPrice: p.yearlyPrice,
+        limits: { ...p.limits },
+        addonsAvailable: p.addonsAvailable,
+      })),
+      addons: ADDON_DEFINITIONS.map((a) => ({
+        resource: a.resource,
+        unitSize: a.unitSize,
+        monthlyPrice: a.monthlyPrice,
+        name: a.name,
+      })),
+    }),
   };
 }
 
@@ -89,11 +114,13 @@ describe('SubscriptionsService', () => {
   let service: SubscriptionsService;
   let repo: ReturnType<typeof buildRepoMock>;
   let paddle: ReturnType<typeof buildPaddleMock>;
+  let priceCache: ReturnType<typeof buildPriceCacheMock>;
   let config: ReturnType<typeof buildConfigMock>;
 
   beforeEach(async () => {
     repo = buildRepoMock();
     paddle = buildPaddleMock();
+    priceCache = buildPriceCacheMock();
     config = buildConfigMock();
 
     const module: TestingModule = await Test.createTestingModule({
@@ -101,6 +128,7 @@ describe('SubscriptionsService', () => {
         SubscriptionsService,
         { provide: SubscriptionsRepository, useValue: repo },
         { provide: PaddleService, useValue: paddle },
+        { provide: PaddlePriceCacheService, useValue: priceCache },
         { provide: ConfigService, useValue: config },
       ],
     }).compile();
@@ -117,28 +145,28 @@ describe('SubscriptionsService', () => {
   // -------------------------------------------------------------------------
 
   describe('getPlanCatalog', () => {
-    it('returns an object with plans and addons arrays', () => {
-      const result = service.getPlanCatalog();
+    it('returns an object with plans and addons arrays', async () => {
+      const result = await service.getPlanCatalog();
       expect(result).toHaveProperty('plans');
       expect(result).toHaveProperty('addons');
       expect(Array.isArray(result.plans)).toBe(true);
       expect(Array.isArray(result.addons)).toBe(true);
     });
 
-    it('returns exactly 3 plans matching PLAN_CATALOG', () => {
-      const result = service.getPlanCatalog();
+    it('returns exactly 3 plans matching PLAN_CATALOG', async () => {
+      const result = await service.getPlanCatalog();
       expect(result.plans).toHaveLength(PLAN_CATALOG.length);
       expect(result.plans).toHaveLength(3);
     });
 
-    it('returns exactly 4 addons matching ADDON_DEFINITIONS', () => {
-      const result = service.getPlanCatalog();
+    it('returns exactly 4 addons matching ADDON_DEFINITIONS', async () => {
+      const result = await service.getPlanCatalog();
       expect(result.addons).toHaveLength(ADDON_DEFINITIONS.length);
       expect(result.addons).toHaveLength(4);
     });
 
-    it('each plan contains tier, name, monthlyPrice, yearlyPrice, limits, addonsAvailable', () => {
-      const { plans } = service.getPlanCatalog();
+    it('each plan contains tier, name, monthlyPrice, yearlyPrice, limits, addonsAvailable', async () => {
+      const { plans } = await service.getPlanCatalog();
       for (const plan of plans) {
         expect(plan).toHaveProperty('tier');
         expect(plan).toHaveProperty('name');
@@ -149,8 +177,8 @@ describe('SubscriptionsService', () => {
       }
     });
 
-    it('each addon contains resource, unitSize, monthlyPrice, name', () => {
-      const { addons } = service.getPlanCatalog();
+    it('each addon contains resource, unitSize, monthlyPrice, name', async () => {
+      const { addons } = await service.getPlanCatalog();
       for (const addon of addons) {
         expect(addon).toHaveProperty('resource');
         expect(addon).toHaveProperty('unitSize');
@@ -159,24 +187,23 @@ describe('SubscriptionsService', () => {
       }
     });
 
-    it('plans include STARTER, BUSINESS, and ENTERPRISE tiers', () => {
-      const { plans } = service.getPlanCatalog();
+    it('plans include STARTER, BUSINESS, and ENTERPRISE tiers', async () => {
+      const { plans } = await service.getPlanCatalog();
       const tiers = plans.map((p) => p.tier);
       expect(tiers).toContain(PlanTier.STARTER);
       expect(tiers).toContain(PlanTier.BUSINESS);
       expect(tiers).toContain(PlanTier.ENTERPRISE);
     });
 
-    it('ENTERPRISE plan has addonsAvailable set to false', () => {
-      const { plans } = service.getPlanCatalog();
+    it('ENTERPRISE plan has addonsAvailable set to true', async () => {
+      const { plans } = await service.getPlanCatalog();
       const enterprise = plans.find((p) => p.tier === PlanTier.ENTERPRISE);
-      expect(enterprise?.addonsAvailable).toBe(false);
+      expect(enterprise?.addonsAvailable).toBe(true);
     });
 
-    it('returns immutable snapshot — does not expose internal mutable references', () => {
-      const first = service.getPlanCatalog();
-      const second = service.getPlanCatalog();
-      expect(first.plans).not.toBe(second.plans);
+    it('delegates to PaddlePriceCacheService.getCachedCatalog', async () => {
+      await service.getPlanCatalog();
+      expect(priceCache.getCachedCatalog).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -562,28 +589,6 @@ describe('SubscriptionsService', () => {
       );
     });
 
-    it('throws BadRequestException for ENTERPRISE tier', async () => {
-      repo.findByTenantIdWithAddons.mockResolvedValue({
-        ...baseSubscription,
-        planTier: PlanTier.ENTERPRISE,
-      });
-
-      await expect(service.manageAddon(TENANT_ID, dto)).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-
-    it('throws BadRequestException with "Enterprise plan does not need add-ons" message', async () => {
-      repo.findByTenantIdWithAddons.mockResolvedValue({
-        ...baseSubscription,
-        planTier: PlanTier.ENTERPRISE,
-      });
-
-      await expect(service.manageAddon(TENANT_ID, dto)).rejects.toThrow(
-        /Enterprise plan does not need add-ons/,
-      );
-    });
-
     it('throws BadRequestException for TRIAL tier', async () => {
       repo.findByTenantIdWithAddons.mockResolvedValue({
         ...baseSubscription,
@@ -771,22 +776,14 @@ describe('SubscriptionsService', () => {
       );
     });
 
-    it('rolls back DB addon when Paddle updateSubscription fails', async () => {
+    it('does not write to DB when Paddle updateSubscription fails (no addon)', async () => {
       const subBefore = {
         ...baseSubscription,
         planTier: PlanTier.BUSINESS,
         billingInterval: 'MONTHLY',
         addons: [] as Array<{ resource: string; quantity: number }>,
       };
-      const subAfterUpsert = {
-        ...subBefore,
-        addons: [{ resource: 'branches', quantity: 2 }],
-      };
-      repo.findByTenantIdWithAddons
-        .mockResolvedValueOnce(subBefore) // initial read
-        .mockResolvedValueOnce(subAfterUpsert) // recalculate
-        .mockResolvedValueOnce(subAfterUpsert) // Paddle sync read
-        .mockResolvedValueOnce(subBefore); // rollback recalculate
+      repo.findByTenantIdWithAddons.mockResolvedValueOnce(subBefore);
       repo.upsertAddon.mockResolvedValue(undefined);
       repo.deleteAddon.mockResolvedValue(undefined);
       repo.updateLimits.mockResolvedValue(undefined);
@@ -798,13 +795,13 @@ describe('SubscriptionsService', () => {
         'Paddle API error: 500',
       );
 
-      // Rollback: addon didn't exist before → deleteAddon called
-      expect(repo.deleteAddon).toHaveBeenCalledWith(SUB_ID, 'branches');
-      // Limits recalculated after rollback
-      expect(repo.updateLimits).toHaveBeenCalledTimes(2);
+      // Paddle failed before DB write — no DB mutations should have occurred
+      expect(repo.upsertAddon).not.toHaveBeenCalled();
+      expect(repo.deleteAddon).not.toHaveBeenCalled();
+      expect(repo.updateLimits).not.toHaveBeenCalled();
     });
 
-    it('rolls back to previous addon quantity when Paddle fails on update', async () => {
+    it('does not write to DB when Paddle fails on addon quantity update', async () => {
       const subBefore = {
         ...baseSubscription,
         planTier: PlanTier.BUSINESS,
@@ -817,14 +814,7 @@ describe('SubscriptionsService', () => {
           },
         ],
       };
-      const subAfterUpsert = {
-        ...subBefore,
-        addons: [{ resource: 'branches', quantity: 5 }],
-      };
-      repo.findByTenantIdWithAddons
-        .mockResolvedValueOnce(subBefore)
-        .mockResolvedValueOnce(subAfterUpsert) // recalculate
-        .mockResolvedValueOnce(subAfterUpsert); // Paddle sync read
+      repo.findByTenantIdWithAddons.mockResolvedValueOnce(subBefore);
       repo.upsertAddon.mockResolvedValue(undefined);
       repo.updateLimits.mockResolvedValue(undefined);
       paddle.updateSubscription.mockRejectedValue(
@@ -835,13 +825,9 @@ describe('SubscriptionsService', () => {
         service.manageAddon(TENANT_ID, { resource: 'branches', quantity: 5 }),
       ).rejects.toThrow('Paddle API error: 422');
 
-      // Rollback: restore previous quantity of 1
-      expect(repo.upsertAddon).toHaveBeenLastCalledWith(
-        SUB_ID,
-        'branches',
-        1,
-        'pri_addon_branches',
-      );
+      // Paddle failed before DB write — upsertAddon must not have been called
+      expect(repo.upsertAddon).not.toHaveBeenCalled();
+      expect(repo.updateLimits).not.toHaveBeenCalled();
     });
 
     it('uses config-overridden addon price ID when available', async () => {
@@ -872,21 +858,34 @@ describe('SubscriptionsService', () => {
       );
     });
 
-    it('throws NotFoundException when subscription disappears during Paddle sync', async () => {
+    it('writes addon to DB only after Paddle succeeds', async () => {
       const subState = {
         ...baseSubscription,
         planTier: PlanTier.BUSINESS,
+        billingInterval: 'MONTHLY',
         addons: [],
       };
+      const updatedSub = {
+        ...subState,
+        addons: [{ resource: 'branches', quantity: 2 }],
+      };
       repo.findByTenantIdWithAddons
-        .mockResolvedValueOnce(subState)
-        .mockResolvedValueOnce(subState) // recalculateEffectiveLimits
-        .mockResolvedValueOnce(null); // disappears before Paddle sync
+        .mockResolvedValueOnce(subState) // initial read
+        .mockResolvedValueOnce(updatedSub) // recalculateEffectiveLimits
+        .mockResolvedValueOnce(updatedSub); // final return
       repo.upsertAddon.mockResolvedValue(undefined);
       repo.updateLimits.mockResolvedValue(undefined);
+      paddle.updateSubscription.mockResolvedValue(undefined);
 
-      await expect(service.manageAddon(TENANT_ID, dto)).rejects.toThrow(
-        /Subscription disappeared/,
+      await service.manageAddon(TENANT_ID, dto);
+
+      // Paddle called first, then DB write
+      expect(paddle.updateSubscription).toHaveBeenCalledTimes(1);
+      expect(repo.upsertAddon).toHaveBeenCalledWith(
+        SUB_ID,
+        'branches',
+        2,
+        'pri_addon_branches',
       );
     });
   });
@@ -1611,6 +1610,236 @@ describe('SubscriptionsService', () => {
       await expect(service.delete(TENANT_ID)).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // reactivateSubscription
+  // -------------------------------------------------------------------------
+
+  describe('reactivateSubscription', () => {
+    it('throws NotFoundException when subscription does not exist', async () => {
+      repo.findByTenantId.mockResolvedValue(null);
+
+      await expect(service.reactivateSubscription(TENANT_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('throws BadRequestException when subscription has no paddleSubscriptionId', async () => {
+      repo.findByTenantId.mockResolvedValue({
+        ...baseSubscription,
+        paddleSubscriptionId: null,
+      });
+
+      await expect(service.reactivateSubscription(TENANT_ID)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('throws BadRequestException with "No Paddle subscription" message when paddleSubscriptionId is null', async () => {
+      repo.findByTenantId.mockResolvedValue({
+        ...baseSubscription,
+        paddleSubscriptionId: null,
+      });
+
+      await expect(service.reactivateSubscription(TENANT_ID)).rejects.toThrow(
+        /No Paddle subscription to reactivate/,
+      );
+    });
+
+    it('throws BadRequestException when status is not CANCELLED', async () => {
+      repo.findByTenantId.mockResolvedValue({
+        ...baseSubscription,
+        status: SubscriptionStatus.ACTIVE,
+      });
+
+      await expect(service.reactivateSubscription(TENANT_ID)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('throws BadRequestException with "not cancelled" message when status is ACTIVE', async () => {
+      repo.findByTenantId.mockResolvedValue({
+        ...baseSubscription,
+        status: SubscriptionStatus.ACTIVE,
+      });
+
+      await expect(service.reactivateSubscription(TENANT_ID)).rejects.toThrow(
+        /not cancelled/,
+      );
+    });
+
+    it('throws BadRequestException when cancelEffectiveAt is in the past', async () => {
+      repo.findByTenantId.mockResolvedValue({
+        ...baseSubscription,
+        status: SubscriptionStatus.CANCELLED,
+        cancelEffectiveAt: new Date('2020-01-01'), // past date
+      });
+
+      await expect(service.reactivateSubscription(TENANT_ID)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('throws BadRequestException with "Cancellation period has ended" message when cancelEffectiveAt is past', async () => {
+      repo.findByTenantId.mockResolvedValue({
+        ...baseSubscription,
+        status: SubscriptionStatus.CANCELLED,
+        cancelEffectiveAt: new Date('2020-01-01'),
+      });
+
+      await expect(service.reactivateSubscription(TENANT_ID)).rejects.toThrow(
+        /Cancellation period has ended/,
+      );
+    });
+
+    it('calls paddleService.reactivateSubscription with the correct paddleSubscriptionId', async () => {
+      repo.findByTenantId.mockResolvedValue({
+        ...baseSubscription,
+        status: SubscriptionStatus.CANCELLED,
+        cancelEffectiveAt: new Date('2099-01-01'), // future date
+      });
+      paddle.reactivateSubscription.mockResolvedValue(undefined);
+      repo.update.mockResolvedValue(undefined);
+
+      await service.reactivateSubscription(TENANT_ID);
+
+      expect(paddle.reactivateSubscription).toHaveBeenCalledTimes(1);
+      expect(paddle.reactivateSubscription).toHaveBeenCalledWith(PADDLE_SUB_ID);
+    });
+
+    it('clears cancellation fields in the repository after reactivation', async () => {
+      repo.findByTenantId.mockResolvedValue({
+        ...baseSubscription,
+        status: SubscriptionStatus.CANCELLED,
+        cancelEffectiveAt: new Date('2099-01-01'),
+      });
+      paddle.reactivateSubscription.mockResolvedValue(undefined);
+      repo.update.mockResolvedValue(undefined);
+
+      await service.reactivateSubscription(TENANT_ID);
+
+      expect(repo.update).toHaveBeenCalledWith(TENANT_ID, {
+        status: SubscriptionStatus.ACTIVE,
+        cancelledAt: null,
+        cancelEffectiveAt: null,
+      });
+    });
+
+    it('returns a success message after reactivation', async () => {
+      repo.findByTenantId.mockResolvedValue({
+        ...baseSubscription,
+        status: SubscriptionStatus.CANCELLED,
+        cancelEffectiveAt: new Date('2099-01-01'),
+      });
+      paddle.reactivateSubscription.mockResolvedValue(undefined);
+      repo.update.mockResolvedValue(undefined);
+
+      const result = await service.reactivateSubscription(TENANT_ID);
+
+      expect(result).toHaveProperty('message');
+      expect(result.message).toMatch(/reactivated/i);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // getBillingDetails
+  // -------------------------------------------------------------------------
+
+  describe('getBillingDetails', () => {
+    it('throws NotFoundException when subscription does not exist', async () => {
+      repo.findByTenantId.mockResolvedValue(null);
+
+      await expect(service.getBillingDetails(TENANT_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('returns null when subscription has no paddleSubscriptionId', async () => {
+      repo.findByTenantId.mockResolvedValue({
+        ...baseSubscription,
+        paddleSubscriptionId: null,
+      });
+
+      const result = await service.getBillingDetails(TENANT_ID);
+
+      expect(result).toBeNull();
+      expect(paddle.getSubscriptionBilling).not.toHaveBeenCalled();
+    });
+
+    it('returns paddle billing details when paddleSubscriptionId exists', async () => {
+      const billingDetails = {
+        currencyCode: 'USD',
+        billingInterval: 'month',
+        billingFrequency: 1,
+        subtotalCents: '7900',
+        taxCents: '0',
+        totalCents: '7900',
+        discountCents: '0',
+        lineItems: [],
+        nextBillingDate: '2026-04-01',
+      };
+      repo.findByTenantId.mockResolvedValue(baseSubscription);
+      paddle.getSubscriptionBilling.mockResolvedValue(billingDetails);
+
+      const result = await service.getBillingDetails(TENANT_ID);
+
+      expect(paddle.getSubscriptionBilling).toHaveBeenCalledTimes(1);
+      expect(paddle.getSubscriptionBilling).toHaveBeenCalledWith(PADDLE_SUB_ID);
+      expect(result).toEqual(billingDetails);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // getTransactionHistory
+  // -------------------------------------------------------------------------
+
+  describe('getTransactionHistory', () => {
+    it('throws NotFoundException when subscription does not exist', async () => {
+      repo.findByTenantId.mockResolvedValue(null);
+
+      await expect(service.getTransactionHistory(TENANT_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('returns an empty array when subscription has no paddleSubscriptionId', async () => {
+      repo.findByTenantId.mockResolvedValue({
+        ...baseSubscription,
+        paddleSubscriptionId: null,
+      });
+
+      const result = await service.getTransactionHistory(TENANT_ID);
+
+      expect(result).toEqual([]);
+      expect(paddle.getTransactionHistory).not.toHaveBeenCalled();
+    });
+
+    it('returns transactions from paddle when paddleSubscriptionId exists', async () => {
+      const transactions = [
+        {
+          id: 'txn-001',
+          status: 'completed',
+          totalCents: '7900',
+          taxCents: '0',
+          currency: 'USD',
+          createdAt: '2026-03-01T00:00:00Z',
+          billingPeriod: {
+            startsAt: '2026-03-01T00:00:00Z',
+            endsAt: '2026-04-01T00:00:00Z',
+          },
+          lineItems: [],
+        },
+      ];
+      repo.findByTenantId.mockResolvedValue(baseSubscription);
+      paddle.getTransactionHistory.mockResolvedValue(transactions);
+
+      const result = await service.getTransactionHistory(TENANT_ID);
+
+      expect(paddle.getTransactionHistory).toHaveBeenCalledTimes(1);
+      expect(paddle.getTransactionHistory).toHaveBeenCalledWith(PADDLE_SUB_ID);
+      expect(result).toEqual(transactions);
     });
   });
 });

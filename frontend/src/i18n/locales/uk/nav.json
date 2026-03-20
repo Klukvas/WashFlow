@@ -14,6 +14,7 @@
   "subscription": "Підписка",
   "howTo": "Як користуватися",
   "settings": "Налаштування",
+  "closeSidebar": "Закрити бічну панель",
   "sections": {
     "main": "Головне",
     "management": "Управління",
