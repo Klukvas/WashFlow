@@ -16,7 +16,6 @@ import {
   PlanTier,
   SubscriptionStatus,
   PLAN_CATALOG,
-  ADDON_DEFINITIONS,
   DEFAULT_PADDLE_PRICE_IDS,
   DEFAULT_ADDON_PADDLE_PRICE_IDS,
   calculateEffectiveLimit,

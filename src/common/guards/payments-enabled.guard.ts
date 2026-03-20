@@ -12,9 +12,7 @@ export class PaymentsEnabledGuard implements CanActivate {
   canActivate(): boolean {
     const enabled = this.config.get<boolean>('features.paymentsEnabled');
     if (!enabled) {
-      throw new ServiceUnavailableException(
-        'Payments are currently disabled',
-      );
+      throw new ServiceUnavailableException('Payments are currently disabled');
     }
     return true;
   }
