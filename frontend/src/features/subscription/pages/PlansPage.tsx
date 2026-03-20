@@ -21,10 +21,10 @@ import {
 import { PlanCard } from '../components/PlanCard';
 import {
   DowngradeBlockedDialog,
-  buildViolations,
   type Violation,
   type LostAddon,
 } from '../components/DowngradeBlockedDialog';
+import { buildViolations } from '../utils/downgradeValidation';
 import {
   CheckoutResultDialog,
   type CheckoutStatus,

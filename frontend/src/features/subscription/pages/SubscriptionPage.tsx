@@ -239,7 +239,7 @@ export function SubscriptionPage() {
   useEffect(() => {
     if (!polling || !planTier || !fromTier) return;
     if (planTier !== fromTier) {
-      clearPolling();
+      queueMicrotask(clearPolling);
     }
   }, [polling, planTier, fromTier, clearPolling]);
 
