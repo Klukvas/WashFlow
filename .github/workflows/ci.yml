@@ -285,7 +285,7 @@ jobs:
 
       - name: Start backend
         run: |
-          nohup node dist/src/main.js > backend.log 2>&1 &
+          nohup node dist/main.js > backend.log 2>&1 &
           echo $! > backend.pid
           echo "Backend PID: $(cat backend.pid)"
 
