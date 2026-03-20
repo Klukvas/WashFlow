@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { RegisterPage } from '../RegisterPage';
@@ -56,8 +57,8 @@ describe('RegisterPage', () => {
 
   it('renders the registration card when user is not authenticated', () => {
     mockedUseAuthStore.mockImplementation(
-      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
-        selector({ isAuthenticated: false }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (selector: any) => selector({ isAuthenticated: false }),
     );
 
     render(<RegisterPage />);
@@ -69,8 +70,8 @@ describe('RegisterPage', () => {
 
   it('renders the RegisterForm component', () => {
     mockedUseAuthStore.mockImplementation(
-      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
-        selector({ isAuthenticated: false }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (selector: any) => selector({ isAuthenticated: false }),
     );
 
     render(<RegisterPage />);
@@ -80,8 +81,8 @@ describe('RegisterPage', () => {
 
   it('renders ThemeToggle and LanguageSwitcher', () => {
     mockedUseAuthStore.mockImplementation(
-      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
-        selector({ isAuthenticated: false }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (selector: any) => selector({ isAuthenticated: false }),
     );
 
     render(<RegisterPage />);
@@ -92,8 +93,8 @@ describe('RegisterPage', () => {
 
   it('renders WashFlow as a link to the root path', () => {
     mockedUseAuthStore.mockImplementation(
-      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
-        selector({ isAuthenticated: false }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (selector: any) => selector({ isAuthenticated: false }),
     );
 
     render(<RegisterPage />);
@@ -104,8 +105,8 @@ describe('RegisterPage', () => {
 
   it('renders the "has account" text with a sign-in link', () => {
     mockedUseAuthStore.mockImplementation(
-      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
-        selector({ isAuthenticated: false }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (selector: any) => selector({ isAuthenticated: false }),
     );
 
     render(<RegisterPage />);
@@ -118,8 +119,8 @@ describe('RegisterPage', () => {
 
   it('redirects to /dashboard when authenticated', () => {
     mockedUseAuthStore.mockImplementation(
-      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
-        selector({ isAuthenticated: true }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (selector: any) => selector({ isAuthenticated: true }),
     );
 
     render(<RegisterPage />);
@@ -130,8 +131,8 @@ describe('RegisterPage', () => {
 
   it('does not render Navigate when user is not authenticated', () => {
     mockedUseAuthStore.mockImplementation(
-      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
-        selector({ isAuthenticated: false }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (selector: any) => selector({ isAuthenticated: false }),
     );
 
     render(<RegisterPage />);
@@ -141,8 +142,8 @@ describe('RegisterPage', () => {
 
   it('does not render the registration card when user is authenticated', () => {
     mockedUseAuthStore.mockImplementation(
-      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
-        selector({ isAuthenticated: true }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (selector: any) => selector({ isAuthenticated: true }),
     );
 
     render(<RegisterPage />);

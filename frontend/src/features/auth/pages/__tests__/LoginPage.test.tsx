@@ -51,8 +51,8 @@ describe('LoginPage', () => {
 
   it('renders the login card when user is not authenticated', () => {
     mockedUseAuthStore.mockImplementation(
-      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
-        selector({ isAuthenticated: false }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (selector: any) => selector({ isAuthenticated: false }),
     );
 
     render(<LoginPage />);
@@ -64,8 +64,8 @@ describe('LoginPage', () => {
 
   it('renders the LoginForm component', () => {
     mockedUseAuthStore.mockImplementation(
-      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
-        selector({ isAuthenticated: false }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (selector: any) => selector({ isAuthenticated: false }),
     );
 
     render(<LoginPage />);
@@ -75,8 +75,8 @@ describe('LoginPage', () => {
 
   it('renders ThemeToggle and LanguageSwitcher', () => {
     mockedUseAuthStore.mockImplementation(
-      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
-        selector({ isAuthenticated: false }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (selector: any) => selector({ isAuthenticated: false }),
     );
 
     render(<LoginPage />);
@@ -87,8 +87,8 @@ describe('LoginPage', () => {
 
   it('redirects to /dashboard when authenticated and no "from" state', () => {
     mockedUseAuthStore.mockImplementation(
-      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
-        selector({ isAuthenticated: true }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (selector: any) => selector({ isAuthenticated: true }),
     );
 
     render(<LoginPage />);
@@ -99,8 +99,8 @@ describe('LoginPage', () => {
 
   it('redirects to the "from" location when authenticated with state', () => {
     mockedUseAuthStore.mockImplementation(
-      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
-        selector({ isAuthenticated: true }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (selector: any) => selector({ isAuthenticated: true }),
     );
     mockUseLocation.mockReturnValue({
       state: { from: '/orders' },
@@ -115,8 +115,8 @@ describe('LoginPage', () => {
 
   it('does not render Navigate when user is not authenticated', () => {
     mockedUseAuthStore.mockImplementation(
-      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
-        selector({ isAuthenticated: false }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (selector: any) => selector({ isAuthenticated: false }),
     );
 
     render(<LoginPage />);
@@ -126,8 +126,8 @@ describe('LoginPage', () => {
 
   it('does not render the login card when user is authenticated', () => {
     mockedUseAuthStore.mockImplementation(
-      (selector: (state: { isAuthenticated: boolean }) => unknown) =>
-        selector({ isAuthenticated: true }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (selector: any) => selector({ isAuthenticated: true }),
     );
 
     render(<LoginPage />);

@@ -57,7 +57,8 @@ export function VehicleDetailPage() {
     reset,
     formState: { errors, isDirty },
   } = useForm<EditFormData>({
-    resolver: zodResolver(editSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(editSchema) as any,
   });
 
   if (!id) return <Navigate to="/vehicles" replace />;
@@ -82,7 +83,7 @@ export function VehicleDetailPage() {
   function onSubmit(data: EditFormData) {
     update(
       {
-        id,
+        id: id!,
         make: data.make,
         model: data.model || undefined,
         licensePlate: data.licensePlate || undefined,

@@ -1,14 +1,16 @@
 import { useEffect, useRef } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import { useQueryClient } from '@tanstack/react-query';
-import { useAuthStore } from '@/shared/stores/auth.store';
+import { useAuthStore, getAccessToken } from '@/shared/stores/auth.store';
 
 export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
   const queryClient = useQueryClient();
-  const { accessToken, user, isAuthenticated } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   useEffect(() => {
+    const accessToken = getAccessToken();
     if (!isAuthenticated || !accessToken || !user) {
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -61,7 +63,7 @@ export function useSocket() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [isAuthenticated, accessToken, user, queryClient]);
+  }, [isAuthenticated, user, queryClient]);
 
   return socketRef;
 }

@@ -66,7 +66,8 @@ export function BookingSettingsForm({
     control,
     formState: { errors, isDirty },
   } = useForm<BookingSettingsFormData>({
-    resolver: zodResolver(bookingSettingsSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(bookingSettingsSchema) as any,
     defaultValues: {
       workingHoursStart: settings?.workingHoursStart ?? '08:00',
       workingHoursEnd: settings?.workingHoursEnd ?? '20:00',

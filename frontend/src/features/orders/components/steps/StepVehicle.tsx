@@ -62,7 +62,8 @@ export function StepVehicle({
     reset,
     formState: { errors },
   } = useForm<VehicleFormValues>({
-    resolver: zodResolver(vehicleSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(vehicleSchema) as any,
   });
 
   const { data: vehicles } = useQuery({

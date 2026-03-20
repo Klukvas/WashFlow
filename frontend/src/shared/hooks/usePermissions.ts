@@ -1,13 +1,18 @@
 import { useCallback, useMemo } from 'react';
-import { useAuthStore, decodeJwtPayload } from '@/shared/stores/auth.store';
+import {
+  useAuthStore,
+  decodeJwtPayload,
+  getAccessToken,
+} from '@/shared/stores/auth.store';
 
 export function usePermissions() {
-  const { permissions, accessToken } = useAuthStore();
+  const permissions = useAuthStore((s) => s.permissions);
 
   const isSuperAdmin = useMemo(() => {
-    if (!accessToken) return false;
-    return decodeJwtPayload(accessToken).isSuperAdmin ?? false;
-  }, [accessToken]);
+    const token = getAccessToken();
+    if (!token) return false;
+    return decodeJwtPayload(token).isSuperAdmin ?? false;
+  }, [permissions]);
 
   const hasPermission = useCallback(
     (permission: string): boolean => {

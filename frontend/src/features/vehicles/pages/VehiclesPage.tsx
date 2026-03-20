@@ -91,7 +91,8 @@ export function VehiclesPage() {
     control,
     formState: { errors },
   } = useForm<VehicleFormData>({
-    resolver: zodResolver(vehicleSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(vehicleSchema) as any,
   });
 
   const columns: Column<Vehicle>[] = useMemo(
