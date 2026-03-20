@@ -170,6 +170,7 @@ jobs:
       CORS_ORIGINS: '*'
       RESEND_API_KEY: ''
       FRONTEND_URL: 'http://localhost:5173'
+      PAYMENTS_ENABLED: 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -235,6 +236,7 @@ jobs:
       PORT: '3003'
       RESEND_API_KEY: ''
       FRONTEND_URL: 'http://localhost:5173'
+      PAYMENTS_ENABLED: 'true'
     steps:
       - uses: actions/checkout@v4
 
