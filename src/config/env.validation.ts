@@ -31,6 +31,12 @@ function jsonRecordTransform(envVarName: string) {
   };
 }
 
+/** Treat empty strings as undefined so optional URL fields don't fail validation */
+const optionalUrl = z
+  .string()
+  .transform((v) => (v === '' ? undefined : v))
+  .pipe(z.url().optional());
+
 export const envSchema = z
   .object({
     DATABASE_URL: z.url(),
@@ -80,7 +86,10 @@ export const envSchema = z
 
     METRICS_TOKEN: z.string().optional(),
 
-    GRAFANA_LOKI_HOST: z.url().optional(),
+    GRAFANA_LOKI_HOST: z
+      .string()
+      .transform((v) => (v === '' ? undefined : v))
+      .pipe(z.url().optional()),
     GRAFANA_LOKI_USERNAME: z.string().optional(),
     GRAFANA_LOKI_PASSWORD: z.string().optional(),
 
