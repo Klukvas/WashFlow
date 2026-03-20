@@ -193,7 +193,10 @@ describe('useCreateCheckout', () => {
     });
 
     await act(async () => {
-      result.current.mutate({ planTier: 'STARTER', billingInterval: 'MONTHLY' });
+      result.current.mutate({
+        planTier: 'STARTER',
+        billingInterval: 'MONTHLY',
+      });
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -203,7 +206,7 @@ describe('useCreateCheckout', () => {
     });
   });
 
-  it('invalidates subscription queries on success', async () => {
+  it('does not invalidate queries on success (checkout handled by Paddle UI)', async () => {
     vi.mocked(createCheckout).mockResolvedValue({
       transactionId: 'txn-1',
       clientToken: 'tok-1',
@@ -216,13 +219,14 @@ describe('useCreateCheckout', () => {
     });
 
     await act(async () => {
-      result.current.mutate({ planTier: 'STARTER', billingInterval: 'MONTHLY' });
+      result.current.mutate({
+        planTier: 'STARTER',
+        billingInterval: 'MONTHLY',
+      });
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(invalidateSpy).toHaveBeenCalledWith({
-      queryKey: subscriptionKeys.all,
-    });
+    expect(invalidateSpy).not.toHaveBeenCalled();
   });
 
   it('handles errors', async () => {
@@ -234,7 +238,10 @@ describe('useCreateCheckout', () => {
     });
 
     await act(async () => {
-      result.current.mutate({ planTier: 'STARTER', billingInterval: 'MONTHLY' });
+      result.current.mutate({
+        planTier: 'STARTER',
+        billingInterval: 'MONTHLY',
+      });
     });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
@@ -259,7 +266,10 @@ describe('useChangePlan', () => {
     });
 
     await act(async () => {
-      result.current.mutate({ planTier: 'BUSINESS', billingInterval: 'YEARLY' });
+      result.current.mutate({
+        planTier: 'BUSINESS',
+        billingInterval: 'YEARLY',
+      });
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -279,7 +289,10 @@ describe('useChangePlan', () => {
     });
 
     await act(async () => {
-      result.current.mutate({ planTier: 'BUSINESS', billingInterval: 'YEARLY' });
+      result.current.mutate({
+        planTier: 'BUSINESS',
+        billingInterval: 'YEARLY',
+      });
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -297,7 +310,10 @@ describe('useChangePlan', () => {
     });
 
     await act(async () => {
-      result.current.mutate({ planTier: 'BUSINESS', billingInterval: 'YEARLY' });
+      result.current.mutate({
+        planTier: 'BUSINESS',
+        billingInterval: 'YEARLY',
+      });
     });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
@@ -326,7 +342,10 @@ describe('useManageAddon', () => {
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(manageAddon).toHaveBeenCalledWith({ resource: 'branches', quantity: 2 });
+    expect(manageAddon).toHaveBeenCalledWith({
+      resource: 'branches',
+      quantity: 2,
+    });
   });
 
   it('invalidates usage queries on success', async () => {
@@ -344,7 +363,7 @@ describe('useManageAddon', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(invalidateSpy).toHaveBeenCalledWith({
-      queryKey: subscriptionKeys.usage(),
+      queryKey: subscriptionKeys.all,
     });
   });
 
@@ -383,7 +402,10 @@ describe('usePreviewPlanChange', () => {
     });
 
     await act(async () => {
-      result.current.mutate({ planTier: 'STARTER', billingInterval: 'MONTHLY' });
+      result.current.mutate({
+        planTier: 'STARTER',
+        billingInterval: 'MONTHLY',
+      });
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -406,7 +428,10 @@ describe('usePreviewPlanChange', () => {
     });
 
     await act(async () => {
-      result.current.mutate({ planTier: 'STARTER', billingInterval: 'MONTHLY' });
+      result.current.mutate({
+        planTier: 'STARTER',
+        billingInterval: 'MONTHLY',
+      });
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -422,7 +447,10 @@ describe('usePreviewPlanChange', () => {
     });
 
     await act(async () => {
-      result.current.mutate({ planTier: 'STARTER', billingInterval: 'MONTHLY' });
+      result.current.mutate({
+        planTier: 'STARTER',
+        billingInterval: 'MONTHLY',
+      });
     });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
