@@ -28,6 +28,6 @@
       "@config/*": ["src/config/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "test"],
   "exclude": ["node_modules", "dist", "frontend", "frontend-booking"]
 }
