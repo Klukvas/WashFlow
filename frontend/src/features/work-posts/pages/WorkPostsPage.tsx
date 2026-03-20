@@ -39,6 +39,7 @@ export function WorkPostsPage() {
 
   useEffect(() => {
     if (isBranchScoped) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBranchFilter(userBranchId ?? '');
     }
   }, [userBranchId, isBranchScoped]);

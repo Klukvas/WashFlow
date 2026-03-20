@@ -126,8 +126,6 @@ export class SchedulingService {
     // Batch-fetch employee availability (2 queries instead of N per-slot queries)
     let employeeAvailabilityBySlot: Map<number, string[]> | null = null;
     if (totalProfiles > 0) {
-      const pad = (n: number) => String(n).padStart(2, '0');
-
       // 1. Fetch all candidate employees for this branch
       const candidates = await tenantDb.employeeProfile.findMany({
         where: {

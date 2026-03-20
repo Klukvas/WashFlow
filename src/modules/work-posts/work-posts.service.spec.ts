@@ -73,11 +73,7 @@ describe('WorkPostsService', () => {
 
     it('should pass userBranchId to the repository when provided', async () => {
       await service.findAll(tenantId, branchId, branchId);
-      expect(repo.findAll).toHaveBeenCalledWith(
-        tenantId,
-        branchId,
-        branchId,
-      );
+      expect(repo.findAll).toHaveBeenCalledWith(tenantId, branchId, branchId);
     });
 
     it('should default userBranchId to null when not provided', async () => {

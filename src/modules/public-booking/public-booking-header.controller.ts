@@ -21,9 +21,7 @@ function extractTenantId(header: string | undefined): string {
     throw new BadRequestException('x-carwash-tenant-id header is required');
   }
   if (!UUID_REGEX.test(header)) {
-    throw new BadRequestException(
-      'x-carwash-tenant-id must be a valid UUID',
-    );
+    throw new BadRequestException('x-carwash-tenant-id must be a valid UUID');
   }
   return header;
 }
@@ -52,10 +50,7 @@ export class PublicBookingHeaderController {
     @Query() dto: CheckAvailabilityDto,
   ) {
     const tenantId = extractTenantId(tenantIdHeader);
-    return this.publicBookingService.checkAvailabilityByTenantId(
-      tenantId,
-      dto,
-    );
+    return this.publicBookingService.checkAvailabilityByTenantId(tenantId, dto);
   }
 
   @Post('book')

@@ -40,11 +40,7 @@ describe('WorkPostsController', () => {
 
     it('should pass null userBranchId', async () => {
       await controller.findAll(tenantId, null, branchId);
-      expect(service.findAll).toHaveBeenCalledWith(
-        tenantId,
-        branchId,
-        null,
-      );
+      expect(service.findAll).toHaveBeenCalledWith(tenantId, branchId, null);
     });
   });
 
