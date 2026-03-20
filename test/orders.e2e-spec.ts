@@ -9,6 +9,14 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
 import * as argon2 from 'argon2';
 
+/** Returns a future date that falls on a weekday (Mon–Sat, i.e. not Sunday). */
+function nextWorkday(daysFromNow: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + daysFromNow);
+  if (d.getUTCDay() === 0) d.setDate(d.getDate() + 1); // Sun → Mon
+  return d;
+}
+
 describe('Orders (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
@@ -140,9 +148,8 @@ describe('Orders (e2e)', () => {
 
   describe('POST /api/v1/orders', () => {
     it('should create an order successfully', async () => {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(10, 0, 0, 0);
+      const tomorrow = nextWorkday(1);
+      tomorrow.setUTCHours(10, 0, 0, 0);
 
       const response = await request(app.getHttpServer())
         .post('/api/v1/orders')
@@ -165,9 +172,8 @@ describe('Orders (e2e)', () => {
     });
 
     it('should prevent double-booking the same slot', async () => {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 2);
-      tomorrow.setHours(14, 0, 0, 0);
+      const tomorrow = nextWorkday(3);
+      tomorrow.setUTCHours(14, 0, 0, 0);
 
       // First booking succeeds
       await request(app.getHttpServer())

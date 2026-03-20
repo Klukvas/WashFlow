@@ -200,10 +200,16 @@ test.describe('Users list', () => {
       .getByRole('button', { name: /confirm|restore/i });
     await restoreConfirmBtn.click();
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1_000);
+
+    // Re-query the row after the DOM has updated
+    const restoredRow = page
+      .locator('table tbody tr')
+      .filter({ hasText: userEmail })
+      .first();
 
     // Verify user is restored — "Deleted" badge should be gone
-    await expect(deletedUserRow.getByText('Deleted')).not.toBeVisible({
+    await expect(restoredRow.getByText('Deleted')).not.toBeVisible({
       timeout: 5_000,
     });
   });

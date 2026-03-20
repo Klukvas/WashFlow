@@ -38,7 +38,7 @@ async function setSubscriptionTier(
   await client.connect();
   try {
     await client.query(
-      `UPDATE "Subscription"
+      `UPDATE "subscriptions"
          SET "planTier" = $1::"PlanTier",
              "isTrial" = false,
              "maxBranches" = $2,
@@ -47,7 +47,14 @@ async function setSubscriptionTier(
              "maxServices" = $5,
              "status" = 'ACTIVE'::"SubscriptionStatus"
        WHERE "tenantId" = $6`,
-      [tier, limits.maxBranches, limits.maxWorkPosts, limits.maxUsers, limits.maxServices, tenantId],
+      [
+        tier,
+        limits.maxBranches,
+        limits.maxWorkPosts,
+        limits.maxUsers,
+        limits.maxServices,
+        tenantId,
+      ],
     );
   } finally {
     await client.end();

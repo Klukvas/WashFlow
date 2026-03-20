@@ -87,8 +87,9 @@ setup('authenticate role users', async ({ browser }) => {
     // Navigate to the app so cookies/localStorage belong to the correct origin
     await page.goto(BASE_URL);
 
-    // Login via API (avoids HTML5 email validation issues with transliterated emails)
-    const roleLoginRes = await page.request.post(`${API_BASE}/auth/login`, {
+    // Login via Vite proxy (relative URL) so cookies are set for the page origin.
+    // Uses API instead of UI form to avoid HTML5 email validation issues with transliterated emails.
+    const roleLoginRes = await page.request.post('/api/v1/auth/login', {
       data: { email, password: 'password123' },
     });
 
