@@ -53,6 +53,7 @@ test.describe('Subscription Limits (Fresh Tenant)', () => {
           name: `E2E Branch ${i + 1}`,
           address: `Test Address ${i + 1}`,
           phone: `+38044${String(1000000 + i)}`,
+          timezone: 'Europe/Kyiv',
         },
       });
 
@@ -83,6 +84,7 @@ test.describe('Subscription Limits (Fresh Tenant)', () => {
         name: 'E2E Branch Over Limit',
         address: 'Over Limit Address',
         phone: '+380449999999',
+        timezone: 'Europe/Kyiv',
       },
     });
 
