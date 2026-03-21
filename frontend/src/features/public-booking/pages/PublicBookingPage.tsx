@@ -160,7 +160,7 @@ export function PublicBookingPage() {
     const orderServices = order.services ?? [];
     const orderTotal = Number(order.totalPrice);
     const orderDuration = orderServices.reduce(
-      (sum, s) => sum + (s.service.durationMin ?? 0),
+      (sum, s) => sum + (s.service?.durationMin ?? 0),
       0,
     );
 
