@@ -43,11 +43,13 @@ async function selectDateInCalendar(page: Page, targetDate: Date) {
   }
 }
 
-/** Get the next weekday (skip Sunday). */
+/** Get the next working day (skip Saturday and Sunday). */
 function getNextWeekday(): Date {
   const d = new Date();
   d.setDate(d.getDate() + 1);
-  if (d.getDay() === 0) d.setDate(d.getDate() + 1); // skip Sunday
+  // Saturday → +2, Sunday → +1
+  if (d.getDay() === 6) d.setDate(d.getDate() + 2);
+  else if (d.getDay() === 0) d.setDate(d.getDate() + 1);
   return d;
 }
 
@@ -150,10 +152,6 @@ test.describe('Public Booking → Admin Verification', () => {
   test.describe.configure({ mode: 'serial' });
 
   test('complete booking shows confirmation screen', async ({ page }) => {
-    test.fixme(
-      true,
-      'Flaky in CI — timezone-sensitive slot availability at midnight UTC',
-    );
     test.setTimeout(60_000);
 
     const ts = Date.now();
@@ -179,10 +177,6 @@ test.describe('Public Booking → Admin Verification', () => {
   });
 
   test('booking appears in admin orders list', async ({ page, browser }) => {
-    test.fixme(
-      true,
-      'Flaky in CI — timezone-sensitive slot availability at midnight UTC',
-    );
     test.setTimeout(60_000);
 
     const ts = Date.now();
@@ -222,10 +216,6 @@ test.describe('Public Booking → Admin Verification', () => {
   });
 
   test('admin can view booking details', async ({ page, browser }) => {
-    test.fixme(
-      true,
-      'Flaky in CI — timezone-sensitive slot availability at midnight UTC',
-    );
     test.setTimeout(60_000);
 
     const ts = Date.now();
@@ -380,10 +370,6 @@ test.describe('Public Booking — Form Validation', () => {
   });
 
   test('booking with all optional fields filled', async ({ page }) => {
-    test.fixme(
-      true,
-      'Flaky in CI — timezone-sensitive slot availability at midnight UTC',
-    );
     test.setTimeout(60_000);
 
     const ts = Date.now();
