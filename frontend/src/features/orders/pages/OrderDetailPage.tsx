@@ -120,9 +120,9 @@ export function OrderDetailPage() {
                     className="flex items-center justify-between rounded-md bg-muted/50 px-4 py-3"
                   >
                     <div>
-                      <p className="font-medium">{s.name}</p>
+                      <p className="font-medium">{s.service.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {formatDuration(s.durationMin)}
+                        {formatDuration(s.service.durationMin)}
                       </p>
                     </div>
                     <span className="font-semibold">
