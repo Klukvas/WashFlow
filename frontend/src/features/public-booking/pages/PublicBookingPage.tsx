@@ -160,7 +160,7 @@ export function PublicBookingPage() {
     const orderServices = order.services ?? [];
     const orderTotal = Number(order.totalPrice);
     const orderDuration = orderServices.reduce(
-      (sum, s) => sum + s.durationMin,
+      (sum, s) => sum + (s.service?.durationMin ?? s.durationMin ?? 0),
       0,
     );
 
@@ -171,7 +171,7 @@ export function PublicBookingPage() {
     const calDetails = [
       customerName,
       order.vehicle?.licensePlate,
-      orderServices.map((s) => s.name).join(', '),
+      orderServices.map((s) => s.service?.name ?? s.name).join(', '),
       `${t('totalLabel')}: ${formatCurrency(orderTotal)}`,
     ]
       .filter(Boolean)
@@ -232,7 +232,8 @@ export function PublicBookingPage() {
               {orderServices.map((s) => (
                 <div key={s.id} className="flex justify-between text-sm">
                   <span>
-                    {s.name} ({formatDuration(s.durationMin)})
+                    {s.service?.name ?? s.name} (
+                    {formatDuration(s.service?.durationMin ?? s.durationMin)})
                   </span>
                   <span>{formatCurrency(Number(s.price))}</span>
                 </div>
