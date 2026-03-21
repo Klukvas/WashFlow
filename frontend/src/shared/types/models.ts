@@ -165,10 +165,15 @@ export interface OrderService {
   id: string;
   orderId: string;
   serviceId: string;
-  name: string;
   price: number;
-  durationMin: number;
-  service?: Service;
+  quantity: number;
+  service: {
+    id: string;
+    name: string;
+    durationMin: number;
+    price: number;
+    description?: string | null;
+  };
 }
 
 export interface Payment {
