@@ -100,7 +100,11 @@ async function completeBookingWizard(
     hasText: /^\d{2}:\d{2}$/,
   });
   const slotsCount = await timeSlots.count();
-  if (slotsCount === 0) return false;
+  if (slotsCount === 0) {
+    console.log('[E2E DEBUG] No time slots found. Page content:');
+    console.log(await page.locator('body').textContent());
+    return false;
+  }
 
   await timeSlots.first().click();
   await page.getByRole('button', { name: /continue/i }).click();
