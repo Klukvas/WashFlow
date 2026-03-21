@@ -1367,8 +1367,9 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
     });
 
     it('Saturday rejected with custom workingDays [1,2,3,4,5]', async () => {
-      // Find next Saturday
+      // Find next Saturday (always at least 1 day ahead to avoid past-time rejection)
       const saturday = new Date();
+      saturday.setUTCDate(saturday.getUTCDate() + 1);
       while (saturday.getUTCDay() !== 6) {
         saturday.setUTCDate(saturday.getUTCDate() + 1);
       }
@@ -1385,6 +1386,7 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
 
     it('availability returns [] for Saturday on custom branch', async () => {
       const saturday = new Date();
+      saturday.setUTCDate(saturday.getUTCDate() + 1);
       while (saturday.getUTCDay() !== 6) {
         saturday.setUTCDate(saturday.getUTCDate() + 1);
       }
