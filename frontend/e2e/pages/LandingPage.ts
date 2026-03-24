@@ -20,9 +20,9 @@ export class LandingPage {
       .locator('nav')
       .getByRole('link', { name: /go to platform/i });
     this.heroHeading = page.locator('section h1').first();
-    this.heroCtaButton = page.getByRole('button', {
-      name: /start free/i,
-    });
+    this.heroCtaButton = page
+      .locator('.landing-hero')
+      .getByRole('button', { name: /start free/i });
     this.featuresSection = page.locator('#features');
     this.pricingSection = page.locator('#pricing');
   }
