@@ -1,117 +1,205 @@
 {
+  "nav": {
+    "features": "Features",
+    "howItWorks": "How it works",
+    "pricing": "Pricing",
+    "realtime": "Realtime"
+  },
   "header": {
-    "signIn": "Sign In",
-    "getStarted": "Get Started",
+    "signIn": "Sign in",
+    "startTrial": "Start free trial",
     "goToPlatform": "Go to Platform"
   },
   "hero": {
-    "title": "Car Wash Management Made Simple",
-    "subtitle": "Streamline your car wash operations with powerful tools for orders, clients, branches, and analytics. Start your free trial today.",
-    "cta": "Start Free Trial",
-    "secondaryCta": "Learn More"
+    "badge": "Multi-branch · Smart scheduling · Real-time updates",
+    "title": "The CRM that keeps<br /><em>every wash bay</em> running.",
+    "subtitle": "Full-stack car wash management — bookings, workforce, payments, and analytics — in one platform built for operators who want control.",
+    "cta": "Start free — 30 days"
   },
   "features": {
-    "title": "Everything You Need to Run Your Car Wash",
-    "subtitle": "Powerful tools designed specifically for car wash businesses",
-    "orders": {
-      "title": "Order Management",
-      "description": "Track orders from booking to completion. Manage scheduling, work posts, and service assignments with ease."
-    },
-    "clients": {
-      "title": "Client Database",
-      "description": "Build lasting relationships with a complete client and vehicle database. Track history, preferences, and contact info."
-    },
-    "branches": {
-      "title": "Multi-Branch Support",
-      "description": "Manage multiple locations from a single dashboard. Each branch has its own schedule, staff, and work posts."
-    },
-    "analytics": {
-      "title": "Analytics & Reports",
-      "description": "Make data-driven decisions with revenue reports, order trends, and performance metrics across all branches."
-    },
-    "team": {
-      "title": "Team Management",
-      "description": "Manage employees, roles, and permissions. Track workforce efficiency and schedule shifts across branches."
-    },
-    "booking": {
-      "title": "Online Booking",
-      "description": "Let customers book services online with a branded booking page. Configurable time slots and availability."
-    },
-    "scheduling": {
-      "title": "Smart Scheduling",
-      "description": "Automatic work post assignment, conflict prevention, and workforce capacity tracking. No double-bookings ever."
-    },
-    "roles": {
-      "title": "Roles & Permissions",
-      "description": "Fine-grained access control with 47 permissions across 14 modules. Each team member sees only what they need."
-    },
-    "audit": {
-      "title": "Audit Trail",
-      "description": "Full history of every action — who changed what and when. Stay compliant and resolve disputes with confidence."
-    }
-  },
-  "screenshots": {
-    "title": "See It in Action",
-    "subtitle": "A modern interface designed for speed and clarity",
-    "tabs": {
-      "orders": "Schedule",
-      "createOrder": "Create Order",
-      "clients": "Clients",
-      "vehicles": "Vehicles",
-      "users": "Team",
-      "roles": "Permissions"
-    },
-    "captions": {
-      "orders": "Visual schedule view — see all work posts and time slots at a glance. Drag & drop to reassign.",
-      "createOrder": "Step-by-step order wizard — select services, assign time slot, pick vehicle, and confirm in seconds.",
-      "clients": "Full client database with contact info, visit history, and linked vehicles. Search and filter instantly.",
-      "vehicles": "Track every vehicle — make, model, license plate, year, and owner. Per-page controls for large fleets.",
-      "users": "Manage your team — invite users, assign branches, set roles. See everyone's access level at a glance.",
-      "roles": "Granular permissions — 47 permissions across 14 modules. Create custom roles for operators, managers, and more."
-    }
-  },
-  "howItWorks": {
-    "title": "Up and Running in Minutes",
-    "subtitle": "Three simple steps to digitize your car wash",
-    "steps": {
-      "register": {
-        "step": "1",
-        "title": "Create an Account",
-        "description": "Sign up with your company name and email. Your workspace is ready instantly — no setup calls or demos required."
+    "label": "Features",
+    "title": "Everything an operator needs.<br/>Nothing they don't.",
+    "subtitle": "From scheduling to subscription billing — WashFlow covers the full operational stack.",
+    "items": {
+      "multiLocation": {
+        "title": "Multi-Location Management",
+        "desc": "Manage all branches from a single dashboard. Each location has its own schedule, staff, and work posts — fully independent.",
+        "tag": "Branches · Work posts"
       },
-      "configure": {
-        "step": "2",
-        "title": "Configure Your Business",
-        "description": "Add branches, work posts, services, and invite your team. Set working hours, prices, and booking rules."
+      "scheduling": {
+        "title": "Conflict-Free Scheduling",
+        "desc": "Visual schedule grid with 30-minute slots. Click any free slot to open the order wizard. No double-bookings, guaranteed.",
+        "tag": "Smart scheduling · Slot lock"
       },
-      "launch": {
-        "step": "3",
-        "title": "Start Taking Orders",
-        "description": "Accept bookings from your dashboard or share your public booking page with customers. Track everything in real time."
+      "workforce": {
+        "title": "Workforce Capacity Engine",
+        "desc": "Available slots factor in both free bays and workers on shift. Understaffed? The system hides unavailable slots automatically.",
+        "tag": "Shifts · Auto-assign"
+      },
+      "realtime": {
+        "title": "Real-Time Operations",
+        "desc": "Every order update broadcasts instantly to all connected screens. Front desk, managers, and mobile — everyone sees the same truth.",
+        "tag": "Live dashboard · Instant sync"
+      },
+      "booking": {
+        "title": "Public Booking Widget",
+        "desc": "Give customers a branded booking page with your services, available time slots, and branch selector. Embed it on your website.",
+        "tag": "Branded page · Embed"
+      },
+      "billing": {
+        "title": "Subscription Billing",
+        "desc": "Four pricing tiers with per-resource add-ons. Upgrade and downgrade without disrupting your operations.",
+        "tag": "Plans · Add-ons"
+      },
+      "analytics": {
+        "title": "Analytics & CSV Export",
+        "desc": "Revenue trends, branch comparisons, employee performance, and anomaly alerts. Export orders and clients to CSV in one click.",
+        "tag": "Reports · Export"
+      },
+      "roles": {
+        "title": "Roles & Permissions",
+        "desc": "47 granular permissions across 14 modules. Each team member sees only what they need. Create custom roles for any position.",
+        "tag": "RBAC · Custom roles"
+      },
+      "audit": {
+        "title": "Full Audit Trail",
+        "desc": "Every action is logged — who changed what and when. Resolve disputes with confidence and stay compliant.",
+        "tag": "History · Compliance"
       }
     }
   },
-  "stats": {
-    "title": "Built for Real Car Wash Operations",
-    "orders": "Orders Processed",
-    "branches": "Branches Managed",
-    "uptime": "Uptime",
-    "languages": "Languages"
+  "schedule": {
+    "label": "Schedule view",
+    "title": "Every bay, every hour —<br/>at a glance.",
+    "desc": "The schedule grid shows all work posts as rows and 30-minute slots as columns. Click any free slot and a pre-filled order wizard opens instantly.",
+    "bullet1": "Rows locked during booking — zero double-bookings",
+    "bullet2": "Workforce cap applied — slot hidden when all workers are busy",
+    "bullet3": "Pre-filled order wizard opens from any free slot",
+    "browserUrl": "app.washflow.com/orders → Schedule"
   },
-  "cta": {
-    "title": "Ready to Modernize Your Car Wash?",
-    "subtitle": "Join hundreds of car wash businesses already using WashFlow. Start your free 30-day trial — no credit card needed.",
-    "button": "Get Started for Free"
+  "analytics": {
+    "label": "Analytics",
+    "title": "Numbers that tell you<br/>where to act.",
+    "desc": "Branch comparisons, employee performance, service popularity, booking source breakdown, and automated anomaly alerts — all in one screen.",
+    "bullet1": "Anomaly alerts fire automatically when cancel rate or revenue deviates from your rolling average",
+    "bullet2": "Per-employee report: orders, revenue, cancel rate — filterable by branch & date range",
+    "bullet3": "One-click CSV export of all orders and clients — no waiting, no email queue"
+  },
+  "howItWorks": {
+    "label": "How it works",
+    "title": "From setup to<br/>first booking in minutes.",
+    "steps": {
+      "register": {
+        "title": "Register your car wash",
+        "desc": "One form creates your account and a 30-day trial with full access — no credit card required."
+      },
+      "branches": {
+        "title": "Configure branches & bays",
+        "desc": "Add branches, define work posts, set working hours and booking buffers per location."
+      },
+      "team": {
+        "title": "Set up your team",
+        "desc": "Invite staff, assign roles with granular permissions, and create workforce profiles with shift hours."
+      },
+      "goLive": {
+        "title": "Go live — online & walk-in",
+        "desc": "Embed the public booking widget on your website. Accept walk-ins from the dashboard. Everything syncs in real time."
+      }
+    },
+    "visual": {
+      "title": "Schedule — Monday, Mar 24",
+      "branch": "Branch: Центральний",
+      "lockTitle": "LOCK ACQUIRED — Booking in progress",
+      "lockDetail": "Bay 1 · 14:00–14:30 · Олена М. · Express wash",
+      "lockTech": "Conflict-free slot reservation"
+    }
+  },
+  "realtime": {
+    "label": "Real-time",
+    "title": "Every event, live —<br/>across every screen.",
+    "desc": "Order events flow from your operations to every connected device. Staff at the front desk and managers watching the dashboard see the same truth.",
+    "bullet1": "Secure WebSocket connection — auto-join your workspace",
+    "bullet2": "Events: <code style=\"font-family:'DM Mono',monospace;font-size:11px;background:var(--bg-raised);padding:2px 6px;border-radius:3px;color:var(--sky)\">order.created</code> · <code style=\"font-family:'DM Mono',monospace;font-size:11px;background:var(--bg-raised);padding:2px 6px;border-radius:3px;color:var(--sky)\">status_changed</code> · <code style=\"font-family:'DM Mono',monospace;font-size:11px;background:var(--bg-raised);padding:2px 6px;border-radius:3px;color:var(--sky)\">cancelled</code>",
+    "bullet3": "Background jobs — emails, analytics, booking confirmations"
   },
   "pricing": {
-    "title": "Start Free, Scale When Ready",
-    "subtitle": "No credit card required. Get full access to all features during your 30-day trial.",
-    "trial": "30-Day Free Trial",
-    "trialDetails": "Up to {{users}} users, {{branches}} branches, {{workPosts}} work posts, and {{services}} services",
-    "cta": "Create Free Account",
-    "noCard": "No credit card required"
+    "label": "Pricing",
+    "title": "Start free. Scale as you grow.",
+    "subtitle": "30-day trial on every account. Annual billing saves 2 months. Add-ons available on Starter & Business.",
+    "popular": "Most popular",
+    "period": "/ mo",
+    "note": "All plans include a 30-day free trial · No credit card required · Annual billing: 2 months free",
+    "plans": {
+      "starter": {
+        "name": "Starter",
+        "desc": "For small single-location operators.",
+        "price": "$29",
+        "features": [
+          "15 users included",
+          "3 branches",
+          "10 work posts",
+          "20 services",
+          "Public booking widget",
+          "Real-time dashboard",
+          "Per-resource add-ons"
+        ],
+        "naFeatures": [
+          "Custom domain",
+          "Priority support"
+        ],
+        "cta": "Start free trial"
+      },
+      "business": {
+        "name": "Business",
+        "desc": "For growing multi-location chains.",
+        "price": "$79",
+        "features": [
+          "50 users included",
+          "10 branches",
+          "40 work posts",
+          "100 services",
+          "Public booking widget",
+          "Real-time dashboard",
+          "Per-resource add-ons",
+          "Analytics & CSV export"
+        ],
+        "naFeatures": [
+          "Priority support"
+        ],
+        "cta": "Start free trial"
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "desc": "Unlimited everything, white-glove support.",
+        "price": "$199",
+        "features": [
+          "Unlimited users",
+          "Unlimited branches",
+          "Unlimited work posts",
+          "Unlimited services",
+          "Public booking widget",
+          "Full analytics suite",
+          "CSV + audit export",
+          "Custom domain",
+          "Priority support + SLA"
+        ],
+        "naFeatures": [],
+        "cta": "Contact sales"
+      }
+    }
+  },
+  "cta": {
+    "label": "Get started today",
+    "title": "Your first booking<br/>in under 5 minutes.",
+    "subtitle": "No setup fees. No credit card. Cancel any time. Just create an account and your 30-day trial starts immediately.",
+    "button": "Create free account",
+    "secondary": "Read our blog",
+    "note": "30 days free · All features included · No credit card"
   },
   "footer": {
-    "copyright": "WashFlow. All rights reserved."
+    "copyright": "© 2025 WashFlow. Multi-Tenant CarWash CRM.",
+    "blog": "Blog",
+    "privacy": "Privacy",
+    "terms": "Terms"
   }
 }

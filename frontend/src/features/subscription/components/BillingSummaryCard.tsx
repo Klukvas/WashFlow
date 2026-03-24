@@ -43,10 +43,7 @@ function BillingContent({ billing }: BillingContentProps) {
     <>
       <ul className="space-y-2">
         {billing.lineItems.map((item, idx) => (
-          <li
-            key={idx}
-            className="flex items-center justify-between text-sm"
-          >
+          <li key={idx} className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
               {item.name}
               {item.quantity > 1 && ` ×${item.quantity}`}
@@ -59,7 +56,7 @@ function BillingContent({ billing }: BillingContentProps) {
       {discount > 0 && (
         <div className="mt-2 flex items-center justify-between text-sm">
           <span className="text-muted-foreground">{t('billing.discount')}</span>
-          <span className="text-green-600">
+          <span className="text-success">
             -{formatCents(billing.discountCents, billing.currencyCode)}
           </span>
         </div>
@@ -142,9 +139,7 @@ export function BillingSummaryCard({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-base">
-          {t('billing.summaryTitle')}
-        </CardTitle>
+        <CardTitle className="text-base">{t('billing.summaryTitle')}</CardTitle>
         <Receipt className="h-5 w-5 text-muted-foreground" />
       </CardHeader>
       <CardContent>

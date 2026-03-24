@@ -47,8 +47,8 @@ export function CheckoutResultDialog({
       {status === 'success' && (
         <>
           <DialogHeader className="text-center">
-            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-              <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
+            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-success/10">
+              <CheckCircle2 className="h-6 w-6 text-success" />
             </div>
             <DialogTitle>{t('checkout.successTitle')}</DialogTitle>
           </DialogHeader>

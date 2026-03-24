@@ -26,7 +26,9 @@ describe('StatusBadge', () => {
   });
 
   it('applies base styling classes', () => {
-    const { container } = render(<StatusBadge status={OrderStatus.COMPLETED} />);
+    const { container } = render(
+      <StatusBadge status={OrderStatus.COMPLETED} />,
+    );
     const span = container.querySelector('span')!;
     expect(span.className).toContain('inline-flex');
     expect(span.className).toContain('rounded-full');
@@ -66,15 +68,19 @@ describe('StatusBadge', () => {
   });
 
   it('renders CANCELLED with destructive color classes', () => {
-    const { container } = render(<StatusBadge status={OrderStatus.CANCELLED} />);
+    const { container } = render(
+      <StatusBadge status={OrderStatus.CANCELLED} />,
+    );
     const span = container.querySelector('span')!;
     expect(span.className).toContain('text-destructive');
     expect(span.className).toContain('bg-destructive/10');
   });
 
-  it('renders IN_PROGRESS with blue color classes', () => {
-    const { container } = render(<StatusBadge status={OrderStatus.IN_PROGRESS} />);
+  it('renders IN_PROGRESS with primary color classes', () => {
+    const { container } = render(
+      <StatusBadge status={OrderStatus.IN_PROGRESS} />,
+    );
     const span = container.querySelector('span')!;
-    expect(span.className).toContain('text-blue-600');
+    expect(span.className).toContain('text-primary');
   });
 });

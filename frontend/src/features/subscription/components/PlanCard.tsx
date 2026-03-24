@@ -47,7 +47,7 @@ export function PlanCard({
       className={cn(
         'relative flex flex-col',
         isPopular && 'border-primary shadow-md',
-        isCurrent && 'border-green-500/50 bg-green-500/5',
+        isCurrent && 'border-success/50 bg-success/5',
       )}
     >
       {isPopular && (
@@ -119,7 +119,7 @@ export function PlanCard({
 function LimitRow({ label, value }: { label: string; value: string }) {
   return (
     <li className="flex items-center gap-2">
-      <Check className="h-4 w-4 text-green-500" />
+      <Check className="h-4 w-4 text-success" />
       <span>
         {value} {label}
       </span>

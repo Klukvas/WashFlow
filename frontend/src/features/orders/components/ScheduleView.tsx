@@ -223,8 +223,8 @@ export function ScheduleView() {
                               className={cn(
                                 'flex h-8 w-full items-center justify-center rounded text-xs transition-colors',
                                 isAvailable
-                                  ? 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
-                                  : 'cursor-default bg-gray-100 text-gray-400 dark:bg-gray-800/50 dark:text-gray-600',
+                                  ? 'bg-success/10 text-success hover:bg-success/20'
+                                  : 'cursor-default bg-muted text-muted-foreground',
                               )}
                               onClick={() => slot && handleSlotClick(slot)}
                               disabled={!isAvailable}
@@ -253,11 +253,11 @@ export function ScheduleView() {
       {/* Legend */}
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <div className="flex items-center gap-1.5">
-          <div className="h-3 w-3 rounded bg-green-100 dark:bg-green-900/30" />
+          <div className="h-3 w-3 rounded bg-success/10" />
           <span>{t('schedule.free')}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="h-3 w-3 rounded bg-gray-100 dark:bg-gray-800/50" />
+          <div className="h-3 w-3 rounded bg-muted" />
           <span>{t('schedule.occupied')}</span>
         </div>
       </div>

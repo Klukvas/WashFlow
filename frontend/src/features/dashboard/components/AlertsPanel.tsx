@@ -11,7 +11,7 @@ interface AlertsPanelProps {
 
 const SEVERITY_BORDER: Record<DashboardAlert['severity'], string> = {
   LOW: 'border-l-warning',
-  MEDIUM: 'border-l-orange-500',
+  MEDIUM: 'border-l-warning',
   HIGH: 'border-l-destructive',
   CRITICAL: 'border-l-destructive bg-destructive/5',
 };

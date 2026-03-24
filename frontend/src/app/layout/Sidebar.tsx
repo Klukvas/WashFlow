@@ -143,7 +143,7 @@ function NavSection({
   return (
     <div className="mb-4">
       {!collapsed && (
-        <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <p className="mb-2 px-3 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {title}
         </p>
       )}
@@ -158,9 +158,9 @@ function NavSection({
               cn(
                 'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-sidebar-foreground hover:bg-accent',
-                collapsed && 'justify-center px-2',
+                  ? 'border-l-2 border-primary bg-primary/10 text-primary'
+                  : 'border-l-2 border-transparent text-sidebar-foreground hover:bg-accent',
+                collapsed && 'justify-center border-l-0 px-2',
               )
             }
           >
@@ -181,7 +181,7 @@ export function Sidebar({ collapsed, mobile, onClose }: SidebarProps) {
       className={cn(
         'flex h-full flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200 ease-in-out',
         collapsed ? 'w-16' : 'w-64',
-        mobile && 'fixed inset-y-0 left-0 z-40 shadow-lg',
+        mobile && 'fixed inset-y-0 left-0 z-40 shadow-lg backdrop-blur-sm',
       )}
     >
       <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">

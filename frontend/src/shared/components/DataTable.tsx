@@ -74,7 +74,12 @@ export function DataTable<T>({
   onLimitChange,
   onRowClick,
   emptyMessage,
-  getRowKey = (item: T) => (item as unknown as { id: string }).id,
+  getRowKey = (item: T) => {
+    if (typeof item === 'object' && item !== null && 'id' in item) {
+      return String((item as Record<string, unknown>).id);
+    }
+    return String(item);
+  },
 }: DataTableProps<T>) {
   const { t } = useTranslation('common');
 
@@ -110,11 +115,11 @@ export function DataTable<T>({
         <div className="overflow-hidden rounded-lg border border-border">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-muted/50">
+              <tr className="border-b border-border bg-secondary">
                 {columns.map((col) => (
                   <th
                     key={col.key}
-                    className={`px-4 py-3 text-left font-medium text-muted-foreground ${col.className ?? ''}`}
+                    className={`px-4 py-3 text-left font-mono text-[11px] font-medium uppercase tracking-wider text-muted-foreground ${col.className ?? ''}`}
                   >
                     {col.header}
                   </th>
@@ -125,7 +130,7 @@ export function DataTable<T>({
               {data.map((item) => (
                 <tr
                   key={getRowKey(item)}
-                  className={`border-b border-border last:border-0 ${onRowClick ? 'cursor-pointer hover:bg-muted/50' : ''}`}
+                  className={`border-b border-border last:border-0 transition-colors ${onRowClick ? 'cursor-pointer hover:bg-secondary/50' : ''}`}
                   onClick={() => onRowClick?.(item)}
                 >
                   {columns.map((col) => (

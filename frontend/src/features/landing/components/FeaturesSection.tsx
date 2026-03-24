@@ -1,61 +1,39 @@
 import { useTranslation } from 'react-i18next';
-import {
-  ShoppingCart,
-  Users,
-  Building2,
-  BarChart3,
-  HardHat,
-  CalendarCheck,
-  Clock,
-  Shield,
-  FileText,
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 
-const features = [
-  { key: 'orders', icon: ShoppingCart },
-  { key: 'clients', icon: Users },
-  { key: 'branches', icon: Building2 },
-  { key: 'analytics', icon: BarChart3 },
-  { key: 'team', icon: HardHat },
-  { key: 'booking', icon: CalendarCheck },
-  { key: 'scheduling', icon: Clock },
-  { key: 'roles', icon: Shield },
-  { key: 'audit', icon: FileText },
+const FEATURES = [
+  { key: 'multiLocation', emoji: '🏢' },
+  { key: 'scheduling', emoji: '📅' },
+  { key: 'workforce', emoji: '👥' },
+  { key: 'realtime', emoji: '⚡' },
+  { key: 'booking', emoji: '🌐' },
+  { key: 'billing', emoji: '💳' },
+  { key: 'analytics', emoji: '📊' },
+  { key: 'roles', emoji: '🔒' },
+  { key: 'audit', emoji: '📋' },
 ] as const;
 
 export function FeaturesSection() {
   const { t } = useTranslation('landing');
 
   return (
-    <section id="features" className="bg-muted/50 py-20">
-      <div className="mx-auto max-w-6xl px-4">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            {t('features.title')}
-          </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
-            {t('features.subtitle')}
-          </p>
+    <section id="features" style={{ background: 'var(--bg-base)' }}>
+      <div className="landing-container">
+        <div className="reveal">
+          <div className="landing-section-label">{t('features.label')}</div>
+          <h2
+            className="landing-section-title"
+            dangerouslySetInnerHTML={{ __html: t('features.title') }}
+          />
+          <p className="landing-section-sub">{t('features.subtitle')}</p>
         </div>
-
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map(({ key, icon: Icon }) => (
-            <Card key={key}>
-              <CardHeader>
-                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <Icon className="h-5 w-5 text-primary" />
-                </div>
-                <CardTitle className="text-lg">
-                  {t(`features.${key}.title`)}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  {t(`features.${key}.description`)}
-                </p>
-              </CardContent>
-            </Card>
+        <div className="landing-features-grid reveal">
+          {FEATURES.map(({ key, emoji }) => (
+            <div key={key} className="landing-feat-card">
+              <div className="landing-feat-icon-wrap">{emoji}</div>
+              <div className="landing-feat-title">{t(`features.items.${key}.title`)}</div>
+              <div className="landing-feat-desc">{t(`features.items.${key}.desc`)}</div>
+              <div className="landing-feat-tag">{t(`features.items.${key}.tag`)}</div>
+            </div>
           ))}
         </div>
       </div>

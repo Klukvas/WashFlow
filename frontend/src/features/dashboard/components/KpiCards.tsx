@@ -1,4 +1,11 @@
-import { DollarSign, ShoppingCart, Clock, XCircle, Users, Activity } from 'lucide-react';
+import {
+  DollarSign,
+  ShoppingCart,
+  Clock,
+  XCircle,
+  Users,
+  Activity,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent } from '@/shared/ui/card';
 import { Skeleton } from '@/shared/ui/skeleton';
@@ -32,8 +39,8 @@ export function KpiCards({ data, loading }: KpiCardsProps) {
       title: t('kpi.avgOrderDuration'),
       value: `${data?.avgOrderDuration ?? 0} ${t('kpi.avgOrderDurationUnit')}`,
       icon: Clock,
-      color: 'text-blue-600 dark:text-blue-400',
-      bgColor: 'bg-blue-100 dark:bg-blue-900/30',
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
     },
     {
       title: t('kpi.cancelRateToday'),
@@ -53,8 +60,8 @@ export function KpiCards({ data, loading }: KpiCardsProps) {
       title: t('kpi.occupancyRate'),
       value: `${(data?.occupancyRate ?? 0).toFixed(1)}%`,
       icon: Activity,
-      color: 'text-purple-600 dark:text-purple-400',
-      bgColor: 'bg-purple-100 dark:bg-purple-900/30',
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
     },
   ];
 
@@ -75,8 +82,12 @@ export function KpiCards({ data, loading }: KpiCardsProps) {
           <CardContent className="p-4">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="truncate text-xs text-muted-foreground">{card.title}</p>
-                <p className="mt-1 text-lg font-bold leading-tight">{card.value}</p>
+                <p className="truncate font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {card.title}
+                </p>
+                <p className="mt-1 text-lg font-bold leading-tight tracking-tight">
+                  {card.value}
+                </p>
               </div>
               <div className={`shrink-0 rounded-lg p-2 ${card.bgColor}`}>
                 <card.icon className={`h-4 w-4 ${card.color}`} />

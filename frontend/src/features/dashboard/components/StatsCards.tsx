@@ -37,8 +37,8 @@ export function StatsCards({ data, loading }: StatsCardsProps) {
       value: data?.activeClients ?? 0,
       subtitle: t('statsCards.allTime'),
       icon: Users,
-      color: 'text-blue-600 dark:text-blue-400',
-      bgColor: 'bg-blue-100 dark:bg-blue-900/30',
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
     },
     {
       title: t('statsCards.completionRate'),
@@ -67,9 +67,13 @@ export function StatsCards({ data, loading }: StatsCardsProps) {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">{card.title}</p>
-                <p className="mt-1 text-2xl font-bold">{card.value}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {card.title}
+                </p>
+                <p className="mt-1 text-2xl font-bold tracking-tight">
+                  {card.value}
+                </p>
+                <p className="mt-1 font-mono text-[10px] text-muted-foreground">
                   {card.subtitle}
                 </p>
               </div>

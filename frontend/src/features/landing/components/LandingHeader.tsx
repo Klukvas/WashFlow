@@ -1,10 +1,7 @@
-import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/shared/stores/auth.store';
 import { useAuthModalStore } from '@/shared/stores/auth-modal.store';
-import { ThemeToggle } from '@/shared/components/ThemeToggle';
-import { LanguageSwitcher } from '@/shared/components/LanguageSwitcher';
-import { Button } from '@/shared/ui/button';
+import { Link } from 'react-router';
 
 export function LandingHeader() {
   const { t } = useTranslation('landing');
@@ -12,46 +9,53 @@ export function LandingHeader() {
   const openModal = useAuthModalStore((s) => s.open);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-        <Link to="/" className="flex flex-col">
-          <span className="text-xl font-bold leading-tight text-primary">
-            WashFlow
-          </span>
-          <span className="text-[10px] leading-tight text-muted-foreground">
-            Powered by FluxLab
-          </span>
-        </Link>
-
-        <div className="flex items-center gap-2">
-          <Link
-            to="/blog"
-            className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:inline"
-          >
-            Blog
-          </Link>
-          <ThemeToggle />
-          <LanguageSwitcher />
-          {isAuthenticated ? (
-            <Link to="/dashboard">
-              <Button size="sm">{t('header.goToPlatform')}</Button>
-            </Link>
-          ) : (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => openModal('login')}
-              >
-                {t('header.signIn')}
-              </Button>
-              <Button size="sm" onClick={() => openModal('register')}>
-                {t('header.getStarted')}
-              </Button>
-            </>
-          )}
+    <nav className="landing-nav">
+      <a href="#" className="landing-nav-logo">
+        <div className="landing-nav-logo-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M3 13h2l2 5 4-10 3 7 2-4h5"
+              stroke="#0B0F17"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </div>
+        WashFlow
+      </a>
+
+      <ul className="landing-nav-links">
+        <li><a href="#features">{t('nav.features')}</a></li>
+        <li><a href="#how">{t('nav.howItWorks')}</a></li>
+        <li><a href="#pricing">{t('nav.pricing')}</a></li>
+        <li><a href="#realtime">{t('nav.realtime')}</a></li>
+      </ul>
+
+      <div className="landing-nav-actions">
+        {isAuthenticated ? (
+          <Link to="/dashboard" className="btn-sm-accent">
+            {t('header.goToPlatform')}
+          </Link>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="btn-sm-ghost"
+              onClick={() => openModal('login')}
+            >
+              {t('header.signIn')}
+            </button>
+            <button
+              type="button"
+              className="btn-sm-accent"
+              onClick={() => openModal('register')}
+            >
+              {t('header.startTrial')}
+            </button>
+          </>
+        )}
       </div>
-    </header>
+    </nav>
   );
 }

@@ -1,48 +1,108 @@
-import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { Check } from 'lucide-react';
-import { Button } from '@/shared/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+import { useAuthModalStore } from '@/shared/stores/auth-modal.store';
+
+interface Plan {
+  key: string;
+  popular?: boolean;
+}
+
+const PLANS: Plan[] = [
+  { key: 'starter' },
+  { key: 'business', popular: true },
+  { key: 'enterprise' },
+];
 
 export function PricingSection() {
   const { t } = useTranslation('landing');
+  const openModal = useAuthModalStore((s) => s.open);
 
   return (
-    <section className="py-20">
-      <div className="mx-auto max-w-3xl px-4 text-center">
-        <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-          {t('pricing.title')}
-        </h2>
-        <p className="mt-4 text-lg text-muted-foreground">
-          {t('pricing.subtitle')}
-        </p>
+    <section
+      id="pricing"
+      style={{ padding: '96px 24px', borderTop: '1px solid var(--border)' }}
+    >
+      <div className="landing-container">
+        <div style={{ textAlign: 'center' }} className="reveal">
+          <div className="landing-section-label">{t('pricing.label')}</div>
+          <h2 className="landing-section-title">{t('pricing.title')}</h2>
+          <p className="landing-section-sub" style={{ margin: '0 auto' }}>
+            {t('pricing.subtitle')}
+          </p>
+        </div>
 
-        <Card className="mt-12">
-          <CardHeader>
-            <CardTitle className="text-2xl">{t('pricing.trial')}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-center gap-2 text-muted-foreground">
-              <Check className="h-4 w-4 text-primary" />
-              <span>
-                {t('pricing.trialDetails', {
-                  users: 15,
-                  branches: 3,
-                  workPosts: 10,
-                  services: 20,
-                })}
-              </span>
-            </div>
-            <Link to="/register">
-              <Button size="lg" className="w-full sm:w-auto">
-                {t('pricing.cta')}
-              </Button>
-            </Link>
-            <p className="text-sm text-muted-foreground">
-              {t('pricing.noCard')}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="landing-pricing-grid reveal">
+          {PLANS.map(({ key, popular }) => {
+            const rawFeatures = t(`pricing.plans.${key}.features`, {
+              returnObjects: true,
+            });
+            const rawNaFeatures = t(`pricing.plans.${key}.naFeatures`, {
+              returnObjects: true,
+              defaultValue: [],
+            });
+            const features = Array.isArray(rawFeatures)
+              ? (rawFeatures as string[])
+              : [];
+            const naFeatures = Array.isArray(rawNaFeatures)
+              ? (rawNaFeatures as string[])
+              : [];
+
+            return (
+              <div
+                key={key}
+                className={`landing-plan-card${popular ? ' popular' : ''}`}
+              >
+                {popular && (
+                  <div className="landing-plan-popular-badge">
+                    {t('pricing.popular')}
+                  </div>
+                )}
+                <div className="landing-plan-name">
+                  {t(`pricing.plans.${key}.name`)}
+                </div>
+                <div className="landing-plan-desc">
+                  {t(`pricing.plans.${key}.desc`)}
+                </div>
+                <div className="landing-plan-price">
+                  <span className="landing-plan-amount">
+                    {t(`pricing.plans.${key}.price`)}
+                  </span>
+                  <span className="landing-plan-period">
+                    {t('pricing.period')}
+                  </span>
+                </div>
+                <ul className="landing-plan-features">
+                  {features.map((f) => (
+                    <li key={f}>{f}</li>
+                  ))}
+                  {naFeatures.map((f) => (
+                    <li key={f} className="na">
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  className={`landing-plan-btn${popular ? ' accent' : ''}`}
+                  onClick={() => openModal('register')}
+                >
+                  {t(`pricing.plans.${key}.cta`)}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: 28 }}>
+          <span
+            style={{
+              fontSize: 12,
+              fontFamily: "'DM Mono', monospace",
+              color: 'var(--text-tertiary)',
+            }}
+          >
+            {t('pricing.note')}
+          </span>
+        </div>
       </div>
     </section>
   );

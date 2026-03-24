@@ -176,18 +176,18 @@ function TrialBanner({
 }
 
 const PLAN_TIER_COLORS: Record<PlanTier, string> = {
-  TRIAL: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
-  STARTER: 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
-  BUSINESS: 'bg-purple-500/10 text-purple-700 dark:text-purple-400',
-  ENTERPRISE: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  TRIAL: 'bg-warning/10 text-warning',
+  STARTER: 'bg-primary/10 text-primary',
+  BUSINESS: 'bg-primary/10 text-primary',
+  ENTERPRISE: 'bg-success/10 text-success',
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: 'bg-green-500/10 text-green-700',
-  TRIALING: 'bg-yellow-500/10 text-yellow-700',
-  PAST_DUE: 'bg-red-500/10 text-red-700',
-  PAUSED: 'bg-gray-500/10 text-gray-700',
-  CANCELLED: 'bg-red-500/10 text-red-700',
+  ACTIVE: 'bg-success/10 text-success',
+  TRIALING: 'bg-warning/10 text-warning',
+  PAST_DUE: 'bg-destructive/10 text-destructive',
+  PAUSED: 'bg-muted text-muted-foreground',
+  CANCELLED: 'bg-destructive/10 text-destructive',
 };
 
 function SubscriptionSkeleton() {
@@ -241,7 +241,7 @@ function TenantIdCard({ tenantId }: { tenantId: string }) {
         >
           {copied ? (
             <>
-              <Check className="h-4 w-4 text-green-600" />
+              <Check className="h-4 w-4 text-success" />
               {t('tenantId.copied')}
             </>
           ) : (

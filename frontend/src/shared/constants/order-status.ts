@@ -4,6 +4,7 @@ export const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   [OrderStatus.BOOKED_PENDING_CONFIRMATION]: [
     OrderStatus.BOOKED,
     OrderStatus.CANCELLED,
+    OrderStatus.NO_SHOW,
   ],
   [OrderStatus.BOOKED]: [
     OrderStatus.IN_PROGRESS,
@@ -32,8 +33,8 @@ export const ORDER_STATUS_CONFIG: Record<
   },
   [OrderStatus.IN_PROGRESS]: {
     label: 'In Progress',
-    color: 'text-blue-600 dark:text-blue-400',
-    bgColor: 'bg-blue-100 dark:bg-blue-900/30',
+    color: 'text-primary',
+    bgColor: 'bg-primary/10',
   },
   [OrderStatus.COMPLETED]: {
     label: 'Completed',
