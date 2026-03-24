@@ -9,11 +9,13 @@ describe('ALLOWED_TRANSITIONS', () => {
     }
   });
 
-  it('BOOKED_PENDING_CONFIRMATION can go to BOOKED or CANCELLED', () => {
-    const allowed = ALLOWED_TRANSITIONS[OrderStatus.BOOKED_PENDING_CONFIRMATION];
+  it('BOOKED_PENDING_CONFIRMATION can go to BOOKED, CANCELLED, or NO_SHOW', () => {
+    const allowed =
+      ALLOWED_TRANSITIONS[OrderStatus.BOOKED_PENDING_CONFIRMATION];
     expect(allowed).toContain(OrderStatus.BOOKED);
     expect(allowed).toContain(OrderStatus.CANCELLED);
-    expect(allowed).toHaveLength(2);
+    expect(allowed).toContain(OrderStatus.NO_SHOW);
+    expect(allowed).toHaveLength(3);
   });
 
   it('BOOKED can go to IN_PROGRESS, CANCELLED, or NO_SHOW', () => {
@@ -39,7 +41,9 @@ describe('ALLOWED_TRANSITIONS', () => {
 
   it('no transition leads to BOOKED_PENDING_CONFIRMATION', () => {
     for (const transitions of Object.values(ALLOWED_TRANSITIONS)) {
-      expect(transitions).not.toContain(OrderStatus.BOOKED_PENDING_CONFIRMATION);
+      expect(transitions).not.toContain(
+        OrderStatus.BOOKED_PENDING_CONFIRMATION,
+      );
     }
   });
 });
