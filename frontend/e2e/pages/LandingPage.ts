@@ -11,17 +11,17 @@ export class LandingPage {
 
   constructor(private readonly page: Page) {
     this.signInButton = page
-      .locator('header')
+      .locator('nav')
       .getByRole('button', { name: /sign in/i });
     this.getStartedButton = page
-      .locator('header')
-      .getByRole('button', { name: /get started/i });
+      .locator('nav')
+      .getByRole('button', { name: /start free trial/i });
     this.goToPlatformButton = page
-      .locator('header')
-      .getByRole('button', { name: /go to platform/i });
+      .locator('nav')
+      .getByRole('link', { name: /go to platform/i });
     this.heroHeading = page.locator('section h1').first();
     this.heroCtaButton = page.getByRole('button', {
-      name: /start free trial/i,
+      name: /start free/i,
     });
     this.featuresSection = page.locator('#features');
     this.pricingSection = page.locator('#pricing');

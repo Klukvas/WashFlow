@@ -42,12 +42,13 @@ test.describe('Landing Page (unauthenticated)', () => {
     await expect(modal.registerSubmit).toBeVisible();
   });
 
-  test('WashFlow branding is visible in header', async ({ page }) => {
+  test('WashFlow branding is visible in nav', async ({ page }) => {
     const landing = new LandingPage(page);
     await landing.goto();
 
-    await expect(page.getByText('WashFlow', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('Powered by FluxLab').first()).toBeVisible();
+    await expect(
+      page.getByText('WashFlow', { exact: true }).first(),
+    ).toBeVisible();
   });
 });
 
