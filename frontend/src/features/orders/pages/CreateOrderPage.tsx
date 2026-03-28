@@ -420,7 +420,10 @@ export function CreateOrderPage() {
       />
 
       {/* Step indicator */}
-      <div className="mb-6 flex items-center gap-2 overflow-x-auto">
+      <div
+        data-testid="step-indicator"
+        className="mb-6 flex items-center gap-2 overflow-x-auto"
+      >
         {currentSteps.map(({ id, labelKey }, i) => (
           <div key={`${id}-${i}`} className="flex items-center gap-2">
             <div

@@ -7,10 +7,10 @@ setup('register fresh user', async ({ page }) => {
 
   await page.goto('/');
 
-  // Click "Get Started" on landing header to open register modal
+  // Click "Start free trial" on landing nav to open register modal
   await page
-    .locator('header')
-    .getByRole('button', { name: /get started/i })
+    .locator('.landing-nav')
+    .getByRole('button', { name: /start free trial/i })
     .click();
 
   // Fill registration form inside the modal

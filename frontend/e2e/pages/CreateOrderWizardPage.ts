@@ -14,7 +14,9 @@ export class CreateOrderWizardPage {
     this.modeClientFirst = page.getByText(/start from client/i);
     this.modeTimeFirst = page.getByText(/start from time/i);
     this.modeServiceFirst = page.getByText(/start from service/i);
-    this.stepIndicator = page.locator('.rounded-full');
+    this.stepIndicator = page.locator(
+      '[data-testid="step-indicator"] .rounded-full',
+    );
     this.nextButton = page.getByRole('button', { name: /next/i });
     this.backButton = page.getByRole('button', { name: /back/i });
     this.changeModeButton = page.getByRole('button', {
