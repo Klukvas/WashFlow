@@ -3,8 +3,11 @@ import { test, expect } from '@playwright/test';
 /** Wait for branch options to load, then select the first one */
 async function selectFirstBranch(page: import('@playwright/test').Page) {
   const branchSelect = page.locator('select').first();
+  // Wait for at least 2 options (placeholder + real branch) with generous timeout for CI
+  await expect(branchSelect.locator('option')).not.toHaveCount(1, {
+    timeout: 15_000,
+  });
   const options = branchSelect.locator('option:not([disabled])');
-  await expect(options.first()).toBeAttached({ timeout: 10_000 });
   const val = await options.first().getAttribute('value');
   if (val) await branchSelect.selectOption(val);
   return branchSelect;

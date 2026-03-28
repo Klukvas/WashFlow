@@ -108,7 +108,9 @@ test.describe('Flexible Order Wizard', () => {
     // Step 0: Select branch (wait for options to load)
     const branchSelect = page.locator('select').first();
     const firstOption = branchSelect.locator('option:not([disabled])').first();
-    await expect(firstOption).toBeAttached({ timeout: 10_000 });
+    await expect(branchSelect.locator('option')).not.toHaveCount(1, {
+      timeout: 15_000,
+    });
     const branchVal = await firstOption.getAttribute('value');
     if (branchVal) await branchSelect.selectOption(branchVal);
 
@@ -182,7 +184,9 @@ test.describe('Flexible Order Wizard', () => {
     // Select branch to enable Next (wait for options to load)
     const branchSelect = page.locator('select').first();
     const firstOption = branchSelect.locator('option:not([disabled])').first();
-    await expect(firstOption).toBeAttached({ timeout: 10_000 });
+    await expect(branchSelect.locator('option')).not.toHaveCount(1, {
+      timeout: 15_000,
+    });
     const val = await firstOption.getAttribute('value');
     if (val) await branchSelect.selectOption(val);
 

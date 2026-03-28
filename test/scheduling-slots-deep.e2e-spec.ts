@@ -1660,8 +1660,9 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
 
   describe('Flow 39: Saturday booking (workingDays boundary)', () => {
     it('Saturday booking succeeds on default settings (day 6 in workingDays)', async () => {
-      // Find next Saturday within max advance period
+      // Find next Saturday within max advance period (always at least 1 day ahead)
       const saturday = new Date();
+      saturday.setUTCDate(saturday.getUTCDate() + 1);
       while (saturday.getUTCDay() !== 6) {
         saturday.setUTCDate(saturday.getUTCDate() + 1);
       }
@@ -1678,6 +1679,7 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
 
     it('availability returns slots for Saturday', async () => {
       const saturday = new Date();
+      saturday.setUTCDate(saturday.getUTCDate() + 1);
       while (saturday.getUTCDay() !== 6) {
         saturday.setUTCDate(saturday.getUTCDate() + 1);
       }
