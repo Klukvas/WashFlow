@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { CustomThrottlerGuard } from '../../src/common/guards/custom-throttler.guard';
 import cookieParser from 'cookie-parser';
 import * as argon2 from 'argon2';
 import request from 'supertest';
@@ -183,7 +183,7 @@ export async function createTestApp(slug: string): Promise<TestSetup> {
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [AppModule],
   })
-    .overrideGuard(ThrottlerGuard)
+    .overrideGuard(CustomThrottlerGuard)
     .useValue({ canActivate: () => true })
     .compile();
 

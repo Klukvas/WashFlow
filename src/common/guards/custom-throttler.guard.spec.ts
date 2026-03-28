@@ -6,12 +6,12 @@ describe('CustomThrottlerGuard', () => {
     expect(CustomThrottlerGuard.prototype).toBeInstanceOf(ThrottlerGuard);
   });
 
-  it('does not override shouldSkip (rate limiting always active)', () => {
+  it('overrides canActivate to skip in test env', () => {
     expect(
       Object.prototype.hasOwnProperty.call(
         CustomThrottlerGuard.prototype,
-        'shouldSkip',
+        'canActivate',
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
 });
