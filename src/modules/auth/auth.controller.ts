@@ -12,6 +12,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
+import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -26,6 +27,7 @@ import type { JwtPayload } from '../../common/types/jwt-payload.type';
 const REFRESH_COOKIE = 'refresh_token';
 const COOKIE_PATH = '/api/v1/auth';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(

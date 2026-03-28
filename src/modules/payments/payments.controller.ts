@@ -16,7 +16,9 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { IdempotencyInterceptor } from '../idempotency/idempotency.interceptor';
 import { PaymentsService } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Payments')
 @Controller('orders/:orderId/payments')
 @UseGuards(PermissionsGuard)
 export class PaymentsController {

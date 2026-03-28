@@ -18,6 +18,7 @@ export class PrismaService
   constructor(config: ConfigService) {
     const adapter = new PrismaPg({
       connectionString: config.get<string>('database.url')!,
+      max: 15, // connection pool size
     });
     super({
       adapter,

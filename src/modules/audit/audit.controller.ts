@@ -5,7 +5,9 @@ import { CurrentTenant } from '../../common/decorators/current-tenant.decorator'
 import { CurrentBranch } from '../../common/decorators/current-branch.decorator';
 import { AuditService } from './audit.service';
 import { AuditQueryDto } from './dto/audit-query.dto';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Audit Log')
 @Controller('audit-logs')
 @UseGuards(PermissionsGuard)
 export class AuditController {

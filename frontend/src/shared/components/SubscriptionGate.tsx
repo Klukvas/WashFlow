@@ -9,6 +9,7 @@ import { PERMISSIONS } from '@/shared/constants/permissions';
 import { ROUTES } from '@/shared/constants/routes';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { Card, CardContent } from '@/shared/ui/card';
+import { ErrorBoundary } from '@/shared/components/ErrorBoundary';
 
 const ALLOWED_WHEN_EXPIRED = [
   ROUTES.SUBSCRIPTION,
@@ -55,7 +56,11 @@ export function SubscriptionGate() {
 
   // Super admins always pass through
   if (isSuperAdmin) {
-    return <Outlet />;
+    return (
+      <ErrorBoundary>
+        <Outlet />
+      </ErrorBoundary>
+    );
   }
 
   // Show skeleton while loading (prevents flash of protected content)
@@ -65,7 +70,11 @@ export function SubscriptionGate() {
 
   // On error or no data → pass through (don't lock user out)
   if (isError || !data) {
-    return <Outlet />;
+    return (
+      <ErrorBoundary>
+        <Outlet />
+      </ErrorBoundary>
+    );
   }
 
   // Check if trial is expired
@@ -75,12 +84,20 @@ export function SubscriptionGate() {
       if (!ALLOWED_WHEN_EXPIRED.some((p) => location.pathname === p)) {
         return <Navigate to={ROUTES.SUBSCRIPTION} replace />;
       }
-      return <Outlet />;
+      return (
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
+      );
     }
 
     // Users without tenants.read → show blocking screen (can't manage subscription)
     return <ExpiredBlockingScreen />;
   }
 
-  return <Outlet />;
+  return (
+    <ErrorBoundary>
+      <Outlet />
+    </ErrorBoundary>
+  );
 }

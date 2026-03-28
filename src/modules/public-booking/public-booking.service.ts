@@ -142,6 +142,37 @@ export class PublicBookingService {
       throw new ForbiddenException('Online booking is not available');
     }
 
+    // Pre-check slot availability before creating client/vehicle
+    // to fail fast and avoid orphan records.
+    // Note: the actual reservation is done atomically inside ordersService.create
+    // via a Serializable transaction, which prevents double-booking.
+    if (dto.workPostId) {
+      const services = await this.servicesRepo.findByIds(
+        tenantId,
+        dto.serviceIds,
+      );
+      const totalDuration = services.reduce(
+        (sum, s) => sum + (s.durationMin ?? 0),
+        0,
+      );
+      const scheduledStart = new Date(dto.scheduledStart);
+      const scheduledEnd = new Date(
+        scheduledStart.getTime() + totalDuration * 60000,
+      );
+      const isAvailable = await this.schedulingService.validateNoOverlap(
+        tenantId,
+        dto.workPostId,
+        scheduledStart,
+        scheduledEnd,
+        settings.bufferTimeMinutes,
+      );
+      if (!isAvailable) {
+        throw new ConflictException(
+          'This time slot just became unavailable. Please select a different time.',
+        );
+      }
+    }
+
     // Find or create client + vehicle inside a serializable transaction
     // to prevent race conditions with concurrent bookings
     const { client, vehicle } = await this.prisma.$transaction(
@@ -188,7 +219,9 @@ export class PublicBookingService {
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
 
-    // Delegate to OrdersService with source WEB
+    // Delegate to OrdersService with source WEB.
+    // ordersService.create uses a Serializable transaction internally
+    // with row-level locking (reserveSlot) to prevent double-booking.
     try {
       return await this.ordersService.create(
         tenantId,

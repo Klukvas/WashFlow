@@ -23,7 +23,9 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import { SchedulingService } from '../scheduling/scheduling.service';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Orders')
 @Controller('orders')
 @UseGuards(PermissionsGuard)
 export class OrdersController {

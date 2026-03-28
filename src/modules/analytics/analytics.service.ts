@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { AnalyticsRepository } from './analytics.repository';
 import { AnalyticsQueryDto } from './dto/analytics-query.dto';
 
@@ -6,11 +6,31 @@ import { AnalyticsQueryDto } from './dto/analytics-query.dto';
 export class AnalyticsService {
   constructor(private readonly analyticsRepo: AnalyticsRepository) {}
 
+  /**
+   * If the user's JWT contains a branchId, reject any query param
+   * that tries to request data for a different branch.
+   */
+  private validateBranchScope(
+    userBranchId: string | null,
+    query: AnalyticsQueryDto,
+  ): void {
+    if (
+      userBranchId !== null &&
+      query.branchId &&
+      query.branchId !== userBranchId
+    ) {
+      throw new ForbiddenException(
+        'You do not have access to the requested branch',
+      );
+    }
+  }
+
   async getDashboard(
     tenantId: string,
     query: AnalyticsQueryDto,
     branchId: string | null = null,
   ) {
+    this.validateBranchScope(branchId, query);
     return this.analyticsRepo.getDashboardStats(tenantId, query, branchId);
   }
 
@@ -19,6 +39,7 @@ export class AnalyticsService {
     query: AnalyticsQueryDto,
     branchId: string | null = null,
   ) {
+    this.validateBranchScope(branchId, query);
     return this.analyticsRepo.getRevenueByStatus(tenantId, query, branchId);
   }
 
@@ -27,6 +48,7 @@ export class AnalyticsService {
     query: AnalyticsQueryDto,
     branchId: string | null = null,
   ) {
+    this.validateBranchScope(branchId, query);
     return this.analyticsRepo.getPopularServices(tenantId, query, branchId);
   }
 
@@ -35,6 +57,7 @@ export class AnalyticsService {
     query: AnalyticsQueryDto,
     branchId: string | null = null,
   ) {
+    this.validateBranchScope(branchId, query);
     return this.analyticsRepo.getKpi(tenantId, query, branchId);
   }
 
@@ -47,6 +70,7 @@ export class AnalyticsService {
     query: AnalyticsQueryDto,
     branchId: string | null = null,
   ) {
+    this.validateBranchScope(branchId, query);
     return this.analyticsRepo.getBranchPerformance(tenantId, query, branchId);
   }
 
@@ -55,6 +79,7 @@ export class AnalyticsService {
     query: AnalyticsQueryDto,
     branchId: string | null = null,
   ) {
+    this.validateBranchScope(branchId, query);
     return this.analyticsRepo.getEmployeePerformance(tenantId, query, branchId);
   }
 
@@ -63,6 +88,7 @@ export class AnalyticsService {
     query: AnalyticsQueryDto,
     branchId: string | null = null,
   ) {
+    this.validateBranchScope(branchId, query);
     return this.analyticsRepo.getAlerts(tenantId, query, branchId);
   }
 
@@ -71,6 +97,7 @@ export class AnalyticsService {
     query: AnalyticsQueryDto,
     branchId: string | null = null,
   ) {
+    this.validateBranchScope(branchId, query);
     return this.analyticsRepo.getOnlineBookingStats(tenantId, query, branchId);
   }
 }

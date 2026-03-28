@@ -7,6 +7,7 @@ import {
 import { WorkPostsService } from './work-posts.service';
 import { WorkPostsRepository } from './work-posts.repository';
 import { SubscriptionLimitsService } from '../subscriptions/subscription-limits.service';
+import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 
 describe('WorkPostsService', () => {
   let service: WorkPostsService;
@@ -52,6 +53,14 @@ describe('WorkPostsService', () => {
           useValue: {
             checkLimit: jest.fn().mockResolvedValue(undefined),
             getUsage: jest.fn(),
+          },
+        },
+        {
+          provide: TenantPrismaService,
+          useValue: {
+            forTenant: jest.fn().mockReturnValue({
+              workPost: { findFirst: jest.fn().mockResolvedValue(null) },
+            }),
           },
         },
       ],

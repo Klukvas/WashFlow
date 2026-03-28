@@ -19,7 +19,9 @@ import { CreateBranchDto } from './dto/create-branch.dto';
 import { UpdateBranchDto } from './dto/update-branch.dto';
 import { UpdateBookingSettingsDto } from './dto/booking-settings.dto';
 import { PaginationDto } from '../../common/utils/pagination.dto';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Branches')
 @Controller('branches')
 @UseGuards(PermissionsGuard)
 export class BranchesController {

@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   Inject,
   Injectable,
   Logger,
@@ -18,6 +19,7 @@ import {
   type PlanDefinition,
   type AddonDefinition,
 } from './plan.constants';
+import { CircuitOpenError } from '../../common/utils/circuit-breaker';
 
 export interface CachedPlanCatalog {
   plans: Array<{
@@ -92,7 +94,19 @@ export class PaddlePriceCacheService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    const paddlePrices = await this.paddleService.fetchAllPrices(allPriceIds);
+    let paddlePrices: Map<string, PaddlePriceInfo>;
+    try {
+      paddlePrices = await this.paddleService.fetchAllPrices(allPriceIds);
+    } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        this.logger.warn(
+          'Paddle circuit breaker is OPEN — skipping price cache refresh, using stale/fallback values',
+        );
+        return;
+      }
+      throw error;
+    }
+
     const catalog = this.buildCatalog(paddlePrices);
 
     await this.redis.set(
@@ -229,7 +243,9 @@ export class PaddlePriceCacheService implements OnModuleInit, OnModuleDestroy {
 function centsToDollars(cents: string): number {
   const value = Number(cents);
   if (!Number.isFinite(value)) {
-    throw new Error(`Invalid price amount from Paddle: ${cents}`);
+    throw new BadGatewayException(
+      `Invalid price amount received from Paddle: ${cents}`,
+    );
   }
   return value / 100;
 }

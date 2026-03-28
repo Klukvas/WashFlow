@@ -16,7 +16,9 @@ import { RolesService } from './roles.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { AssignPermissionsDto } from './dto/assign-permissions.dto';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Roles')
 @Controller('roles')
 @UseGuards(PermissionsGuard)
 export class RolesController {

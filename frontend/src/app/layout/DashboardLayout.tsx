@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { ErrorBoundary } from '@/shared/components/ErrorBoundary';
 import { SubscriptionGate } from '@/shared/components/SubscriptionGate';
+import { SupportButton } from '@/features/support/components/SupportButton';
 
 export function DashboardLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -62,11 +62,11 @@ export function DashboardLayout() {
           }}
         />
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          <ErrorBoundary>
-            <SubscriptionGate />
-          </ErrorBoundary>
+          <SubscriptionGate />
         </main>
       </div>
+
+      <SupportButton />
     </div>
   );
 }

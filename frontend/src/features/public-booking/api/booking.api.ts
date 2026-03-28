@@ -1,11 +1,24 @@
-import axios from 'axios';
-import type { ApiResponse, TimeSlot } from '@/shared/types/api';
+import axios, { type AxiosError } from 'axios';
+import type { ApiError, ApiResponse, TimeSlot } from '@/shared/types/api';
 import type { Service, Branch, Order } from '@/shared/types/models';
 
 const publicClient = axios.create({
   baseURL: '/api/v1/public/booking',
   headers: { 'Content-Type': 'application/json' },
 });
+
+publicClient.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError<ApiError>) => {
+    const serverMessage = error.response?.data?.message;
+    if (serverMessage) {
+      error.message = Array.isArray(serverMessage)
+        ? serverMessage.join('. ')
+        : serverMessage;
+    }
+    return Promise.reject(error);
+  },
+);
 
 export interface CheckAvailabilityParams {
   branchId: string;

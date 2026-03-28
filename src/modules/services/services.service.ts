@@ -40,7 +40,10 @@ export class ServicesService {
   }
 
   async softDelete(tenantId: string, id: string) {
-    await this.findById(tenantId, id);
+    const service = await this.findById(tenantId, id);
+    if (service.deletedAt !== null) {
+      throw new BadRequestException('Service is already deleted');
+    }
     return this.servicesRepo.softDelete(tenantId, id);
   }
 

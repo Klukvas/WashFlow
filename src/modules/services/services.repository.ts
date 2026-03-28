@@ -12,7 +12,10 @@ export class ServicesRepository {
 
   private mapService<T extends { price?: any }>(service: T): T {
     if (service && service.price != null) {
-      return { ...service, price: Number(service.price) };
+      return {
+        ...service,
+        price: Math.round(Number(service.price) * 100) / 100,
+      };
     }
     return service;
   }

@@ -45,7 +45,7 @@ function buildCorsOrigin(
 
 @WebSocketGateway({
   namespace: '/events',
-  cors: { origin: true, credentials: true },
+  // CORS is configured dynamically in afterInit() via buildCorsOrigin()
 })
 export class RealtimeGateway
   implements

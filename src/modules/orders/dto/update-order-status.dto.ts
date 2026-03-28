@@ -1,6 +1,6 @@
 import {
   IsEnum,
-  IsOptional,
+  IsNotEmpty,
   IsString,
   ValidateIf,
   MaxLength,
@@ -12,7 +12,9 @@ export class UpdateOrderStatusDto {
   status: OrderStatus;
 
   @ValidateIf((o: UpdateOrderStatusDto) => o.status === 'CANCELLED')
-  @IsOptional()
+  @IsNotEmpty({
+    message: 'Cancellation reason is required when cancelling an order',
+  })
   @IsString()
   @MaxLength(1000)
   cancellationReason?: string;

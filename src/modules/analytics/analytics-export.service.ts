@@ -1,9 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AnalyticsQueryDto } from './dto/analytics-query.dto';
 
+/** Max records per batch to limit memory usage during CSV export. */
+const EXPORT_BATCH_SIZE = 2000;
+/** Hard cap on total exported records. */
+const EXPORT_MAX_RECORDS = 10_000;
+
 @Injectable()
 export class AnalyticsExportService {
+  private readonly logger = new Logger(AnalyticsExportService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async exportOrdersCsv(
@@ -26,8 +33,7 @@ export class AnalyticsExportService {
       };
     }
 
-    const orders = await this.prisma.order.findMany({
-      where,
+    const orders = await this.fetchInBatches('order', where, {
       include: {
         client: true,
         vehicle: true,
@@ -35,7 +41,6 @@ export class AnalyticsExportService {
         services: { include: { service: true } },
       },
       orderBy: { scheduledStart: 'desc' },
-      take: 10000,
     });
 
     const headers = [
@@ -53,7 +58,8 @@ export class AnalyticsExportService {
       'Source',
     ];
 
-    const rows = orders.map((order) => [
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows = orders.map((order: any) => [
       order.id,
       order.scheduledStart.toISOString(),
       order.status,
@@ -63,7 +69,8 @@ export class AnalyticsExportService {
       `${order.vehicle.make} ${order.vehicle.model ?? ''}`.trim(),
       order.vehicle.licensePlate ?? '',
       order.branch.name,
-      order.services.map((s) => s.service.name).join('; '),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      order.services.map((s: any) => s.service.name).join('; '),
       order.totalPrice.toString(),
       order.source,
     ]);
@@ -78,8 +85,7 @@ export class AnalyticsExportService {
   ): Promise<string> {
     const where: Record<string, unknown> = { tenantId, deletedAt: null };
 
-    const clients = await this.prisma.client.findMany({
-      where,
+    const clients = await this.fetchInBatches('client', where, {
       include: {
         vehicles: { where: { deletedAt: null } },
         orders: {
@@ -97,7 +103,6 @@ export class AnalyticsExportService {
         },
       },
       orderBy: { createdAt: 'desc' },
-      take: 10000,
     });
 
     const headers = [
@@ -113,12 +118,15 @@ export class AnalyticsExportService {
       'Created At',
     ];
 
-    const rows = clients.map((client) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows = clients.map((client: any) => {
       const completedOrders = client.orders.filter(
-        (o) => o.status === 'COMPLETED',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (o: any) => o.status === 'COMPLETED',
       );
       const totalRevenue = completedOrders.reduce(
-        (sum, o) => sum + Number(o.totalPrice),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (sum: number, o: any) => sum + Number(o.totalPrice),
         0,
       );
       return [
@@ -136,6 +144,61 @@ export class AnalyticsExportService {
     });
 
     return toCsv(headers, rows);
+  }
+  /**
+   * Fetches records in batches using cursor-based pagination to avoid
+   * loading all records into memory at once.
+   * Hard-capped at EXPORT_MAX_RECORDS total records.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private async fetchInBatches(
+    model: 'order' | 'client',
+    where: Record<string, unknown>,
+    options: Record<string, unknown>,
+  ): Promise<any[]> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const results: any[] = [];
+    let cursor: string | undefined;
+
+    while (results.length < EXPORT_MAX_RECORDS) {
+      const take = Math.min(
+        EXPORT_BATCH_SIZE,
+        EXPORT_MAX_RECORDS - results.length,
+      );
+
+      // Ensure stable cursor pagination with id tiebreaker
+      const orderBy = options.orderBy
+        ? [
+            ...(Array.isArray(options.orderBy)
+              ? options.orderBy
+              : [options.orderBy]),
+            { id: 'asc' as const },
+          ]
+        : [{ id: 'asc' as const }];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const batch: any[] = await (this.prisma[model] as any).findMany({
+        where,
+        ...options,
+        orderBy,
+        take,
+        ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      });
+
+      if (batch.length === 0) break;
+
+      results.push(...batch);
+      cursor = batch[batch.length - 1].id;
+
+      if (batch.length < take) break;
+    }
+
+    if (results.length >= EXPORT_MAX_RECORDS) {
+      this.logger.warn(
+        `Export hit ${EXPORT_MAX_RECORDS} record cap for model "${model}"`,
+      );
+    }
+
+    return results;
   }
 }
 

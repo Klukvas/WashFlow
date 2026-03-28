@@ -5,6 +5,7 @@ import { join } from 'path';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Logger as PinoLogger } from 'nestjs-pino';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
@@ -45,6 +46,10 @@ async function bootstrap() {
     }),
   );
   app.use(cookieParser());
+  // CSRF protection is not required: this is a stateless JSON API using JWT
+  // Bearer tokens for authentication. Refresh tokens are stored in httpOnly
+  // cookies with sameSite=lax|strict, which prevents cross-origin cookie
+  // submission. No server-rendered HTML forms are served.
   app.useStaticAssets(join(__dirname, '..', 'uploads'), { prefix: '/uploads' });
 
   const corsOrigins = config.get<string>('corsOrigins', '*');
@@ -74,10 +79,25 @@ async function bootstrap() {
     }),
   );
 
-  app.useGlobalFilters(new AllExceptionsFilter(), new PrismaExceptionFilter());
+  app.useGlobalFilters(
+    new AllExceptionsFilter(config),
+    new PrismaExceptionFilter(),
+  );
   app.useGlobalInterceptors(new TransformInterceptor());
 
   app.enableShutdownHooks();
+
+  if (nodeEnv !== 'production') {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('WashFlow API')
+      .setDescription('Car wash management platform API')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document);
+    logger.log('Swagger UI available at /api/docs');
+  }
 
   const port = config.get<number>('port', 3000);
 

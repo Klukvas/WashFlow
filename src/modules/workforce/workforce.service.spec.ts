@@ -37,6 +37,7 @@ describe('EmployeeProfileService', () => {
   let prismaMock: {
     user: { findFirst: jest.Mock };
     branch: { findFirst: jest.Mock };
+    order: { count: jest.Mock };
   };
 
   beforeEach(async () => {
@@ -57,6 +58,9 @@ describe('EmployeeProfileService', () => {
       },
       branch: {
         findFirst: jest.fn().mockResolvedValue({ id: branchId, tenantId }),
+      },
+      order: {
+        count: jest.fn().mockResolvedValue(0),
       },
     };
 

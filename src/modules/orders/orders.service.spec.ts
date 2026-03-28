@@ -92,6 +92,8 @@ describe('OrdersService', () => {
     workPost: { findMany: jest.Mock };
     user: { findFirst: jest.Mock };
     employeeProfile: { findFirst: jest.Mock };
+    client: { findFirst: jest.Mock };
+    vehicle: { findFirst: jest.Mock };
   };
   let mockTx: {
     order: {
@@ -164,6 +166,18 @@ describe('OrdersService', () => {
         findFirst: jest
           .fn()
           .mockResolvedValue({ id: 'emp-1', tenantId: TENANT_ID }),
+      },
+      client: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({ id: 'client-uuid-1', tenantId: TENANT_ID }),
+      },
+      vehicle: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'vehicle-uuid-1',
+          tenantId: TENANT_ID,
+          clientId: 'client-uuid-1',
+        }),
       },
     };
 

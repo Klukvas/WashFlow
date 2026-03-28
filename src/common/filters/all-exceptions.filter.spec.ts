@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AllExceptionsFilter } from './all-exceptions.filter';
 
 // ---------------------------------------------------------------------------
@@ -39,18 +40,22 @@ const captureBody = (mockJson: jest.Mock): Record<string, unknown> =>
 // Tests
 // ---------------------------------------------------------------------------
 
+const buildConfig = (nodeEnv = 'test'): ConfigService => {
+  const map: Record<string, string> = { nodeEnv };
+  return { get: (key: string) => map[key] } as unknown as ConfigService;
+};
+
 describe('AllExceptionsFilter', () => {
   let filter: AllExceptionsFilter;
   let loggerErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    filter = new AllExceptionsFilter();
+    filter = new AllExceptionsFilter(buildConfig());
     loggerErrorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
   });
 
   afterEach(() => {
     jest.clearAllMocks();
-    delete process.env.NODE_ENV;
   });
 
   // -------------------------------------------------------------------------
@@ -210,27 +215,30 @@ describe('AllExceptionsFilter', () => {
 
   describe('plain Error exception', () => {
     it('exposes the error message in development mode', () => {
-      process.env.NODE_ENV = 'development';
+      const devFilter = new AllExceptionsFilter(buildConfig('development'));
       const { host, mockJson } = buildHost();
-      filter.catch(new Error('Something broke'), host as never);
+      devFilter.catch(new Error('Something broke'), host as never);
       const body = captureBody(mockJson);
       expect(body.message).toBe('Something broke');
     });
 
     it('hides the error message in production mode', () => {
-      process.env.NODE_ENV = 'production';
+      const prodFilter = new AllExceptionsFilter(buildConfig('production'));
       const { host, mockJson } = buildHost();
-      filter.catch(new Error('DB credentials: admin/secret'), host as never);
+      prodFilter.catch(
+        new Error('DB credentials: admin/secret'),
+        host as never,
+      );
       const body = captureBody(mockJson);
       expect(body.message).toBe('Internal server error');
     });
 
     it('hides the error message in "test" mode (only development exposes it)', () => {
-      process.env.NODE_ENV = 'test';
+      // Default filter uses 'test' env
       const { host, mockJson } = buildHost();
       filter.catch(new Error('Sensitive detail'), host as never);
       const body = captureBody(mockJson);
-      // The implementation exposes the message only when NODE_ENV === 'development';
+      // The implementation exposes the message only when nodeEnv === 'development';
       // every other value, including 'test', returns the generic message.
       expect(body.message).toBe('Internal server error');
     });

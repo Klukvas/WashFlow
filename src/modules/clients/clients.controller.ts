@@ -20,7 +20,9 @@ import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { MergeClientDto } from './dto/merge-client.dto';
 import { ClientQueryDto } from './dto/client-query.dto';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Clients')
 @Controller('clients')
 @UseGuards(PermissionsGuard)
 export class ClientsController {

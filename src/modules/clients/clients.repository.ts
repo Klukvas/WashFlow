@@ -48,13 +48,20 @@ export class ClientsRepository {
   }
 
   async findById(tenantId: string, id: string) {
-    return this.db(tenantId).client.findFirst({
-      where: { id },
-      include: {
-        vehicles: true,
-        orders: { take: 10, orderBy: { createdAt: 'desc' } },
-      },
-    });
+    const db = this.db(tenantId);
+    const [client, totalOrders] = await Promise.all([
+      db.client.findFirst({
+        where: { id },
+        include: {
+          vehicles: true,
+          // Limit to the 10 most recent orders for the detail view
+          orders: { take: 10, orderBy: { createdAt: 'desc' } },
+        },
+      }),
+      db.order.count({ where: { clientId: id, deletedAt: null } }),
+    ]);
+    if (!client) return null;
+    return { ...client, totalOrders };
   }
 
   async create(tenantId: string, data: Record<string, unknown>) {

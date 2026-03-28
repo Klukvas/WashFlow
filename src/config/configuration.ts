@@ -66,6 +66,11 @@ export default () => {
     features: {
       paymentsEnabled: env.PAYMENTS_ENABLED,
     },
+
+    telegram: {
+      botToken: env.TELEGRAM_BOT_TOKEN ?? '',
+      supportChatId: env.TELEGRAM_SUPPORT_CHAT_ID ?? '',
+    },
   } as const;
 };
 

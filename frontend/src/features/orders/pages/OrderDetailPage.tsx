@@ -46,6 +46,43 @@ export function OrderDetailPage() {
     );
   }
 
+  if (order.deletedAt) {
+    return (
+      <div className="space-y-4">
+        <PageHeader
+          title={t('orderDetail')}
+          actions={
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/orders')}
+              >
+                <ArrowLeft className="mr-1 h-4 w-4" />
+                {tc('actions.back')}
+              </Button>
+              <PermissionGate permission={PERMISSIONS.ORDERS.UPDATE}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => restoreOrderMut(order.id)}
+                  loading={restoring}
+                >
+                  <RotateCcw className="mr-1 h-4 w-4" />
+                  {tc('actions.restore')}
+                </Button>
+              </PermissionGate>
+            </div>
+          }
+        />
+        <div className="py-12 text-center">
+          <SoftDeleteBadge deletedAt={order.deletedAt} />
+          <p className="mt-4 text-muted-foreground">{t('deletedOrder')}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <PageHeader
@@ -114,22 +151,28 @@ export function OrderDetailPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {order.services?.map((s) => (
-                  <div
-                    key={s.id}
-                    className="flex items-center justify-between rounded-md bg-muted/50 px-4 py-3"
-                  >
-                    <div>
-                      <p className="font-medium">{s.service.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatDuration(s.service.durationMin)}
-                      </p>
+                {order.services && order.services.length > 0 ? (
+                  order.services.map((s) => (
+                    <div
+                      key={s.id}
+                      className="flex items-center justify-between rounded-md bg-muted/50 px-4 py-3"
+                    >
+                      <div>
+                        <p className="font-medium">{s.service.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDuration(s.service.durationMin)}
+                        </p>
+                      </div>
+                      <span className="font-semibold">
+                        {formatCurrency(s.price)}
+                      </span>
                     </div>
-                    <span className="font-semibold">
-                      {formatCurrency(s.price)}
-                    </span>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {t('noServices')}
+                  </p>
+                )}
                 <div className="flex items-center justify-between border-t border-border pt-3 font-semibold">
                   <span>{t('fields.totalPrice')}</span>
                   <span>{formatCurrency(order.totalPrice)}</span>

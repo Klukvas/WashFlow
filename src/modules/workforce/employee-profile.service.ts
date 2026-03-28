@@ -94,6 +94,21 @@ export class EmployeeProfileService {
         'Deactivate the employee profile before deleting',
       );
     }
+
+    const activeOrdersCount = await this.prisma.order.count({
+      where: {
+        assignedEmployeeId: id,
+        tenantId,
+        deletedAt: null,
+        status: { notIn: ['COMPLETED', 'CANCELLED', 'NO_SHOW'] },
+      },
+    });
+    if (activeOrdersCount > 0) {
+      throw new BadRequestException(
+        `Cannot delete employee profile: ${activeOrdersCount} active order(s) still assigned`,
+      );
+    }
+
     return this.workforceRepo.deleteProfile(tenantId, id);
   }
 }

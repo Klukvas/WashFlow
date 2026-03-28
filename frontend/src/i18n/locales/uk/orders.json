@@ -77,12 +77,15 @@
     "startFromServiceDesc": "Спочатку оберіть послуги, потім час та клієнта",
     "branchClosed": "Цей філіал закритий у вибраний день. Будь ласка, оберіть іншу дату."
   },
+  "noServices": "Немає послуг",
+  "deletedOrder": "Це замовлення було видалено",
   "statusChange": {
     "confirm": "Підтвердити",
     "start": "Розпочати",
     "complete": "Завершити",
     "cancelOrder": "Скасувати",
     "noShow": "Не з'явився",
-    "cancellationReason": "Причина скасування"
+    "cancellationReason": "Причина скасування",
+    "confirmTransition": "Ви впевнені, що хочете змінити статус замовлення на \"{{status}}\"?"
   }
 }

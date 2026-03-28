@@ -32,7 +32,12 @@ const bookingSchema = z.object({
   serviceIds: z.array(z.string().uuid()).min(1),
   firstName: z.string().min(1),
   lastName: z.string().optional().or(z.literal('')),
-  phone: z.string().regex(/^\+?[\d\s\-()]{7,20}$/, 'Invalid phone format'),
+  phone: z
+    .string()
+    .regex(/^\+?[\d\s\-()]{7,20}$/, 'Invalid phone format')
+    .refine((val) => (val.match(/\d/g) ?? []).length >= 7, {
+      message: 'Phone must contain at least 7 digits',
+    }),
   email: z.string().email().optional().or(z.literal('')),
   licensePlate: z.string().min(1, 'License plate is required'),
   vehicleMake: z.string().optional(),
@@ -126,16 +131,21 @@ export function PublicBookingPage() {
   };
 
   if (branchesError || servicesError) {
+    const errorMessage =
+      branchesError && servicesError
+        ? t('errorLoadBoth')
+        : branchesError
+          ? t('errorLoadBranches')
+          : t('errorLoadServices');
+
     return (
       <div className="py-12 text-center">
-        <p className="text-lg text-destructive">
-          Failed to load. Please try again later.
-        </p>
+        <p className="text-lg text-destructive">{errorMessage}</p>
         <button
           className="mt-4 text-sm text-primary underline"
           onClick={() => window.location.reload()}
         >
-          Retry
+          {t('retry')}
         </button>
       </div>
     );

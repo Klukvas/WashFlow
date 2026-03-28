@@ -18,7 +18,9 @@ import { TenantsService } from './tenants.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import type { JwtPayload } from '../../common/types/jwt-payload.type';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Tenants')
 @Controller('tenants')
 @UseGuards(PermissionsGuard)
 export class TenantsController {

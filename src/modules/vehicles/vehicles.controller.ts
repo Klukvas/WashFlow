@@ -12,6 +12,8 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Logger,
+  OnModuleInit,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -19,20 +21,27 @@ import { extname } from 'path';
 import * as fs from 'fs';
 import { join } from 'path';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
-
-const UPLOADS_DIR = join(process.cwd(), 'uploads', 'vehicles');
-fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { VehiclesService } from './vehicles.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
 import { VehicleQueryDto } from './dto/vehicle-query.dto';
+import { ApiTags } from '@nestjs/swagger';
 
+const UPLOADS_DIR = join(process.cwd(), 'uploads', 'vehicles');
+
+@ApiTags('Vehicles')
 @Controller('vehicles')
 @UseGuards(PermissionsGuard)
-export class VehiclesController {
+export class VehiclesController implements OnModuleInit {
+  private readonly logger = new Logger(VehiclesController.name);
+
   constructor(private readonly vehiclesService: VehiclesService) {}
+
+  async onModuleInit(): Promise<void> {
+    await fs.promises.mkdir(UPLOADS_DIR, { recursive: true });
+  }
 
   @Get()
   @Permissions('vehicles.read')
@@ -127,7 +136,13 @@ export class VehiclesController {
       return await this.vehiclesService.updatePhoto(tenantId, id, photoUrl);
     } catch (error) {
       if (file?.path) {
-        await fs.promises.unlink(file.path).catch(() => {});
+        await fs.promises
+          .unlink(file.path)
+          .catch((err: unknown) =>
+            this.logger.warn(
+              `Failed to clean up uploaded file ${file.path}: ${String(err)}`,
+            ),
+          );
       }
       throw error;
     }

@@ -10,6 +10,7 @@ import type { WorkPost } from '@/shared/types/models';
 import { Button } from '@/shared/ui/button';
 import { Label } from '@/shared/ui/label';
 import { Select } from '@/shared/ui/select';
+import { Skeleton } from '@/shared/ui/skeleton';
 import { CardHeader, CardTitle } from '@/shared/ui/card';
 import { DatePicker } from '@/shared/ui/date-picker';
 import { formatTime } from '@/shared/utils/format';
@@ -68,7 +69,7 @@ export function StepTimeSlot({
     [selectedDate, branchBookingSettings?.workingDays],
   );
 
-  const { data: slots } = useAvailability({
+  const { data: slots, isFetching: isLoadingSlots } = useAvailability({
     branchId,
     date: selectedDate,
     durationMinutes: totalDuration || undefined,
@@ -117,7 +118,13 @@ export function StepTimeSlot({
           <p className="mb-2 text-sm font-medium">
             {t('creation.availableSlots')}
           </p>
-          {availableSlots.length > 0 ? (
+          {isLoadingSlots ? (
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full rounded-md" />
+              ))}
+            </div>
+          ) : availableSlots.length > 0 ? (
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
               {availableSlots.map((slot) => (
                 <button

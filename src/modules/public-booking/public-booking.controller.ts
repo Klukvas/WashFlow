@@ -13,6 +13,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import { PublicBookingService } from './public-booking.service';
 import { CheckAvailabilityDto } from './dto/check-availability.dto';
 import { CreateBookingDto } from './dto/create-booking.dto';
+import { ApiTags } from '@nestjs/swagger';
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/;
 
@@ -23,13 +24,14 @@ function validateSlug(slug: string): string {
   return slug;
 }
 
+@ApiTags('Public Booking')
 @Controller('public/booking')
 @Public()
-@Throttle({ default: { limit: 10, ttl: 60000 } })
 export class PublicBookingController {
   constructor(private readonly publicBookingService: PublicBookingService) {}
 
   @Get(':tenantSlug/availability')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   checkAvailability(
     @Param('tenantSlug') slug: string,
     @Query() dto: CheckAvailabilityDto,
@@ -39,19 +41,21 @@ export class PublicBookingController {
   }
 
   @Get(':tenantSlug/services')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   getServices(@Param('tenantSlug') slug: string) {
     validateSlug(slug);
     return this.publicBookingService.getPublicServices(slug);
   }
 
   @Get(':tenantSlug/branches')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   getBranches(@Param('tenantSlug') slug: string) {
     validateSlug(slug);
     return this.publicBookingService.getPublicBranches(slug);
   }
 
   @Post(':tenantSlug/book')
-  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   createBooking(
     @Param('tenantSlug') slug: string,
     @Body() dto: CreateBookingDto,

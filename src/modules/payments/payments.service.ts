@@ -19,6 +19,11 @@ export class PaymentsService {
   ) {}
 
   async findByOrderId(tenantId: string, orderId: string) {
+    const db = this.tenantPrisma.forTenant(tenantId);
+    const order = await db.order.findFirst({ where: { id: orderId } });
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
     return this.paymentsRepo.findByOrderId(tenantId, orderId);
   }
 
@@ -35,9 +40,11 @@ export class PaymentsService {
       throw new NotFoundException('Order not found');
     }
 
-    // Prevent payments on cancelled/completed orders
-    if (order.status === 'CANCELLED') {
-      throw new BadRequestException('Cannot add payment to a cancelled order');
+    // Prevent payments on terminal-status orders
+    if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(order.status)) {
+      throw new BadRequestException(
+        `Cannot add payment to an order with status ${order.status}`,
+      );
     }
 
     // Overpayment protection: check existing payments total
@@ -59,7 +66,7 @@ export class PaymentsService {
       amount: dto.amount,
       method: dto.method,
       reference: dto.reference,
-      status: PaymentStatus.PAID,
+      status: dto.status ?? PaymentStatus.PAID,
       orderId,
     });
 

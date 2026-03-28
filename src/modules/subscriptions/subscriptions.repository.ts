@@ -130,7 +130,8 @@ export class SubscriptionsRepository {
           return { allowed: false, current: 0, max: null, trialExpired: true };
         }
 
-        // Check subscription status — deny creation for cancelled (past effective date) or paused
+        // Check subscription status — deny resource creation for:
+        // CANCELLED (past effective date), PAUSED, or PAST_DUE
         if (subscription.status === SubscriptionStatus.CANCELLED) {
           const now = new Date();
           if (

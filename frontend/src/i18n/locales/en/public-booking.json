@@ -46,5 +46,9 @@
   "calendarEventTitle": "Car Wash at {{branch}}",
   "landingSubtitle": "Professional car wash services. Book your appointment online in just a few clicks.",
   "bookNow": "Book Now",
-  "ourServices": "Our Services"
+  "ourServices": "Our Services",
+  "errorLoadBranches": "Failed to load locations. Please try again later.",
+  "errorLoadServices": "Failed to load services. Please try again later.",
+  "errorLoadBoth": "Failed to load locations and services. Please try again later.",
+  "retry": "Retry"
 }

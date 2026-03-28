@@ -7,12 +7,12 @@ import {
 
 export function usePermissions() {
   const permissions = useAuthStore((s) => s.permissions);
-
+  // Read isSuperAdmin from the signed JWT to prevent localStorage manipulation bypass
   const isSuperAdmin = useMemo(() => {
     const token = getAccessToken();
     if (!token) return false;
-    return decodeJwtPayload(token).isSuperAdmin ?? false;
-  }, [permissions]);
+    return decodeJwtPayload(token)?.isSuperAdmin ?? false;
+  }, [permissions]); // permissions changes whenever a new token is issued
 
   const hasPermission = useCallback(
     (permission: string): boolean => {

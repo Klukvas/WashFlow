@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NestInterceptor,
   ExecutionContext,
   CallHandler,
@@ -12,6 +13,8 @@ import { IdempotencyService } from './idempotency.service';
 
 @Injectable()
 export class IdempotencyInterceptor implements NestInterceptor {
+  private readonly logger = new Logger(IdempotencyInterceptor.name);
+
   constructor(private readonly idempotencyService: IdempotencyService) {}
 
   async intercept(
@@ -41,6 +44,9 @@ export class IdempotencyInterceptor implements NestInterceptor {
       (request.params as Record<string, string> | undefined)?.['tenantSlug'];
 
     if (!rawTenantId) {
+      this.logger.warn(
+        `Skipping idempotency: no tenant identifier found for ${request.method} ${request.path}`,
+      );
       return next.handle();
     }
 

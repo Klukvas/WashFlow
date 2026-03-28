@@ -25,23 +25,44 @@ export function getAccessToken(): string | null {
   return _accessToken;
 }
 
-export function decodeJwtPayload(token: string): JwtPayloadDecoded {
+export function decodeJwtPayload(token: string): JwtPayloadDecoded | null {
   try {
     return JSON.parse(atob(token.split('.')[1]));
-  } catch {
-    return {};
+  } catch (err) {
+    console.warn('[auth] Failed to decode JWT payload:', err);
+    return null;
   }
 }
 
 function decodePermissions(token: string): string[] {
-  return decodeJwtPayload(token).permissions ?? [];
+  return decodeJwtPayload(token)?.permissions ?? [];
+}
+
+function isValidAuthUser(value: unknown): value is AuthUser {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as AuthUser).id === 'string' &&
+    typeof (value as AuthUser).email === 'string' &&
+    typeof (value as AuthUser).tenantId === 'string'
+  );
 }
 
 function restoreUser(): AuthUser | null {
   try {
     const raw = localStorage.getItem('user');
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (!isValidAuthUser(parsed)) {
+      console.warn(
+        '[auth] Restored user data missing required fields, clearing',
+      );
+      localStorage.removeItem('user');
+      return null;
+    }
+    return parsed;
   } catch {
+    localStorage.removeItem('user');
     return null;
   }
 }

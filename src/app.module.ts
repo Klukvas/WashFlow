@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -37,6 +37,11 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
 import { CleanupModule } from './modules/cleanup/cleanup.module';
 import { HealthModule } from './modules/health/health.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
+import { SupportModule } from './modules/support/support.module';
+import {
+  CorrelationIdMiddleware,
+  CORRELATION_ID_HEADER,
+} from './common/middleware/correlation-id.middleware';
 
 @Module({
   imports: [
@@ -93,12 +98,15 @@ import { MetricsModule } from './modules/metrics/metrics.module';
           pinoHttp: {
             level: isDev ? 'debug' : 'info',
             transport: getTransport(),
+            customProps: (req: { headers?: Record<string, unknown> }) => ({
+              correlationId: req.headers?.[CORRELATION_ID_HEADER] ?? undefined,
+            }),
           },
         };
       },
     }),
 
-    // Rate limiting (CustomThrottlerGuard skips in test env)
+    // Rate limiting (active in all environments)
     ThrottlerModule.forRoot([
       { name: 'short', ttl: 1000, limit: 10 },
       { name: 'long', ttl: 60000, limit: 100 },
@@ -165,6 +173,7 @@ import { MetricsModule } from './modules/metrics/metrics.module';
     CleanupModule,
     HealthModule,
     MetricsModule,
+    SupportModule,
   ],
   providers: [
     // Apply JwtAuthGuard globally — use @Public() to skip
@@ -185,4 +194,8 @@ import { MetricsModule } from './modules/metrics/metrics.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(CorrelationIdMiddleware).forRoutes('*');
+  }
+}

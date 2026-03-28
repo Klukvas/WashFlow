@@ -4,8 +4,10 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { CircuitOpenError } from '../../common/utils/circuit-breaker';
 import { SubscriptionsRepository } from './subscriptions.repository';
 import { PaddleService, PaddleApiError } from './paddle.service';
 import { PaddlePriceCacheService } from './paddle-price-cache.service';
@@ -52,8 +54,10 @@ export class SubscriptionsService {
       return null;
     }
 
-    return this.paddleService.getSubscriptionBilling(
-      subscription.paddleSubscriptionId,
+    return this.withPaddleCircuitBreaker(() =>
+      this.paddleService.getSubscriptionBilling(
+        subscription.paddleSubscriptionId!,
+      ),
     );
   }
 
@@ -67,8 +71,10 @@ export class SubscriptionsService {
       return [];
     }
 
-    return this.paddleService.getTransactionHistory(
-      subscription.paddleSubscriptionId,
+    return this.withPaddleCircuitBreaker(() =>
+      this.paddleService.getTransactionHistory(
+        subscription.paddleSubscriptionId!,
+      ),
     );
   }
 
@@ -100,13 +106,14 @@ export class SubscriptionsService {
       dto.billingInterval,
     );
 
-    const { transactionId } =
-      await this.paddleService.createCheckoutTransaction({
+    const { transactionId } = await this.withPaddleCircuitBreaker(() =>
+      this.paddleService.createCheckoutTransaction({
         items,
         customerId: subscription.paddleCustomerId ?? undefined,
         customerEmail: email,
         customData: { tenantId },
-      });
+      }),
+    );
 
     return {
       transactionId,
@@ -152,12 +159,14 @@ export class SubscriptionsService {
       dto.billingInterval,
     );
 
-    await this.paddleService.updateSubscription(
-      subscription.paddleSubscriptionId,
-      {
-        items,
-        prorationBillingMode: 'prorated_immediately',
-      },
+    await this.withPaddleCircuitBreaker(() =>
+      this.paddleService.updateSubscription(
+        subscription.paddleSubscriptionId!,
+        {
+          items,
+          prorationBillingMode: 'prorated_immediately',
+        },
+      ),
     );
 
     // If switching plan on a cancelled subscription, clear cancellation state
@@ -207,12 +216,14 @@ export class SubscriptionsService {
         addons: speculativeAddons,
       });
 
-      await this.paddleService.updateSubscription(
-        subscription.paddleSubscriptionId,
-        {
-          items,
-          prorationBillingMode: 'prorated_immediately',
-        },
+      await this.withPaddleCircuitBreaker(() =>
+        this.paddleService.updateSubscription(
+          subscription.paddleSubscriptionId!,
+          {
+            items,
+            prorationBillingMode: 'prorated_immediately',
+          },
+        ),
       );
     }
 
@@ -263,12 +274,14 @@ export class SubscriptionsService {
       dto.billingInterval,
     );
 
-    return this.paddleService.previewSubscriptionUpdate(
-      subscription.paddleSubscriptionId,
-      {
-        items,
-        prorationBillingMode: 'prorated_immediately',
-      },
+    return this.withPaddleCircuitBreaker(() =>
+      this.paddleService.previewSubscriptionUpdate(
+        subscription.paddleSubscriptionId!,
+        {
+          items,
+          prorationBillingMode: 'prorated_immediately',
+        },
+      ),
     );
   }
 
@@ -287,9 +300,11 @@ export class SubscriptionsService {
     }
 
     try {
-      await this.paddleService.cancelSubscription(
-        subscription.paddleSubscriptionId,
-        'next_billing_period',
+      await this.withPaddleCircuitBreaker(() =>
+        this.paddleService.cancelSubscription(
+          subscription.paddleSubscriptionId!,
+          'next_billing_period',
+        ),
       );
     } catch (error) {
       // If Paddle already has a pending cancellation, sync our DB and succeed
@@ -343,8 +358,10 @@ export class SubscriptionsService {
       );
     }
 
-    await this.paddleService.reactivateSubscription(
-      subscription.paddleSubscriptionId,
+    await this.withPaddleCircuitBreaker(() =>
+      this.paddleService.reactivateSubscription(
+        subscription.paddleSubscriptionId!,
+      ),
     );
 
     await this.subscriptionsRepo.update(tenantId, {
@@ -500,6 +517,26 @@ export class SubscriptionsService {
       throw new ConflictException(
         `Cannot downgrade: current usage exceeds new plan limits: ${violations.join('; ')}`,
       );
+    }
+  }
+
+  /**
+   * Wraps a Paddle API call, converting CircuitOpenError into a user-friendly
+   * ServiceUnavailableException so the caller gets a 503 instead of an opaque error.
+   */
+  private async withPaddleCircuitBreaker<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        this.logger.warn(
+          'Paddle circuit breaker is OPEN — returning 503 to client',
+        );
+        throw new ServiceUnavailableException(
+          'Payment service is temporarily unavailable. Please try again shortly.',
+        );
+      }
+      throw error;
     }
   }
 

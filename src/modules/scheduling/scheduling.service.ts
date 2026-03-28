@@ -1,4 +1,8 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { fromZonedTime } from 'date-fns-tz';
 import { SchedulingRepository } from './scheduling.repository';
@@ -48,7 +52,12 @@ export class SchedulingService {
         select: { timezone: true },
       }),
     ]);
-    const timezone = branchRecord?.timezone ?? 'UTC';
+
+    // Validate that the branch belongs to this tenant
+    if (!branchRecord) {
+      throw new NotFoundException('Branch not found in this tenant');
+    }
+    const timezone = branchRecord.timezone ?? 'UTC';
 
     // Enforce workingDays: use local timezone day-of-week
     const localDayStr = new Intl.DateTimeFormat('en-US', {
@@ -188,10 +197,21 @@ export class SchedulingService {
         const bufferedStart = new Date(cursor.getTime() - bufferTime * 60000);
         const bufferedEnd = new Date(slotEnd.getTime() + bufferTime * 60000);
 
+        const slotStartMinutes = this.parseTimeToMinutes(slotStartHH);
+        const slotEndMinutes = this.parseTimeToMinutes(slotEndHH);
+
         const available = candidates
           .filter((c) => {
-            if (!c.workStartTime || c.workStartTime > slotStartHH) return false;
-            if (!c.workEndTime || c.workEndTime < slotEndHH) return false;
+            if (
+              !c.workStartTime ||
+              this.parseTimeToMinutes(c.workStartTime) > slotStartMinutes
+            )
+              return false;
+            if (
+              !c.workEndTime ||
+              this.parseTimeToMinutes(c.workEndTime) < slotEndMinutes
+            )
+              return false;
             const hasConflict = activeOrders.some(
               (o) =>
                 o.assignedEmployeeId === c.id &&
@@ -392,6 +412,19 @@ export class SchedulingService {
       bufferedStart: new Date(start.getTime() - bufferMinutes * 60000),
       bufferedEnd: new Date(end.getTime() + bufferMinutes * 60000),
     };
+  }
+
+  /**
+   * Parse an "HH:MM" string into minutes since midnight for reliable numeric comparison.
+   */
+  private parseTimeToMinutes(time: string): number {
+    const [hStr, mStr] = time.split(':');
+    const h = parseInt(hStr, 10);
+    const m = parseInt(mStr ?? '0', 10);
+    if (isNaN(h) || isNaN(m)) {
+      throw new Error(`Invalid time format: "${time}"`);
+    }
+    return h * 60 + m;
   }
 
   /**

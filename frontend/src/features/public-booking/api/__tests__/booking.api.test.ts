@@ -10,6 +10,10 @@ vi.mock('axios', () => ({
     create: vi.fn(() => ({
       get: mockGet,
       post: mockPost,
+      interceptors: {
+        response: { use: vi.fn() },
+        request: { use: vi.fn() },
+      },
     })),
   },
 }));
@@ -47,7 +51,15 @@ describe('booking.api', () => {
   });
 
   it('fetchPublicAvailability calls GET /:slug/availability', async () => {
-    const slots = [{ start: '10:00', end: '10:30', workPostId: 'wp1', workPostName: 'Post 1', available: true }];
+    const slots = [
+      {
+        start: '10:00',
+        end: '10:30',
+        workPostId: 'wp1',
+        workPostName: 'Post 1',
+        available: true,
+      },
+    ];
     mockGet.mockResolvedValue({ data: { data: slots } });
 
     const result = await fetchPublicAvailability('my-wash', {

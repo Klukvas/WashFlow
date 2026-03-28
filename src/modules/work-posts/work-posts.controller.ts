@@ -19,7 +19,9 @@ import { CurrentBranch } from '../../common/decorators/current-branch.decorator'
 import { WorkPostsService } from './work-posts.service';
 import { CreateWorkPostDto } from './dto/create-work-post.dto';
 import { UpdateWorkPostDto } from './dto/update-work-post.dto';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Work Posts')
 @Controller('work-posts')
 @UseGuards(PermissionsGuard)
 export class WorkPostsController {

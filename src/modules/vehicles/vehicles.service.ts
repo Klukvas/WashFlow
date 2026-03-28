@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import * as fs from 'fs';
@@ -12,8 +13,12 @@ import { UpdateVehicleDto } from './dto/update-vehicle.dto';
 import { VehicleQueryDto } from './dto/vehicle-query.dto';
 import { paginatedResponse } from '../../common/utils/pagination.util';
 
+const ALLOWED_PHOTO_PREFIX = '/uploads/vehicles/';
+
 @Injectable()
 export class VehiclesService {
+  private readonly logger = new Logger(VehiclesService.name);
+
   constructor(
     private readonly vehiclesRepo: VehiclesRepository,
     private readonly tenantPrisma: TenantPrismaService,
@@ -75,9 +80,24 @@ export class VehiclesService {
   async updatePhoto(tenantId: string, id: string, photoUrl: string) {
     const vehicle = await this.findById(tenantId, id);
     if (vehicle.photoUrl) {
-      const oldFilePath = path.join(process.cwd(), vehicle.photoUrl);
-      await fs.promises.unlink(oldFilePath).catch(() => {});
+      this.deletePhotoFile(vehicle.photoUrl);
     }
     return this.vehiclesRepo.update(tenantId, id, { photoUrl });
+  }
+
+  private deletePhotoFile(photoUrl: string): void {
+    if (!photoUrl.startsWith(ALLOWED_PHOTO_PREFIX) || photoUrl.includes('..')) {
+      this.logger.warn(
+        `Refused to delete file with suspicious path: ${photoUrl}`,
+      );
+      return;
+    }
+
+    const oldFilePath = path.join(process.cwd(), photoUrl);
+    void fs.promises.unlink(oldFilePath).catch((err: unknown) => {
+      this.logger.warn(
+        `Failed to delete old vehicle photo ${photoUrl}: ${String(err)}`,
+      );
+    });
   }
 }

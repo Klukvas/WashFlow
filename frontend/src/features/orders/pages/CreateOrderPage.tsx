@@ -131,10 +131,10 @@ export function CreateOrderPage() {
   const formWorkPostId = watch('workPostId');
   const notes = watch('notes') ?? '';
 
-  const { data: branchesData } = useBranches({ limit: 100 });
+  const { data: branchesData } = useBranches({ limit: 500 });
   const branches = branchesData?.items ?? [];
 
-  const { data: servicesData } = useServices({ limit: 100 });
+  const { data: servicesData } = useServices({ limit: 500 });
   const services = (servicesData?.items ?? []).filter((s) => s.isActive);
 
   const totalDuration = services

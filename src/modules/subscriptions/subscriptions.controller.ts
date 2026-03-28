@@ -24,12 +24,14 @@ import { SubscriptionsRepository } from './subscriptions.repository';
 import { UpsertSubscriptionDto } from './dto/upsert-subscription.dto';
 import { ChangePlanDto } from './dto/change-plan.dto';
 import { ManageAddonDto } from './dto/manage-addon.dto';
+import { ApiTags } from '@nestjs/swagger';
 
 /**
  * Lightweight subscription status — available to ALL authenticated users.
  * Returns only isTrial + trialEndsAt so the frontend SubscriptionGate
  * can block expired-trial users regardless of their permissions.
  */
+@ApiTags('Subscriptions')
 @Controller('subscription')
 export class SubscriptionStatusController {
   constructor(
@@ -54,6 +56,7 @@ export class SubscriptionStatusController {
 }
 
 /** Tenant-scoped: only users with tenants.read can view subscription usage. */
+@ApiTags('Subscriptions')
 @Controller('subscription')
 @UseGuards(PermissionsGuard)
 export class SubscriptionUsageController {
@@ -142,6 +145,7 @@ export class SubscriptionUsageController {
 }
 
 /** Admin-scoped: superAdmin manages tenant subscriptions. */
+@ApiTags('Subscriptions')
 @Controller('tenants/:tenantId/subscription')
 @UseGuards(SuperAdminGuard)
 export class SubscriptionAdminController {

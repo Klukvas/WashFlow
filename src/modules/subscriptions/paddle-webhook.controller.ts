@@ -12,7 +12,9 @@ import type { Request } from 'express';
 import { Public } from '../../common/decorators/public.decorator';
 import { SkipThrottle } from '@nestjs/throttler';
 import { PaddleWebhookService } from './paddle-webhook.service';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Subscriptions')
 @Controller('webhooks/paddle')
 export class PaddleWebhookController {
   private readonly logger = new Logger(PaddleWebhookController.name);

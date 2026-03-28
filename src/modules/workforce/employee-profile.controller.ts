@@ -17,7 +17,9 @@ import { EmployeeProfileService } from './employee-profile.service';
 import { CreateEmployeeProfileDto } from './dto/create-employee-profile.dto';
 import { UpdateEmployeeProfileDto } from './dto/update-employee-profile.dto';
 import { EmployeeProfileQueryDto } from './dto/employee-profile-query.dto';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Workforce')
 @Controller('workforce/profiles')
 @UseGuards(PermissionsGuard)
 export class EmployeeProfileController {

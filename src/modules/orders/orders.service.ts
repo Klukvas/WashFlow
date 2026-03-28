@@ -62,9 +62,19 @@ export class OrdersService {
   ) {
     this.validateBranchScope(dto.branchId, userBranchId);
 
+    if (!dto.serviceIds || dto.serviceIds.length === 0) {
+      throw new BadRequestException('At least one service is required');
+    }
+
     if (dto.scheduledStart && new Date(dto.scheduledStart) < new Date()) {
       throw new BadRequestException('Cannot schedule orders in the past');
     }
+
+    await this.validateClientVehicleOwnership(
+      tenantId,
+      dto.clientId,
+      dto.vehicleId,
+    );
 
     if (dto.assignedEmployeeId) {
       const profile = await this.prisma.employeeProfile.findFirst({
@@ -407,6 +417,30 @@ export class OrdersService {
       throw new BadRequestException(
         `Cannot book more than ${maxAdvanceBookingDays} days in advance`,
       );
+    }
+  }
+
+  private async validateClientVehicleOwnership(
+    tenantId: string,
+    clientId: string,
+    vehicleId: string,
+  ): Promise<void> {
+    const client = await this.prisma.client.findFirst({
+      where: { id: clientId, tenantId },
+    });
+    if (!client) {
+      throw new BadRequestException('Client not found in this tenant');
+    }
+
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, tenantId },
+    });
+    if (!vehicle) {
+      throw new BadRequestException('Vehicle not found in this tenant');
+    }
+
+    if (vehicle.clientId !== clientId) {
+      throw new BadRequestException('Vehicle does not belong to this client');
     }
   }
 

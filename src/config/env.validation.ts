@@ -93,6 +93,9 @@ export const envSchema = z
       .enum(['true', 'false'])
       .default('false')
       .transform((v) => v === 'true'),
+
+    TELEGRAM_BOT_TOKEN: z.string().optional(),
+    TELEGRAM_SUPPORT_CHAT_ID: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     const paddleFields = [

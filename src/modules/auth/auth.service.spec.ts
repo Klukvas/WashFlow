@@ -85,6 +85,10 @@ type PrismaMock = {
   tenant: {
     findUnique: jest.Mock;
   };
+  branch: {
+    findUnique: jest.Mock;
+    findFirst: jest.Mock;
+  };
   passwordResetToken: {
     findUnique: jest.Mock;
     create: jest.Mock;
@@ -116,6 +120,14 @@ describe('AuthService', () => {
       },
       tenant: {
         findUnique: jest.fn(),
+      },
+      branch: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: BRANCH_ID, deletedAt: null }),
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({ id: BRANCH_ID, deletedAt: null }),
       },
       passwordResetToken: {
         findUnique: jest.fn(),
@@ -875,6 +887,7 @@ describe('AuthService', () => {
           const tx = {
             tenant: {
               create: jest.fn().mockResolvedValue({ id: NEW_TENANT_ID }),
+              findUnique: prisma.tenant.findUnique,
             },
             subscription: {
               create: jest.fn().mockResolvedValue({}),

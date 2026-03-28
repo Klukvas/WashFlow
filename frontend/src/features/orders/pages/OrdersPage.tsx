@@ -98,6 +98,7 @@ export function OrdersPage() {
         <button
           role="tab"
           aria-selected={activeTab === 'orders'}
+          aria-controls="tabpanel-orders"
           className={cn(
             'flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors',
             activeTab === 'orders'
@@ -112,6 +113,7 @@ export function OrdersPage() {
         <button
           role="tab"
           aria-selected={activeTab === 'schedule'}
+          aria-controls="tabpanel-schedule"
           className={cn(
             'flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors',
             activeTab === 'schedule'
@@ -126,13 +128,17 @@ export function OrdersPage() {
       </div>
 
       {activeTab === 'orders' && isError && (
-        <div role="tabpanel" className="flex items-center justify-center p-8">
+        <div
+          role="tabpanel"
+          id="tabpanel-orders"
+          className="flex items-center justify-center p-8"
+        >
           <p className="text-sm text-destructive">{tc('errors.loadFailed')}</p>
         </div>
       )}
 
       {activeTab === 'orders' && !isError && (
-        <div role="tabpanel">
+        <div role="tabpanel" id="tabpanel-orders">
           <div className="mb-4">
             <OrderFilters
               filters={filters}
@@ -172,7 +178,7 @@ export function OrdersPage() {
       )}
 
       {activeTab === 'schedule' && (
-        <div role="tabpanel">
+        <div role="tabpanel" id="tabpanel-schedule">
           <ScheduleView />
         </div>
       )}

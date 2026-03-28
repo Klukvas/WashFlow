@@ -77,12 +77,15 @@
     "startFromServiceDesc": "Pick services first, then choose time and client",
     "branchClosed": "This branch is closed on the selected day. Please choose a different date."
   },
+  "noServices": "No services",
+  "deletedOrder": "This order has been deleted",
   "statusChange": {
     "confirm": "Confirm",
     "start": "Start",
     "complete": "Complete",
     "cancelOrder": "Cancel",
     "noShow": "No Show",
-    "cancellationReason": "Cancellation reason"
+    "cancellationReason": "Cancellation reason",
+    "confirmTransition": "Are you sure you want to change the order status to \"{{status}}\"?"
   }
 }

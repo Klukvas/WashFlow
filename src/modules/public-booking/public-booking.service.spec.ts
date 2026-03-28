@@ -17,9 +17,12 @@ describe('PublicBookingService', () => {
     findById: jest.Mock;
     getBookingSettings: jest.Mock;
   };
-  let schedulingService: { checkAvailability: jest.Mock };
+  let schedulingService: {
+    checkAvailability: jest.Mock;
+    validateNoOverlap: jest.Mock;
+  };
   let ordersService: { create: jest.Mock };
-  let servicesRepo: { findActive: jest.Mock };
+  let servicesRepo: { findActive: jest.Mock; findByIds: jest.Mock };
   let branchesRepo: { findActive: jest.Mock };
   let prisma: {
     $transaction: jest.Mock;
@@ -61,9 +64,15 @@ describe('PublicBookingService', () => {
       findById: jest.fn(),
       getBookingSettings: jest.fn(),
     };
-    schedulingService = { checkAvailability: jest.fn() };
+    schedulingService = {
+      checkAvailability: jest.fn(),
+      validateNoOverlap: jest.fn().mockResolvedValue(true),
+    };
     ordersService = { create: jest.fn() };
-    servicesRepo = { findActive: jest.fn() };
+    servicesRepo = {
+      findActive: jest.fn(),
+      findByIds: jest.fn().mockResolvedValue([]),
+    };
     branchesRepo = { findActive: jest.fn() };
     const clientMock = { findFirst: jest.fn(), create: jest.fn() };
     const vehicleMock = { findFirst: jest.fn(), create: jest.fn() };

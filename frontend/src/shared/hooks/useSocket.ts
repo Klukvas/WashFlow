@@ -6,6 +6,9 @@ import { useAuthStore, getAccessToken } from '@/shared/stores/auth.store';
 export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
   const queryClient = useQueryClient();
+  const queryClientRef = useRef(queryClient);
+  queryClientRef.current = queryClient;
+
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
@@ -32,29 +35,33 @@ export function useSocket() {
     });
 
     socket.on('order.created', () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClientRef.current.invalidateQueries({ queryKey: ['orders'] });
+      queryClientRef.current.invalidateQueries({ queryKey: ['dashboard'] });
     });
 
     socket.on('order.status_changed', () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClientRef.current.invalidateQueries({ queryKey: ['orders'] });
+      queryClientRef.current.invalidateQueries({ queryKey: ['dashboard'] });
     });
 
     socket.on('order.cancelled', () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClientRef.current.invalidateQueries({ queryKey: ['orders'] });
+      queryClientRef.current.invalidateQueries({ queryKey: ['dashboard'] });
     });
 
     socket.on('payment.received', () => {
-      queryClient.invalidateQueries({ queryKey: ['payments'] });
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard', 'kpi'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard', 'alerts'] });
+      queryClientRef.current.invalidateQueries({ queryKey: ['payments'] });
+      queryClientRef.current.invalidateQueries({ queryKey: ['orders'] });
+      queryClientRef.current.invalidateQueries({
+        queryKey: ['dashboard', 'kpi'],
+      });
+      queryClientRef.current.invalidateQueries({
+        queryKey: ['dashboard', 'alerts'],
+      });
     });
 
     socket.on('booking.confirmed', () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClientRef.current.invalidateQueries({ queryKey: ['orders'] });
     });
 
     socketRef.current = socket;
@@ -63,7 +70,7 @@ export function useSocket() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [isAuthenticated, user, queryClient]);
+  }, [isAuthenticated, user]);
 
   return socketRef;
 }

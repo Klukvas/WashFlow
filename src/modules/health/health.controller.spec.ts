@@ -3,6 +3,7 @@ import { HealthController } from './health.controller';
 import { HealthCheckService, PrismaHealthIndicator } from '@nestjs/terminus';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisHealthIndicator } from './redis-health.indicator';
+import { BullMQHealthIndicator } from './bullmq-health.indicator';
 
 describe('HealthController', () => {
   let controller: HealthController;
@@ -35,6 +36,14 @@ describe('HealthController', () => {
             isHealthy: jest.fn().mockResolvedValue({ redis: { status: 'up' } }),
           },
         },
+        {
+          provide: BullMQHealthIndicator,
+          useValue: {
+            isHealthy: jest
+              .fn()
+              .mockResolvedValue({ queues: { status: 'up' } }),
+          },
+        },
       ],
     }).compile();
 
@@ -61,6 +70,7 @@ describe('HealthController', () => {
       expect(healthService.check).toHaveBeenCalledWith([
         expect.any(Function),
         expect.any(Function),
+        expect.any(Function),
       ]);
     });
 
@@ -80,7 +90,7 @@ describe('HealthController', () => {
       await controller.check();
 
       const checkArgs = healthService.check.mock.calls[0][0];
-      expect(checkArgs).toHaveLength(2);
+      expect(checkArgs).toHaveLength(3);
       expect(typeof checkArgs[0]).toBe('function');
       expect(typeof checkArgs[1]).toBe('function');
     });

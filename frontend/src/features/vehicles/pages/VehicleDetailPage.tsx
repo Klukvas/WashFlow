@@ -57,7 +57,7 @@ export function VehicleDetailPage() {
     reset,
     formState: { errors, isDirty },
   } = useForm<EditFormData>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- @hookform/resolvers v5 Resolver type targets RHF v8; project uses RHF v7
     resolver: zodResolver(editSchema) as any,
   });
 

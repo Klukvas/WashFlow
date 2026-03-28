@@ -98,6 +98,6 @@ export function useAvailability(params: AvailabilityParams) {
     queryKey: ['availability', params],
     queryFn: () => fetchAvailability(params),
     enabled: !!params.branchId && !!params.date,
-    staleTime: 10 * 1000,
+    staleTime: 30 * 1000,
   });
 }

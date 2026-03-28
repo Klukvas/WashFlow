@@ -162,7 +162,6 @@ export class AuthService {
     const firstName = dto.firstName || '';
     const lastName = dto.lastName || '';
 
-    const slug = await this.generateUniqueSlug(companyName);
     const passwordHash = await argon2.hash(dto.password);
 
     let result: {
@@ -171,6 +170,8 @@ export class AuthService {
     };
     try {
       result = await this.prisma.$transaction(async (tx) => {
+        // Generate slug inside the transaction to prevent race conditions
+        const slug = await this.generateUniqueSlug(companyName, tx);
         const tenant = await tx.tenant.create({
           data: { name: companyName, slug },
         });
@@ -242,7 +243,11 @@ export class AuthService {
     );
   }
 
-  private async generateUniqueSlug(companyName: string): Promise<string> {
+  private async generateUniqueSlug(
+    companyName: string,
+    tx?: { tenant: { findUnique: typeof this.prisma.tenant.findUnique } },
+  ): Promise<string> {
+    const client = tx ?? this.prisma;
     const base = companyName
       .toLowerCase()
       .trim()
@@ -253,14 +258,24 @@ export class AuthService {
 
     const slug = base || 'company';
 
-    const existing = await this.prisma.tenant.findUnique({
+    const existing = await client.tenant.findUnique({
       where: { slug },
     });
     if (!existing) return slug;
 
-    // Append random suffix if slug is taken
-    const suffix = crypto.randomBytes(4).toString('hex').slice(0, 5);
-    return `${slug}-${suffix}`;
+    // Append random suffix if slug is taken, verify it's also unique
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const suffix = crypto.randomBytes(4).toString('hex').slice(0, 5);
+      const candidate = `${slug}-${suffix}`;
+      const conflict = await client.tenant.findUnique({
+        where: { slug: candidate },
+      });
+      if (!conflict) return candidate;
+    }
+    // Extremely unlikely — 5 random suffix collisions in a row
+    throw new ConflictException(
+      'Unable to generate a unique slug, please try a different company name',
+    );
   }
 
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
@@ -330,6 +345,22 @@ export class AuthService {
       throw new UnauthorizedException('Token has been revoked');
     }
 
+    // If the user has a branchId, verify the branch still exists
+    let branchId = user.branchId;
+    if (branchId) {
+      const branch = await this.prisma.branch.findFirst({
+        where: { id: branchId, tenantId: user.tenantId },
+      });
+      if (!branch || branch.deletedAt) {
+        // Branch was deleted — clear it so the new tokens omit the stale reference
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { branchId: null },
+        });
+        branchId = null;
+      }
+    }
+
     const permissions =
       user.role && !user.role.deletedAt
         ? user.role.permissions.map(
@@ -337,7 +368,7 @@ export class AuthService {
           )
         : [];
 
-    return this.generateTokens(user, permissions);
+    return this.generateTokens({ ...user, branchId }, permissions);
   }
 
   async forgotPassword(dto: ForgotPasswordDto): Promise<void> {

@@ -7,7 +7,9 @@ import { CurrentBranch } from '../../common/decorators/current-branch.decorator'
 import { AnalyticsService } from './analytics.service';
 import { AnalyticsExportService } from './analytics-export.service';
 import { AnalyticsQueryDto } from './dto/analytics-query.dto';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Analytics')
 @Controller('analytics')
 @UseGuards(PermissionsGuard)
 export class AnalyticsController {

@@ -3,9 +3,11 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common';
 import { WorkPostsRepository } from './work-posts.repository';
 import { SubscriptionLimitsService } from '../subscriptions/subscription-limits.service';
+import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { CreateWorkPostDto } from './dto/create-work-post.dto';
 import { UpdateWorkPostDto } from './dto/update-work-post.dto';
 
@@ -14,7 +16,29 @@ export class WorkPostsService {
   constructor(
     private readonly workPostsRepo: WorkPostsRepository,
     private readonly limits: SubscriptionLimitsService,
+    private readonly tenantPrisma: TenantPrismaService,
   ) {}
+
+  private async ensureUniqueNameInBranch(
+    tenantId: string,
+    branchId: string,
+    name: string,
+    excludeId?: string,
+  ): Promise<void> {
+    const db = this.tenantPrisma.forTenant(tenantId);
+    const existing = await db.workPost.findFirst({
+      where: {
+        branchId,
+        name: { equals: name, mode: 'insensitive' },
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
+    });
+    if (existing) {
+      throw new ConflictException(
+        'A work post with this name already exists in the branch',
+      );
+    }
+  }
 
   async findAll(
     tenantId: string,
@@ -49,6 +73,7 @@ export class WorkPostsService {
       );
     }
     await this.limits.checkLimit(tenantId, 'workPosts');
+    await this.ensureUniqueNameInBranch(tenantId, dto.branchId, dto.name);
     return this.workPostsRepo.create(tenantId, {
       name: dto.name,
       branchId: dto.branchId,
@@ -61,7 +86,15 @@ export class WorkPostsService {
     dto: UpdateWorkPostDto,
     userBranchId: string | null = null,
   ) {
-    await this.findById(tenantId, id, userBranchId);
+    const workPost = await this.findById(tenantId, id, userBranchId);
+    if (dto.name) {
+      await this.ensureUniqueNameInBranch(
+        tenantId,
+        workPost.branchId,
+        dto.name,
+        id,
+      );
+    }
     return this.workPostsRepo.update(tenantId, id, { ...dto });
   }
 

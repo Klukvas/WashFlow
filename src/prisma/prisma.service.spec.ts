@@ -83,6 +83,7 @@ describe('PrismaService', () => {
 
       expect(mockPrismaPg).toHaveBeenCalledWith({
         connectionString: 'https://test-db:5432/washflow',
+        max: 15,
       });
     });
 

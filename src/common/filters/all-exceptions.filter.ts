@@ -4,13 +4,21 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Injectable,
   Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 
 @Catch()
+@Injectable()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
+  private readonly isDev: boolean;
+
+  constructor(config: ConfigService) {
+    this.isDev = config.get<string>('nodeEnv') === 'development';
+  }
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
@@ -36,10 +44,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         error = (resp.error as string) || error;
       }
     } else if (exception instanceof Error) {
-      message =
-        process.env.NODE_ENV === 'development'
-          ? exception.message
-          : 'Internal server error';
+      message = this.isDev ? exception.message : 'Internal server error';
     }
 
     const requestPath = request.path || request.url.split('?')[0];

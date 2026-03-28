@@ -4,7 +4,9 @@ import { Public } from '../../common/decorators/public.decorator';
 import { SkipThrottle } from '@nestjs/throttler';
 import { MetricsService } from './metrics.service';
 import { MetricsAuthGuard } from './metrics-auth.guard';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Metrics')
 @Controller('metrics')
 export class MetricsController {
   constructor(private readonly metricsService: MetricsService) {}

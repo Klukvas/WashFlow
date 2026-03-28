@@ -5,6 +5,7 @@ import { PermissionsRepository } from '../permissions/permissions.repository';
 import { RolesService } from './roles.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
+import { PrismaService } from '../../prisma/prisma.service';
 
 // ---------------------------------------------------------------------------
 // Shared fixtures
@@ -56,6 +57,10 @@ describe('RolesService', () => {
         RolesService,
         { provide: RolesRepository, useValue: repoMock },
         { provide: PermissionsRepository, useValue: permissionsRepoMock },
+        {
+          provide: PrismaService,
+          useValue: { user: { count: jest.fn().mockResolvedValue(0) } },
+        },
       ],
     }).compile();
 

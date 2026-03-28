@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { CircuitBreaker } from '../../common/utils/circuit-breaker';
 
 export interface PaddlePriceInfo {
   amountCents: string;
@@ -76,6 +77,7 @@ export class PaddleService {
   private readonly logger = new Logger(PaddleService.name);
   private readonly apiKey: string;
   private readonly baseUrl: string;
+  private readonly circuitBreaker: CircuitBreaker;
 
   constructor(private readonly config: ConfigService) {
     this.apiKey = this.config.get<string>('paddle.apiKey', '');
@@ -83,6 +85,11 @@ export class PaddleService {
     this.baseUrl = isSandbox
       ? 'https://sandbox-api.paddle.com'
       : 'https://api.paddle.com';
+    this.circuitBreaker = new CircuitBreaker({
+      name: 'Paddle',
+      failureThreshold: 5,
+      resetTimeoutMs: 30_000,
+    });
   }
 
   private async request<T>(
@@ -90,40 +97,42 @@ export class PaddleService {
     path: string,
     body?: unknown,
   ): Promise<T> {
-    const url = `${this.baseUrl}${path}`;
-    const response = await fetch(url, {
-      method,
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      signal: AbortSignal.timeout(10_000),
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
+    return this.circuitBreaker.fire(async () => {
+      const url = `${this.baseUrl}${path}`;
+      const response = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(10_000),
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      this.logger.error(
-        `Paddle API error: ${response.status} ${method} ${path}: ${errorBody}`,
-      );
-      let errorCode = 'unknown';
-      try {
-        const parsed = JSON.parse(errorBody) as {
-          error?: { code?: string };
-        };
-        errorCode = parsed.error?.code ?? 'unknown';
-      } catch {
-        // ignore parse failure
+      if (!response.ok) {
+        const errorBody = await response.text();
+        this.logger.error(
+          `Paddle API error: ${response.status} ${method} ${path}: ${errorBody}`,
+        );
+        let errorCode = 'unknown';
+        try {
+          const parsed = JSON.parse(errorBody) as {
+            error?: { code?: string };
+          };
+          errorCode = parsed.error?.code ?? 'unknown';
+        } catch {
+          // ignore parse failure
+        }
+        throw new PaddleApiError(
+          response.status,
+          errorCode,
+          `Paddle API error: ${response.status}`,
+        );
       }
-      throw new PaddleApiError(
-        response.status,
-        errorCode,
-        `Paddle API error: ${response.status}`,
-      );
-    }
 
-    const json = (await response.json()) as { data: T };
-    return json.data;
+      const json = (await response.json()) as { data: T };
+      return json.data;
+    });
   }
 
   /** Like request(), but typed for Paddle list endpoints that return an array. */

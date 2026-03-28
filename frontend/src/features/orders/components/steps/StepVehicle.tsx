@@ -62,7 +62,7 @@ export function StepVehicle({
     reset,
     formState: { errors },
   } = useForm<VehicleFormValues>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- @hookform/resolvers v5 Resolver type targets RHF v8; project uses RHF v7
     resolver: zodResolver(vehicleSchema) as any,
   });
 

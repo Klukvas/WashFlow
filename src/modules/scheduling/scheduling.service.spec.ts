@@ -799,17 +799,15 @@ describe('SchedulingService', () => {
       // No slot at 17:00 UTC (20:00 Kyiv) — end of working day
     });
 
-    it('should fallback to UTC when branch not found', async () => {
+    it('should throw NotFoundException when branch not found', async () => {
       mockWorkPostFindMany.mockResolvedValue([{ id: 'wp-1', name: 'Bay 1' }]);
       const mockBranchFindUnique =
         tenantPrisma.forTenant(tenantId).branch.findUnique;
       mockBranchFindUnique.mockResolvedValue(null);
 
-      const slots = await service.checkAvailability(baseParams);
-
-      // No timezone → UTC fallback → 10:00-12:00 UTC
-      expect(slots).toHaveLength(2);
-      expect(slots[0].start.toISOString()).toBe('2026-06-15T10:00:00.000Z');
+      await expect(service.checkAvailability(baseParams)).rejects.toThrow(
+        'Branch not found in this tenant',
+      );
     });
   });
 });

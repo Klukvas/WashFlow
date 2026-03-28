@@ -262,7 +262,11 @@ Socket.IO on `/events` namespace. JWT auth on handshake. Auto-join `tenant:{id}`
 
 ### Public Booking
 
-Rate-limited `@Public()` endpoints for customer-facing booking. Resolves tenant by slug, checks `allowOnlineBooking`. Delegates to internal services (zero duplication). Soft-deleted vehicles/clients filtered from lookups. TOCTOU failures surface as user-friendly "slot unavailable" messages.
+Rate-limited `@Public()` endpoints for customer-facing booking. Two controllers:
+- **Slug-based** (`/public/booking/:slug/*`) — tenant resolved by slug
+- **Header-based** (`/public/widget/*`) — tenant resolved by `x-carwash-tenant-id` UUID header
+
+Both delegate to shared `*Internal` private methods in `PublicBookingService` (zero duplication). Checks `allowOnlineBooking`. Soft-deleted vehicles/clients filtered from lookups. TOCTOU failures surface as user-friendly "slot unavailable" messages.
 
 ### Global Middleware
 
@@ -500,7 +504,7 @@ All endpoints require `analytics.view` permission. Params: `dateFrom`, `dateTo`,
 |--------|------|-------------|
 | GET | `/audit-logs` | Filterable by entity, action, date range |
 
-### Public Booking (rate-limited, no auth)
+### Public Booking — slug-based (rate-limited, no auth)
 
 | Method | Path | Limit | Description |
 |--------|------|-------|-------------|
@@ -508,6 +512,17 @@ All endpoints require `analytics.view` permission. Params: `dateFrom`, `dateTo`,
 | GET | `/public/booking/:slug/services` | 10/min | Active services |
 | GET | `/public/booking/:slug/branches` | 10/min | Active branches |
 | POST | `/public/booking/:slug/book` | 3/min | Create booking (idempotent) |
+
+### Public Widget — header-based (rate-limited, no auth)
+
+Standalone booking widget endpoints. Tenant identified via `x-carwash-tenant-id` header (UUID).
+
+| Method | Path | Limit | Description |
+|--------|------|-------|-------------|
+| GET | `/public/widget/services` | 10/min | Active services |
+| GET | `/public/widget/branches` | 10/min | Active branches |
+| GET | `/public/widget/availability` | 10/min | Time slots |
+| POST | `/public/widget/book` | 3/min | Create booking (idempotent) |
 
 ### WebSocket
 
@@ -575,7 +590,7 @@ module-name/
     └── update-*.dto.ts
 ```
 
-### Frontend
+### Frontend (Dashboard)
 
 ```
 frontend/src/
@@ -617,6 +632,31 @@ frontend/src/
 │   └── utils/                       # cn, format (currency, duration, time)
 └── i18n/locales/{en,uk}/            # Namespace-based translations
 ```
+
+### Frontend (Booking Widget)
+
+Standalone public booking app deployed per carwash. Tenant identified via `VITE_TENANT_ID` env var → `x-carwash-tenant-id` header. Dev server on port 5174.
+
+```
+frontend-booking/src/
+├── main.tsx
+├── index.css                        # Tailwind theme (same as dashboard)
+├── config/tenant.ts                 # Validates VITE_TENANT_ID at startup
+├── app/
+│   ├── App.tsx, providers.tsx, router.tsx
+├── api/booking.api.ts               # Axios with x-carwash-tenant-id header
+├── hooks/usePublicBooking.ts        # React Query hooks (no slug param)
+├── pages/
+│   ├── LandingPage.tsx              # Services showcase + Book Now CTA
+│   └── BookingPage.tsx              # 4-step wizard (branch→schedule→info→review)
+├── layout/BookingLayout.tsx         # Header + lang toggle + Outlet
+├── ui/                              # Copied from frontend/src/shared/ui/
+├── utils/                           # cn.ts, format.ts
+├── types/                           # api.ts, models.ts (trimmed)
+└── i18n/                            # EN + UK public-booking translations
+```
+
+Routes: `/` (landing), `/book` (wizard). No auth, no sockets, no Sentry.
 
 ---
 

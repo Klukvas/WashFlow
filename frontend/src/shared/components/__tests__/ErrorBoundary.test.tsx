@@ -6,6 +6,21 @@ vi.mock('@sentry/react', () => ({
   captureException: vi.fn(),
 }));
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => {
+      const translations: Record<string, string> = {
+        'errors.somethingWentWrong': 'Something went wrong',
+        'errors.unexpectedError':
+          'An unexpected error occurred. Please try refreshing the page.',
+        'errors.tryAgain': 'Try Again',
+        'errors.goToDashboard': 'Go to Dashboard',
+      };
+      return translations[key] ?? key;
+    },
+  }),
+}));
+
 vi.mock('lucide-react', () => ({
   AlertTriangle: (props: Record<string, unknown>) => (
     <svg data-testid="alert-triangle-icon" {...props} />

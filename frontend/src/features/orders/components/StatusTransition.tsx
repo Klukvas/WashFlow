@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { OrderStatus } from '@/shared/types/enums';
 import { ALLOWED_TRANSITIONS } from '@/shared/constants/order-status';
 import { useUpdateOrderStatus } from '../hooks/useOrders';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { Button } from '@/shared/ui/button';
 import {
   Dialog,
@@ -60,6 +61,7 @@ export function StatusTransition({
   const { t } = useTranslation('orders');
   const { t: tc } = useTranslation('common');
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [confirmStatus, setConfirmStatus] = useState<OrderStatus | null>(null);
   const [cancellationReason, setCancellationReason] = useState('');
   const { mutate, isPending } = useUpdateOrderStatus();
 
@@ -72,7 +74,15 @@ export function StatusTransition({
       setCancelDialogOpen(true);
       return;
     }
-    mutate({ id: orderId, status: newStatus });
+    setConfirmStatus(newStatus);
+  }
+
+  function handleConfirmTransition() {
+    if (!confirmStatus) return;
+    mutate(
+      { id: orderId, status: confirmStatus },
+      { onSuccess: () => setConfirmStatus(null) },
+    );
   }
 
   function handleCancelConfirm() {
@@ -81,6 +91,10 @@ export function StatusTransition({
       { onSuccess: () => setCancelDialogOpen(false) },
     );
   }
+
+  const confirmStatusLabel = confirmStatus
+    ? STATUS_BUTTON_CONFIG[confirmStatus]?.labelKey
+    : undefined;
 
   return (
     <>
@@ -101,6 +115,17 @@ export function StatusTransition({
           );
         })}
       </div>
+
+      <ConfirmDialog
+        open={!!confirmStatus}
+        onClose={() => setConfirmStatus(null)}
+        onConfirm={handleConfirmTransition}
+        title={confirmStatusLabel ? t(confirmStatusLabel) : ''}
+        message={t('statusChange.confirmTransition', {
+          status: confirmStatus ? t(`status.${confirmStatus}`) : '',
+        })}
+        loading={isPending}
+      />
 
       <Dialog
         open={cancelDialogOpen}

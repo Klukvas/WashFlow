@@ -1,10 +1,12 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { RolesRepository } from './roles.repository';
 import { PermissionsRepository } from '../permissions/permissions.repository';
+import { PrismaService } from '../../prisma/prisma.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 
@@ -13,6 +15,7 @@ export class RolesService {
   constructor(
     private readonly rolesRepo: RolesRepository,
     private readonly permissionsRepo: PermissionsRepository,
+    private readonly prisma: PrismaService,
   ) {}
 
   async findAll(tenantId: string) {
@@ -36,6 +39,16 @@ export class RolesService {
 
   async softDelete(tenantId: string, id: string) {
     await this.findById(tenantId, id);
+
+    const activeUsersCount = await this.prisma.user.count({
+      where: { roleId: id, tenantId, deletedAt: null, isActive: true },
+    });
+    if (activeUsersCount > 0) {
+      throw new ConflictException(
+        `Cannot delete role: ${activeUsersCount} active user(s) still assigned`,
+      );
+    }
+
     return this.rolesRepo.softDelete(tenantId, id);
   }
 

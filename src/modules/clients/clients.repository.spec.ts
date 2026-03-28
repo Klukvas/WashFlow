@@ -21,6 +21,9 @@ describe('ClientsRepository', () => {
       update: jest.fn(),
       count: jest.fn(),
     },
+    order: {
+      count: jest.fn().mockResolvedValue(5),
+    },
   };
 
   const tenantPrisma = {
@@ -85,7 +88,7 @@ describe('ClientsRepository', () => {
           orders: { take: 10, orderBy: { createdAt: 'desc' } },
         },
       });
-      expect(result).toEqual(mockClient);
+      expect(result).toEqual({ ...mockClient, totalOrders: 5 });
     });
   });
 

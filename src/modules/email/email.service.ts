@@ -13,12 +13,17 @@ import {
   StatusUpdateData,
   BookingReminderData,
 } from './email.types';
+import {
+  CircuitBreaker,
+  CircuitOpenError,
+} from '../../common/utils/circuit-breaker';
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private readonly resend: Resend | null;
   private readonly from: string;
+  private readonly circuitBreaker: CircuitBreaker;
 
   constructor(private readonly config: ConfigService) {
     const apiKey = this.config.get<string>('resend.apiKey', '');
@@ -27,6 +32,11 @@ export class EmailService {
       'WashFlow <noreply@washflow.app>',
     );
     this.resend = apiKey ? new Resend(apiKey) : null;
+    this.circuitBreaker = new CircuitBreaker({
+      name: 'Resend',
+      failureThreshold: 5,
+      resetTimeoutMs: 30_000,
+    });
   }
 
   private async send(to: string, subject: string, html: string): Promise<void> {
@@ -38,13 +48,21 @@ export class EmailService {
     }
 
     try {
-      await this.resend.emails.send({
-        from: this.from,
-        to,
-        subject,
-        html,
+      await this.circuitBreaker.fire(async () => {
+        await this.resend!.emails.send({
+          from: this.from,
+          to,
+          subject,
+          html,
+        });
       });
     } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        this.logger.warn(
+          `Email deferred (circuit open): to=${to}, subject="${subject}"`,
+        );
+        return;
+      }
       this.logger.error(
         `Failed to send email to ${to}: ${(error as Error).message}`,
       );

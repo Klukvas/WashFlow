@@ -1142,6 +1142,11 @@ async function seedRealisticData(tenantId: string, adminUserId: string) {
 // ---------------------------------------------------------------------------
 
 async function main() {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('ERROR: Seeding is not allowed in production. Aborting.');
+    process.exit(1);
+  }
+
   // 1. Seed permissions
   console.log('Seeding permissions...');
 
