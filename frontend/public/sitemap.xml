@@ -1,13 +1,52 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Landing -->
   <url>
     <loc>https://washflow.com/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
+
+  <!-- Blog -->
   <url>
     <loc>https://washflow.com/blog</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
+  <url><loc>https://washflow.com/blog/why-car-wash-needs-software</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.com/blog/online-booking-for-car-wash</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.com/blog/managing-multiple-car-wash-locations</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.com/blog/5-mistakes-car-wash-owners-make</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.com/blog/car-wash-analytics-guide</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.com/blog/yak-avtomatyzuvaty-avtomyiku</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.com/blog/roli-ta-dozvoly-na-avtomyitsi</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.com/blog/yak-zbilshyty-dokhid-avtomyiky</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.com/blog/onlain-zapys-na-myiku</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.com/blog/pomylky-pry-vidkrytti-avtomyiky</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.com/blog/analityka-avtomyiky-shcho-vidstezhuvaty</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.com/blog/yak-motyvuvaty-komandu-avtomyiky</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.com/blog/yak-obraty-programu-dlya-avtomyiky</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.com/blog/yak-pracyuvaty-z-sezonnistyu</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.com/blog/google-maps-dlya-avtomyiky</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+
+  <!-- How-To: Reference Topics -->
+  <url><loc>https://washflow.com/how-to/getting-started</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.com/how-to/dashboard</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.com/how-to/orders</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.com/how-to/clients</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.com/how-to/vehicles</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.com/how-to/services</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.com/how-to/branches</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.com/how-to/users-roles</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.com/how-to/workforce</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.com/how-to/analytics</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.com/how-to/subscription</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.com/how-to/public-booking</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+
+  <!-- How-To: Step-by-Step Flows -->
+  <url><loc>https://washflow.com/how-to/flow-client-via-order</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://washflow.com/how-to/flow-client-via-tabs</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://washflow.com/how-to/flow-online-booking</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://washflow.com/how-to/flow-new-employee</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://washflow.com/how-to/flow-branch-setup</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
 </urlset>

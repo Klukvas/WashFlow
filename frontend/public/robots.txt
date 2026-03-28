@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
 Allow: /blog/
+Allow: /how-to/
 Disallow: /dashboard
 Disallow: /orders
 Disallow: /clients
@@ -14,7 +15,6 @@ Disallow: /analytics
 Disallow: /audit
 Disallow: /workforce
 Disallow: /subscription
-Disallow: /how-to
 Disallow: /login
 Disallow: /register
 Disallow: /forgot-password

@@ -1,0 +1,16 @@
+{
+  "name": "WashFlow",
+  "short_name": "WashFlow",
+  "description": "Car wash management platform",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#090E18",
+  "theme_color": "#38BDF8",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ]
+}

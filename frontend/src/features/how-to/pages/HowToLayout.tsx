@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { Seo } from '@/shared/components/Seo';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { TopicSidebar } from '../components/TopicSidebar';
 
@@ -8,6 +9,11 @@ export function HowToLayout() {
 
   return (
     <div>
+      <Seo
+        title={t('meta.title')}
+        description={t('meta.description')}
+        path="/how-to"
+      />
       <PageHeader title={t('meta.title')} description={t('meta.description')} />
 
       {/* Mobile: horizontal scrollable topic list */}
