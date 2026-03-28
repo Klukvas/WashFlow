@@ -105,9 +105,10 @@ test.describe('Flexible Order Wizard', () => {
 
     await wizard.selectMode('client-first');
 
-    // Step 0: Select branch
+    // Step 0: Select branch (wait for options to load)
     const branchSelect = page.locator('select').first();
     const firstOption = branchSelect.locator('option:not([disabled])').first();
+    await expect(firstOption).toBeAttached({ timeout: 10_000 });
     const branchVal = await firstOption.getAttribute('value');
     if (branchVal) await branchSelect.selectOption(branchVal);
 
@@ -178,9 +179,10 @@ test.describe('Flexible Order Wizard', () => {
   test('back button navigates to previous step', async ({ page }) => {
     await wizard.selectMode('time-first');
 
-    // Select branch to enable Next
+    // Select branch to enable Next (wait for options to load)
     const branchSelect = page.locator('select').first();
     const firstOption = branchSelect.locator('option:not([disabled])').first();
+    await expect(firstOption).toBeAttached({ timeout: 10_000 });
     const val = await firstOption.getAttribute('value');
     if (val) await branchSelect.selectOption(val);
 

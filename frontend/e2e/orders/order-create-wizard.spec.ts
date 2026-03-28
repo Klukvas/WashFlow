@@ -1,5 +1,15 @@
 import { test, expect } from '@playwright/test';
 
+/** Wait for branch options to load, then select the first one */
+async function selectFirstBranch(page: import('@playwright/test').Page) {
+  const branchSelect = page.locator('select').first();
+  const options = branchSelect.locator('option:not([disabled])');
+  await expect(options.first()).toBeAttached({ timeout: 10_000 });
+  const val = await options.first().getAttribute('value');
+  if (val) await branchSelect.selectOption(val);
+  return branchSelect;
+}
+
 test.describe('Order Create Wizard', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/orders/create');
@@ -23,14 +33,7 @@ test.describe('Order Create Wizard', () => {
   test('step 0: selecting branch enables further interaction', async ({
     page,
   }) => {
-    const branchSelect = page.locator('select').first();
-
-    // Pick the first non-placeholder option
-    const options = branchSelect.locator('option:not([disabled])');
-    const firstOptionValue = await options.first().getAttribute('value');
-    if (firstOptionValue) {
-      await branchSelect.selectOption(firstOptionValue);
-    }
+    const branchSelect = await selectFirstBranch(page);
 
     // Branch should now be selected
     await expect(branchSelect).not.toHaveValue('');
@@ -38,12 +41,7 @@ test.describe('Order Create Wizard', () => {
 
   test('step 0: client search returns results', async ({ page }) => {
     // Select a branch first
-    const branchSelect = page.locator('select').first();
-    const options = branchSelect.locator('option:not([disabled])');
-    const firstOptionValue = await options.first().getAttribute('value');
-    if (firstOptionValue) {
-      await branchSelect.selectOption(firstOptionValue);
-    }
+    await selectFirstBranch(page);
 
     // Type at least 2 chars to trigger search — use a common Ukrainian letter combo
     const searchInput = page.getByPlaceholder(/search client/i);
@@ -57,10 +55,7 @@ test.describe('Order Create Wizard', () => {
 
   test('step 0 → step 1: can navigate to vehicle step', async ({ page }) => {
     // Select branch
-    const branchSelect = page.locator('select').first();
-    const firstOption = branchSelect.locator('option:not([disabled])').first();
-    const val = await firstOption.getAttribute('value');
-    if (val) await branchSelect.selectOption(val);
+    await selectFirstBranch(page);
 
     // Search and select a client by phone prefix
     const searchInput = page.getByPlaceholder(/search client/i);
@@ -87,10 +82,7 @@ test.describe('Order Create Wizard', () => {
     test.setTimeout(60_000);
 
     // Step 0: Select branch
-    const branchSelect = page.locator('select').first();
-    const firstOption = branchSelect.locator('option:not([disabled])').first();
-    const branchVal = await firstOption.getAttribute('value');
-    if (branchVal) await branchSelect.selectOption(branchVal);
+    await selectFirstBranch(page);
 
     // Step 0: Search and select client
     const searchInput = page.getByPlaceholder(/search client/i);
