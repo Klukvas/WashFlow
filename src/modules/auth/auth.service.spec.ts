@@ -988,7 +988,9 @@ describe('AuthService', () => {
       });
 
       it('appends suffix when slug is taken', async () => {
-        prisma.tenant.findUnique.mockResolvedValue({ id: 'existing' });
+        prisma.tenant.findUnique
+          .mockResolvedValueOnce({ id: 'existing' } as never)
+          .mockResolvedValueOnce(null as never);
 
         await service.register(REGISTER_DTO);
 
