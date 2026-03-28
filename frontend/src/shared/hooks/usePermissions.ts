@@ -12,7 +12,8 @@ export function usePermissions() {
     const token = getAccessToken();
     if (!token) return false;
     return decodeJwtPayload(token)?.isSuperAdmin ?? false;
-  }, [permissions]); // permissions changes whenever a new token is issued
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- permissions changes whenever a new token is issued
+  }, [permissions]);
 
   const hasPermission = useCallback(
     (permission: string): boolean => {

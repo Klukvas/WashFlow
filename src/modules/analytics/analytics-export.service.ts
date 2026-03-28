@@ -58,8 +58,28 @@ export class AnalyticsExportService {
       'Source',
     ];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows = orders.map((order: any) => [
+    const rows = (
+      orders as Array<{
+        id: string;
+        scheduledStart: Date;
+        status: string;
+        client: {
+          firstName: string;
+          lastName: string | null;
+          phone: string | null;
+          email: string | null;
+        };
+        vehicle: {
+          make: string;
+          model: string | null;
+          licensePlate: string | null;
+        };
+        branch: { name: string };
+        services: Array<{ service: { name: string } }>;
+        totalPrice: { toString(): string };
+        source: string;
+      }>
+    ).map((order) => [
       order.id,
       order.scheduledStart.toISOString(),
       order.status,
@@ -69,8 +89,7 @@ export class AnalyticsExportService {
       `${order.vehicle.make} ${order.vehicle.model ?? ''}`.trim(),
       order.vehicle.licensePlate ?? '',
       order.branch.name,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      order.services.map((s: any) => s.service.name).join('; '),
+      order.services.map((s) => s.service.name).join('; '),
       order.totalPrice.toString(),
       order.source,
     ]);
@@ -118,15 +137,28 @@ export class AnalyticsExportService {
       'Created At',
     ];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows = clients.map((client: any) => {
+    type ClientOrder = {
+      id: string;
+      totalPrice: { toString(): string } | number;
+      status: string;
+    };
+    const rows = (
+      clients as Array<{
+        id: string;
+        firstName: string;
+        lastName: string | null;
+        phone: string | null;
+        email: string | null;
+        vehicles: unknown[];
+        orders: ClientOrder[];
+        createdAt: Date;
+      }>
+    ).map((client) => {
       const completedOrders = client.orders.filter(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (o: any) => o.status === 'COMPLETED',
+        (o) => o.status === 'COMPLETED',
       );
       const totalRevenue = completedOrders.reduce(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (sum: number, o: any) => sum + Number(o.totalPrice),
+        (sum: number, o) => sum + Number(o.totalPrice),
         0,
       );
       return [
@@ -150,14 +182,12 @@ export class AnalyticsExportService {
    * loading all records into memory at once.
    * Hard-capped at EXPORT_MAX_RECORDS total records.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async fetchInBatches(
     model: 'order' | 'client',
     where: Record<string, unknown>,
     options: Record<string, unknown>,
-  ): Promise<any[]> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const results: any[] = [];
+  ): Promise<Record<string, unknown>[]> {
+    const results: Record<string, unknown>[] = [];
     let cursor: string | undefined;
 
     while (results.length < EXPORT_MAX_RECORDS) {
@@ -170,24 +200,26 @@ export class AnalyticsExportService {
       const orderBy = options.orderBy
         ? [
             ...(Array.isArray(options.orderBy)
-              ? options.orderBy
+              ? (options.orderBy as Record<string, unknown>[])
               : [options.orderBy]),
             { id: 'asc' as const },
           ]
         : [{ id: 'asc' as const }];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const batch: any[] = await (this.prisma[model] as any).findMany({
+      /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+      const prismaModel = this.prisma[model] as any; // needed: Prisma model accessor is not typed for dynamic access
+      const batch: Record<string, unknown>[] = await prismaModel.findMany({
         where,
         ...options,
         orderBy,
         take,
         ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
       });
+      /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 
       if (batch.length === 0) break;
 
       results.push(...batch);
-      cursor = batch[batch.length - 1].id;
+      cursor = batch[batch.length - 1].id as string;
 
       if (batch.length < take) break;
     }

@@ -7,10 +7,13 @@ export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
   const queryClient = useQueryClient();
   const queryClientRef = useRef(queryClient);
-  queryClientRef.current = queryClient;
 
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  useEffect(() => {
+    queryClientRef.current = queryClient;
+  });
 
   useEffect(() => {
     const accessToken = getAccessToken();

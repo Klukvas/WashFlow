@@ -7,7 +7,7 @@ import {
   MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { PaymentMethod, PaymentStatus } from '@prisma/client';
+import { PaymentMethod } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreatePaymentDto {

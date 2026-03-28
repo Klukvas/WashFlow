@@ -8,7 +8,10 @@ describe('CustomThrottlerGuard', () => {
 
   it('does not override shouldSkip (rate limiting always active)', () => {
     expect(
-      CustomThrottlerGuard.prototype.hasOwnProperty('shouldSkip'),
+      Object.prototype.hasOwnProperty.call(
+        CustomThrottlerGuard.prototype,
+        'shouldSkip',
+      ),
     ).toBe(false);
   });
 });

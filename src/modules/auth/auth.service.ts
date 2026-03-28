@@ -258,6 +258,7 @@ export class AuthService {
 
     const slug = base || 'company';
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
     const existing = await client.tenant.findUnique({
       where: { slug },
     });
@@ -267,6 +268,7 @@ export class AuthService {
     for (let attempt = 0; attempt < 5; attempt++) {
       const suffix = crypto.randomBytes(4).toString('hex').slice(0, 5);
       const candidate = `${slug}-${suffix}`;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
       const conflict = await client.tenant.findUnique({
         where: { slug: candidate },
       });
