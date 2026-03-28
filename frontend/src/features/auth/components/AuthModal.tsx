@@ -12,7 +12,7 @@ export function AuthModal() {
   const isRegister = modal === 'register';
 
   return (
-    <Dialog open={modal !== null} onClose={close}>
+    <Dialog open={modal !== null} onClose={close} className="dark">
       <DialogHeader>
         <DialogTitle>
           {isLogin ? t('login.title') : t('register.title')}
@@ -22,12 +22,8 @@ export function AuthModal() {
         </p>
       </DialogHeader>
 
-      {isLogin && (
-        <LoginForm onSwitchToRegister={() => open('register')} />
-      )}
-      {isRegister && (
-        <RegisterForm onSwitchToLogin={() => open('login')} />
-      )}
+      {isLogin && <LoginForm onSwitchToRegister={() => open('register')} />}
+      {isRegister && <RegisterForm onSwitchToLogin={() => open('login')} />}
     </Dialog>
   );
 }
