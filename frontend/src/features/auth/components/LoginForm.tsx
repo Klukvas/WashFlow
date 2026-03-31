@@ -66,9 +66,7 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
         />
       </div>
 
-      {error && (
-        <p className="text-sm text-[#F87171]">{t('login.error')}</p>
-      )}
+      {error && <p className="text-sm text-destructive">{t('login.error')}</p>}
 
       <button
         type="submit"
@@ -79,12 +77,8 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
           background: '#38BDF8',
           color: '#0B0F17',
         }}
-        onMouseEnter={(e) =>
-          (e.currentTarget.style.opacity = '0.88')
-        }
-        onMouseLeave={(e) =>
-          (e.currentTarget.style.opacity = '1')
-        }
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.88')}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
       >
         {isPending ? t('login.loading') : t('login.submit')}
       </button>

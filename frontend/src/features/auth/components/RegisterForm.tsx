@@ -99,7 +99,7 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
       </div>
 
       {error && (
-        <p className="text-sm text-[#F87171]">
+        <p className="text-sm text-destructive">
           {isConflict ? t('register.emailInUse') : t('register.error')}
         </p>
       )}
@@ -113,21 +113,15 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
           background: '#38BDF8',
           color: '#0B0F17',
         }}
-        onMouseEnter={(e) =>
-          (e.currentTarget.style.opacity = '0.88')
-        }
-        onMouseLeave={(e) =>
-          (e.currentTarget.style.opacity = '1')
-        }
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.88')}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
       >
         {isPending ? t('register.loading') : t('register.submit')}
       </button>
 
       {onSwitchToLogin && (
         <div className="text-center text-[13px]">
-          <span className="text-[#94A3B8]">
-            {t('register.hasAccount')}
-          </span>{' '}
+          <span className="text-[#94A3B8]">{t('register.hasAccount')}</span>{' '}
           <button
             type="button"
             onClick={onSwitchToLogin}
