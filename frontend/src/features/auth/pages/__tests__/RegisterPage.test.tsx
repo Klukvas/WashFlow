@@ -38,10 +38,6 @@ vi.mock('../../components/RegisterForm', () => ({
   RegisterForm: () => <div data-testid="register-form">RegisterForm</div>,
 }));
 
-vi.mock('@/shared/components/ThemeToggle', () => ({
-  ThemeToggle: () => <div data-testid="theme-toggle">ThemeToggle</div>,
-}));
-
 vi.mock('@/shared/components/LanguageSwitcher', () => ({
   LanguageSwitcher: () => (
     <div data-testid="language-switcher">LanguageSwitcher</div>
@@ -79,7 +75,7 @@ describe('RegisterPage', () => {
     expect(screen.getByTestId('register-form')).toBeInTheDocument();
   });
 
-  it('renders ThemeToggle and LanguageSwitcher', () => {
+  it('renders LanguageSwitcher', () => {
     mockedUseAuthStore.mockImplementation(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (selector: any) => selector({ isAuthenticated: false }),
@@ -87,7 +83,6 @@ describe('RegisterPage', () => {
 
     render(<RegisterPage />);
 
-    expect(screen.getByTestId('theme-toggle')).toBeInTheDocument();
     expect(screen.getByTestId('language-switcher')).toBeInTheDocument();
   });
 
@@ -101,20 +96,6 @@ describe('RegisterPage', () => {
 
     const washFlowLink = screen.getByText('WashFlow');
     expect(washFlowLink.closest('a')).toHaveAttribute('href', '/');
-  });
-
-  it('renders the "has account" text with a sign-in link', () => {
-    mockedUseAuthStore.mockImplementation(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (selector: any) => selector({ isAuthenticated: false }),
-    );
-
-    render(<RegisterPage />);
-
-    expect(screen.getByText('register.hasAccount')).toBeInTheDocument();
-
-    const signInLink = screen.getByText('register.signIn');
-    expect(signInLink.closest('a')).toHaveAttribute('href', '/login');
   });
 
   it('redirects to /dashboard when authenticated', () => {

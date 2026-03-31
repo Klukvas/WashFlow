@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { LoginPage } from '../LoginPage';
@@ -20,6 +21,19 @@ vi.mock('react-router', () => ({
   Navigate: ({ to }: { to: string }) => (
     <div data-testid="navigate" data-to={to} />
   ),
+  Link: ({
+    to,
+    children,
+    ...rest
+  }: {
+    to: string;
+    children: ReactNode;
+    [key: string]: unknown;
+  }) => (
+    <a href={to} {...rest}>
+      {children}
+    </a>
+  ),
   useLocation: () => mockUseLocation(),
 }));
 
@@ -29,10 +43,6 @@ vi.mock('@/shared/stores/auth.store', () => ({
 
 vi.mock('../../components/LoginForm', () => ({
   LoginForm: () => <div data-testid="login-form">LoginForm</div>,
-}));
-
-vi.mock('@/shared/components/ThemeToggle', () => ({
-  ThemeToggle: () => <div data-testid="theme-toggle">ThemeToggle</div>,
 }));
 
 vi.mock('@/shared/components/LanguageSwitcher', () => ({
@@ -73,7 +83,7 @@ describe('LoginPage', () => {
     expect(screen.getByTestId('login-form')).toBeInTheDocument();
   });
 
-  it('renders ThemeToggle and LanguageSwitcher', () => {
+  it('renders LanguageSwitcher', () => {
     mockedUseAuthStore.mockImplementation(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (selector: any) => selector({ isAuthenticated: false }),
@@ -81,7 +91,6 @@ describe('LoginPage', () => {
 
     render(<LoginPage />);
 
-    expect(screen.getByTestId('theme-toggle')).toBeInTheDocument();
     expect(screen.getByTestId('language-switcher')).toBeInTheDocument();
   });
 

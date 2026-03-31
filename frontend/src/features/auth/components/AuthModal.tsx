@@ -12,12 +12,20 @@ export function AuthModal() {
   const isRegister = modal === 'register';
 
   return (
-    <Dialog open={modal !== null} onClose={close} className="dark">
+    <Dialog
+      open={modal !== null}
+      onClose={close}
+      className="dark !border-[rgba(255,255,255,0.07)] !bg-[#0F1623]"
+      style={{
+        boxShadow:
+          '0 24px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03)',
+      }}
+    >
       <DialogHeader>
-        <DialogTitle>
+        <DialogTitle className="text-[#F1F5F9]">
           {isLogin ? t('login.title') : t('register.title')}
         </DialogTitle>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-[#94A3B8]">
           {isLogin ? t('login.subtitle') : t('register.subtitle')}
         </p>
       </DialogHeader>
