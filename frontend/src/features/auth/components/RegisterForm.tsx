@@ -10,7 +10,6 @@ import type { AxiosError } from 'axios';
 
 const registerSchema = z
   .object({
-    companyName: z.string().max(100).optional(),
     email: z.string().email(),
     password: z.string().min(8),
     confirmPassword: z.string().min(8),
@@ -47,16 +46,6 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="companyName">{t('register.companyName')}</Label>
-        <Input
-          id="companyName"
-          type="text"
-          error={errors.companyName?.message}
-          {...reg('companyName')}
-        />
-      </div>
-
       <div className="space-y-2">
         <Label htmlFor="email">{t('register.email')}</Label>
         <Input

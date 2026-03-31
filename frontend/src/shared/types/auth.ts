@@ -11,7 +11,6 @@ export interface AuthResponse {
 export interface RegisterRequest {
   email: string;
   password: string;
-  companyName?: string;
 }
 
 export interface AuthUser {

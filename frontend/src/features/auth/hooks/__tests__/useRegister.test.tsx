@@ -60,7 +60,6 @@ const fakeAuthResponse: AuthResponse = {
 };
 
 const fakePayload: RegisterRequest = {
-  companyName: 'WashCo',
   email: 'new@example.com',
   password: 'password123',
 };

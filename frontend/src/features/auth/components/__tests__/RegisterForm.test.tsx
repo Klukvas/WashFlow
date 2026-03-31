@@ -52,10 +52,9 @@ describe('RegisterForm', () => {
     mockError = null;
   });
 
-  it('renders all 4 fields', () => {
+  it('renders all 3 fields', () => {
     render(<RegisterForm />, { wrapper: createWrapper() });
 
-    expect(screen.getByLabelText('register.companyName')).toBeInTheDocument();
     expect(screen.getByLabelText('register.email')).toBeInTheDocument();
     expect(screen.getByLabelText('register.password')).toBeInTheDocument();
     expect(
@@ -78,7 +77,6 @@ describe('RegisterForm', () => {
     const user = userEvent.setup();
     render(<RegisterForm />, { wrapper: createWrapper() });
 
-    await user.type(screen.getByLabelText('register.companyName'), 'WashCo');
     await user.type(
       screen.getByLabelText('register.email'),
       'john@example.com',
@@ -99,7 +97,6 @@ describe('RegisterForm', () => {
     const user = userEvent.setup();
     render(<RegisterForm />, { wrapper: createWrapper() });
 
-    await user.type(screen.getByLabelText('register.companyName'), 'WashCo');
     await user.type(
       screen.getByLabelText('register.email'),
       'john@example.com',
@@ -113,7 +110,6 @@ describe('RegisterForm', () => {
 
     await waitFor(() => {
       expect(mockMutate).toHaveBeenCalledWith({
-        companyName: 'WashCo',
         email: 'john@example.com',
         password: 'password123',
       });
@@ -147,8 +143,7 @@ describe('RegisterForm', () => {
     const user = userEvent.setup();
     render(<RegisterForm />, { wrapper: createWrapper() });
 
-    // Fill only some fields
-    await user.type(screen.getByLabelText('register.companyName'), 'WashCo');
+    // Submit without filling any fields
     await user.click(screen.getByTestId('register-submit'));
 
     await waitFor(() => {
