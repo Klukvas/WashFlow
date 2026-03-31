@@ -52,12 +52,10 @@ describe('RegisterForm', () => {
     mockError = null;
   });
 
-  it('renders all 6 fields', () => {
+  it('renders all 4 fields', () => {
     render(<RegisterForm />, { wrapper: createWrapper() });
 
     expect(screen.getByLabelText('register.companyName')).toBeInTheDocument();
-    expect(screen.getByLabelText('register.firstName')).toBeInTheDocument();
-    expect(screen.getByLabelText('register.lastName')).toBeInTheDocument();
     expect(screen.getByLabelText('register.email')).toBeInTheDocument();
     expect(screen.getByLabelText('register.password')).toBeInTheDocument();
     expect(
@@ -81,8 +79,6 @@ describe('RegisterForm', () => {
     render(<RegisterForm />, { wrapper: createWrapper() });
 
     await user.type(screen.getByLabelText('register.companyName'), 'WashCo');
-    await user.type(screen.getByLabelText('register.firstName'), 'John');
-    await user.type(screen.getByLabelText('register.lastName'), 'Doe');
     await user.type(
       screen.getByLabelText('register.email'),
       'john@example.com',
@@ -104,8 +100,6 @@ describe('RegisterForm', () => {
     render(<RegisterForm />, { wrapper: createWrapper() });
 
     await user.type(screen.getByLabelText('register.companyName'), 'WashCo');
-    await user.type(screen.getByLabelText('register.firstName'), 'John');
-    await user.type(screen.getByLabelText('register.lastName'), 'Doe');
     await user.type(
       screen.getByLabelText('register.email'),
       'john@example.com',
@@ -120,8 +114,6 @@ describe('RegisterForm', () => {
     await waitFor(() => {
       expect(mockMutate).toHaveBeenCalledWith({
         companyName: 'WashCo',
-        firstName: 'John',
-        lastName: 'Doe',
         email: 'john@example.com',
         password: 'password123',
       });

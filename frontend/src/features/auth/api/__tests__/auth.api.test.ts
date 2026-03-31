@@ -64,8 +64,6 @@ describe('auth.api', () => {
       const payload = {
         email: 'new@example.com',
         password: 'pass123',
-        firstName: 'New',
-        lastName: 'User',
         companyName: 'Test Co',
       };
       const result = await register(payload);

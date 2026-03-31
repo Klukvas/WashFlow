@@ -3,7 +3,11 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useRegister } from '../useRegister';
-import type { AuthResponse, AuthUser, RegisterRequest } from '@/shared/types/auth';
+import type {
+  AuthResponse,
+  AuthUser,
+  RegisterRequest,
+} from '@/shared/types/auth';
 
 const mockNavigate = vi.fn();
 const mockSetAuth = vi.fn();
@@ -13,8 +17,9 @@ vi.mock('react-router', () => ({
 }));
 
 vi.mock('@/shared/stores/auth.store', () => ({
-  useAuthStore: (selector: (state: { setAuth: typeof mockSetAuth }) => unknown) =>
-    selector({ setAuth: mockSetAuth }),
+  useAuthStore: (
+    selector: (state: { setAuth: typeof mockSetAuth }) => unknown,
+  ) => selector({ setAuth: mockSetAuth }),
 }));
 
 vi.mock('../../api/auth.api', () => ({
@@ -56,8 +61,6 @@ const fakeAuthResponse: AuthResponse = {
 
 const fakePayload: RegisterRequest = {
   companyName: 'WashCo',
-  firstName: 'New',
-  lastName: 'User',
   email: 'new@example.com',
   password: 'password123',
 };

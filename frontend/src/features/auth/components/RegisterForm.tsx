@@ -11,8 +11,6 @@ import type { AxiosError } from 'axios';
 const registerSchema = z
   .object({
     companyName: z.string().max(100).optional(),
-    firstName: z.string().max(100).optional(),
-    lastName: z.string().max(100).optional(),
     email: z.string().email(),
     password: z.string().min(8),
     confirmPassword: z.string().min(8),
@@ -56,26 +54,6 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
           type="text"
           error={errors.companyName?.message}
           {...reg('companyName')}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="firstName">{t('register.firstName')}</Label>
-        <Input
-          id="firstName"
-          type="text"
-          error={errors.firstName?.message}
-          {...reg('firstName')}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="lastName">{t('register.lastName')}</Label>
-        <Input
-          id="lastName"
-          type="text"
-          error={errors.lastName?.message}
-          {...reg('lastName')}
         />
       </div>
 
