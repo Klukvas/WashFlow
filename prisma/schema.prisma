@@ -152,8 +152,8 @@ model User {
   isActive     Boolean   @default(true)
   isSuperAdmin  Boolean   @default(false)
   tokenVersion        Int       @default(0)
-  failedLoginAttempts Int       @default(0)
-  accountLockedUntil  DateTime? @db.Timestamptz
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  accountLockedUntil  DateTime? @db.Timestamptz @map("account_locked_until")
   roleId              String?
   role          Role?     @relation(fields: [roleId], references: [id])
   createdAt     DateTime  @default(now()) @db.Timestamptz
