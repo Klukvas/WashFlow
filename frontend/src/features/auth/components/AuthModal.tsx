@@ -15,11 +15,7 @@ export function AuthModal() {
     <Dialog
       open={modal !== null}
       onClose={close}
-      className="dark !border-[rgba(255,255,255,0.07)] !bg-[#0F1623]"
-      style={{
-        boxShadow:
-          '0 24px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03)',
-      }}
+      className="dark !border-[rgba(255,255,255,0.07)] !bg-[#0F1623] ![box-shadow:0_24px_60px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)]"
     >
       <DialogHeader>
         <DialogTitle className="text-[#F1F5F9]">
