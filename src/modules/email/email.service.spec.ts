@@ -9,7 +9,7 @@ describe('EmailService', () => {
   const createService = async (apiKey: string = '') => {
     const configValues: Record<string, string> = {
       'resend.apiKey': apiKey,
-      'resend.from': 'WashFlow <noreply@washflow.app>',
+      'resend.from': 'WashFlow <noreply@washflow.solutions>',
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -110,7 +110,7 @@ describe('EmailService', () => {
 
       expect(mockSend).toHaveBeenCalledTimes(1);
       expect(mockSend).toHaveBeenCalledWith({
-        from: 'WashFlow <noreply@washflow.app>',
+        from: 'WashFlow <noreply@washflow.solutions>',
         to: 'user@example.com',
         subject: 'Reset Your Password — WashFlow',
         html: expect.stringContaining('https://example.com/reset'),
@@ -122,7 +122,7 @@ describe('EmailService', () => {
 
       expect(mockSend).toHaveBeenCalledTimes(1);
       expect(mockSend).toHaveBeenCalledWith({
-        from: 'WashFlow <noreply@washflow.app>',
+        from: 'WashFlow <noreply@washflow.solutions>',
         to: 'user@example.com',
         subject: 'Account Locked — WashFlow',
         html: expect.stringContaining('5 failed login attempts'),
@@ -141,7 +141,7 @@ describe('EmailService', () => {
 
       expect(mockSend).toHaveBeenCalledTimes(1);
       expect(mockSend).toHaveBeenCalledWith({
-        from: 'WashFlow <noreply@washflow.app>',
+        from: 'WashFlow <noreply@washflow.solutions>',
         to: 'user@example.com',
         subject: 'Order #12345678 Confirmed — WashFlow',
         html: expect.stringContaining('Order Confirmed'),
@@ -158,7 +158,7 @@ describe('EmailService', () => {
 
       expect(mockSend).toHaveBeenCalledTimes(1);
       expect(mockSend).toHaveBeenCalledWith({
-        from: 'WashFlow <noreply@washflow.app>',
+        from: 'WashFlow <noreply@washflow.solutions>',
         to: 'user@example.com',
         subject: 'Order #12345678 Status Update — WashFlow',
         html: expect.stringContaining('IN_PROGRESS'),
@@ -176,7 +176,7 @@ describe('EmailService', () => {
 
       expect(mockSend).toHaveBeenCalledTimes(1);
       expect(mockSend).toHaveBeenCalledWith({
-        from: 'WashFlow <noreply@washflow.app>',
+        from: 'WashFlow <noreply@washflow.solutions>',
         to: 'user@example.com',
         subject: 'Booking Reminder — WashFlow',
         html: expect.stringContaining('Main Branch'),

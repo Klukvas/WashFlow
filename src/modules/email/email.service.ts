@@ -29,7 +29,7 @@ export class EmailService {
     const apiKey = this.config.get<string>('resend.apiKey', '');
     this.from = this.config.get<string>(
       'resend.from',
-      'WashFlow <noreply@washflow.app>',
+      'WashFlow <noreply@washflow.solutions>',
     );
     this.resend = apiKey ? new Resend(apiKey) : null;
     this.circuitBreaker = new CircuitBreaker({

@@ -41,7 +41,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       NODE_ENV: production
       PORT: 3000
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://washflow.app}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://washflow.solutions}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
       JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-15m}
@@ -50,7 +50,7 @@ services:
       GRAFANA_LOKI_HOST: ${GRAFANA_LOKI_HOST:-}
       GRAFANA_LOKI_USERNAME: ${GRAFANA_LOKI_USERNAME:-}
       GRAFANA_LOKI_PASSWORD: ${GRAFANA_LOKI_PASSWORD:-}
-      FRONTEND_URL: ${FRONTEND_URL:-https://washflow.app}
+      FRONTEND_URL: ${FRONTEND_URL:-https://washflow.solutions}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       PADDLE_API_KEY: ${PADDLE_API_KEY:-}
       PADDLE_CLIENT_TOKEN: ${PADDLE_CLIENT_TOKEN:-}
@@ -79,7 +79,7 @@ services:
         VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
     restart: unless-stopped
     ports:
-      - '80:80'
+      - '127.0.0.1:8080:80'
     depends_on:
       backend:
         condition: service_healthy

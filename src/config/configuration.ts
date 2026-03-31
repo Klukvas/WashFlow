@@ -46,7 +46,7 @@ export default () => {
 
     resend: {
       apiKey: env.RESEND_API_KEY ?? '',
-      from: env.EMAIL_FROM ?? 'WashFlow <noreply@washflow.app>',
+      from: env.EMAIL_FROM ?? 'WashFlow <noreply@washflow.solutions>',
     },
 
     frontendUrl: env.FRONTEND_URL ?? 'http://localhost:5173',

@@ -125,7 +125,7 @@ The backend listens on `http://localhost:3000` and the frontend dev server on `h
 | `PADDLE_SANDBOX` | No | `true` | Use Paddle sandbox environment (`true`/`false`) |
 | `PADDLE_PRICE_IDS` | No | — | JSON map overriding default Paddle price IDs (e.g. `{"starter_monthly":"pri_xxx"}`) |
 | `RESEND_API_KEY` | No | — | Resend API key for transactional emails |
-| `EMAIL_FROM` | No | `WashFlow <noreply@washflow.app>` | Sender address for outgoing emails |
+| `EMAIL_FROM` | No | `WashFlow <noreply@washflow.solutions>` | Sender address for outgoing emails |
 | `FRONTEND_URL` | No | `http://localhost:5173` | Frontend URL for password reset links and email redirects |
 | `METRICS_TOKEN` | No | — | Bearer token protecting `/metrics` endpoint (leave empty for public access) |
 
@@ -144,7 +144,7 @@ SENTRY_DSN=""
 VITE_SENTRY_DSN=""
 FRONTEND_URL="http://localhost:5173"
 RESEND_API_KEY=""
-EMAIL_FROM="WashFlow <noreply@washflow.app>"
+EMAIL_FROM="WashFlow <noreply@washflow.solutions>"
 METRICS_TOKEN=""
 ```
 <!-- END AUTO-GENERATED -->

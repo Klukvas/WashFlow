@@ -95,7 +95,7 @@ pnpm build && pnpm start:prod   # production build
 | `PADDLE_SANDBOX` | No | `true` | Use Paddle sandbox environment |
 | `PADDLE_PRICE_IDS` | No | — | JSON map of price IDs (e.g. `{"starter_monthly":"pri_abc"}`) — overrides defaults |
 | `RESEND_API_KEY` | No | — | Resend API key (required for transactional emails) |
-| `EMAIL_FROM` | No | `WashFlow <noreply@washflow.app>` | Sender address for transactional emails |
+| `EMAIL_FROM` | No | `WashFlow <noreply@washflow.solutions>` | Sender address for transactional emails |
 | `FRONTEND_URL` | No | `http://localhost:5173` | Frontend base URL (used in password reset links) |
 | `PADDLE_ADDON_PRICE_IDS` | No | — | JSON map of addon price IDs (e.g. `{"branches":"pri_abc","users":"pri_def"}`) — overrides defaults |
 | `PAYMENTS_ENABLED` | No | `false` | Feature flag — set to `true` to enable Paddle payment mutations (checkout, change-plan, addons, cancel, reactivate); read-only subscription views always available |

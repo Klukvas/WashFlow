@@ -436,6 +436,8 @@ jobs:
             echo "GRAFANA_LOKI_HOST=${{ secrets.GRAFANA_LOKI_HOST }}"
             echo "GRAFANA_LOKI_USERNAME=${{ secrets.GRAFANA_LOKI_USERNAME }}"
             echo "GRAFANA_LOKI_PASSWORD=${{ secrets.GRAFANA_LOKI_PASSWORD }}"
+            echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}"
+            echo "TELEGRAM_SUPPORT_CHAT_ID=${{ secrets.TELEGRAM_SUPPORT_CHAT_ID }}"
           } > .env.production
           chmod 600 .env.production
 
