@@ -1,12 +1,12 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { ThrottlerGuard } from '@nestjs/throttler';
 import cookieParser from 'cookie-parser';
 import * as argon2 from 'argon2';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
+import { CustomThrottlerGuard } from '../src/common/guards/custom-throttler.guard';
 import { extractRefreshCookie } from './helpers/test-app';
 
 describe('Auth (e2e)', () => {
@@ -21,7 +21,7 @@ describe('Auth (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideGuard(ThrottlerGuard)
+      .overrideProvider(CustomThrottlerGuard)
       .useValue({ canActivate: () => true })
       .compile();
 

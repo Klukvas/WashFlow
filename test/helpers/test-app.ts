@@ -183,7 +183,7 @@ export async function createTestApp(slug: string): Promise<TestSetup> {
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [AppModule],
   })
-    .overrideGuard(CustomThrottlerGuard)
+    .overrideProvider(CustomThrottlerGuard)
     .useValue({ canActivate: () => true })
     .compile();
 
