@@ -181,10 +181,13 @@ import {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
     },
+    // Register CustomThrottlerGuard as a provider so it can be overridden in tests
+    CustomThrottlerGuard,
     // Apply ThrottlerGuard globally — use @SkipThrottle() to skip
+    // useExisting (not useClass) ensures test overrides via overrideProvider work
     {
       provide: APP_GUARD,
-      useClass: CustomThrottlerGuard,
+      useExisting: CustomThrottlerGuard,
     },
     // Apply TenantGuard globally — enforces tenantId isolation; superAdmin can
     // override via x-tenant-id header
