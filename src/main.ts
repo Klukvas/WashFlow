@@ -22,6 +22,11 @@ async function bootstrap() {
   const config = app.get(ConfigService);
   const logger = new Logger('Bootstrap');
 
+  // Trust the first reverse proxy (nginx / Cloudflare) so that
+  // req.ip resolves to the real client IP, not the proxy's internal IP.
+  // This is critical for per-IP rate limiting on public endpoints.
+  app.set('trust proxy', 1);
+
   app.setGlobalPrefix('api/v1');
 
   app.use(

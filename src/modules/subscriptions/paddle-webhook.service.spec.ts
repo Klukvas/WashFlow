@@ -245,20 +245,109 @@ describe('PaddleWebhookService', () => {
         expect(service.verifySignature(rawBody, header)).toBe(false);
       });
 
-      it('returns false when timestamp is older than 5 minutes (replay attack)', () => {
-        const rawBody = '{"event_type":"subscription.created"}';
-        const staleTs = String(Math.floor(Date.now() / 1000) - 400);
-        const header = buildSignatureHeader(rawBody, WEBHOOK_SECRET, staleTs);
+      describe('timestamp tolerance (deterministic with fake timers)', () => {
+        const FIXED_TIME = new Date('2026-06-15T12:00:00Z').getTime();
 
-        expect(service.verifySignature(rawBody, header)).toBe(false);
-      });
+        beforeEach(() => {
+          jest.useFakeTimers();
+          jest.setSystemTime(FIXED_TIME);
+        });
 
-      it('returns false when timestamp is in the far future', () => {
-        const rawBody = '{"event_type":"subscription.created"}';
-        const futureTs = String(Math.floor(Date.now() / 1000) + 400);
-        const header = buildSignatureHeader(rawBody, WEBHOOK_SECRET, futureTs);
+        afterEach(() => {
+          jest.useRealTimers();
+        });
 
-        expect(service.verifySignature(rawBody, header)).toBe(false);
+        it('returns false when timestamp is older than 5 minutes (replay attack)', () => {
+          const rawBody = '{"event_type":"subscription.created"}';
+          const staleTs = String(Math.floor(FIXED_TIME / 1000) - 400);
+          const header = buildSignatureHeader(rawBody, WEBHOOK_SECRET, staleTs);
+
+          expect(service.verifySignature(rawBody, header)).toBe(false);
+        });
+
+        it('returns false when timestamp is in the far future', () => {
+          const rawBody = '{"event_type":"subscription.created"}';
+          const futureTs = String(Math.floor(FIXED_TIME / 1000) + 400);
+          const header = buildSignatureHeader(
+            rawBody,
+            WEBHOOK_SECRET,
+            futureTs,
+          );
+
+          expect(service.verifySignature(rawBody, header)).toBe(false);
+        });
+
+        it('returns true at exactly 300 seconds in the past (boundary, tolerance is > 300)', () => {
+          const rawBody = '{"event_type":"subscription.created"}';
+          const boundaryTs = String(Math.floor(FIXED_TIME / 1000) - 300);
+          const header = buildSignatureHeader(
+            rawBody,
+            WEBHOOK_SECRET,
+            boundaryTs,
+          );
+
+          expect(service.verifySignature(rawBody, header)).toBe(true);
+        });
+
+        it('returns false at 301 seconds in the past (just beyond tolerance)', () => {
+          const rawBody = '{"event_type":"subscription.created"}';
+          const beyondTs = String(Math.floor(FIXED_TIME / 1000) - 301);
+          const header = buildSignatureHeader(
+            rawBody,
+            WEBHOOK_SECRET,
+            beyondTs,
+          );
+
+          expect(service.verifySignature(rawBody, header)).toBe(false);
+        });
+
+        it('returns true at 299 seconds in the past (within tolerance)', () => {
+          const rawBody = '{"event_type":"subscription.created"}';
+          const withinTs = String(Math.floor(FIXED_TIME / 1000) - 299);
+          const header = buildSignatureHeader(
+            rawBody,
+            WEBHOOK_SECRET,
+            withinTs,
+          );
+
+          expect(service.verifySignature(rawBody, header)).toBe(true);
+        });
+
+        it('returns true at exactly 300 seconds in the future (boundary, tolerance is > 300)', () => {
+          const rawBody = '{"event_type":"subscription.created"}';
+          const boundaryTs = String(Math.floor(FIXED_TIME / 1000) + 300);
+          const header = buildSignatureHeader(
+            rawBody,
+            WEBHOOK_SECRET,
+            boundaryTs,
+          );
+
+          expect(service.verifySignature(rawBody, header)).toBe(true);
+        });
+
+        it('returns false at 301 seconds in the future (just beyond tolerance)', () => {
+          const rawBody = '{"event_type":"subscription.created"}';
+          const beyondTs = String(Math.floor(FIXED_TIME / 1000) + 301);
+          const header = buildSignatureHeader(
+            rawBody,
+            WEBHOOK_SECRET,
+            beyondTs,
+          );
+
+          expect(service.verifySignature(rawBody, header)).toBe(false);
+        });
+
+        it('returns true at 299 seconds in the future (within tolerance)', () => {
+          const rawBody = '{"event_type":"subscription.created"}';
+          const withinTs = String(Math.floor(FIXED_TIME / 1000) + 299);
+          const header = buildSignatureHeader(
+            rawBody,
+            WEBHOOK_SECRET,
+            withinTs,
+          );
+
+          expect(service.verifySignature(rawBody, header)).toBe(true);
+        });
       });
 
       it('returns false when timestamp is not a number', () => {
@@ -1325,6 +1414,1188 @@ describe('PaddleWebhookService', () => {
           expect.objectContaining({ planTier: 'ENTERPRISE' }),
         );
       });
+
+      it('dispatches "upgrade" changeType when plan tier upgrades (STARTER → BUSINESS)', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({ planTier: 'STARTER' }),
+        );
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'active',
+          billing_cycle: { interval: 'month' },
+          items: [{ price: { custom_data: { plan_tier: 'BUSINESS' } } }],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        const [event] = eventDispatcher.dispatch.mock.calls[0];
+        expect(event.payload.changeType).toBe('upgrade');
+        expect(event.payload.previousPlanTier).toBe('STARTER');
+        expect(event.payload.newPlanTier).toBe('BUSINESS');
+      });
+
+      it('dispatches "downgrade" changeType when plan tier downgrades (BUSINESS → STARTER)', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({ planTier: 'BUSINESS' }),
+        );
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'active',
+          billing_cycle: { interval: 'month' },
+          items: [{ price: { custom_data: { plan_tier: 'STARTER' } } }],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        const [event] = eventDispatcher.dispatch.mock.calls[0];
+        expect(event.payload.changeType).toBe('downgrade');
+        expect(event.payload.previousPlanTier).toBe('BUSINESS');
+        expect(event.payload.newPlanTier).toBe('STARTER');
+      });
+
+      it('sets CANCELLED status when scheduled_change.action is "cancel"', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({ planTier: 'BUSINESS' }),
+        );
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'active',
+          billing_cycle: { interval: 'month' },
+          items: [{ price: { custom_data: { plan_tier: 'BUSINESS' } } }],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+          scheduled_change: { action: 'cancel' },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.update).toHaveBeenCalledWith(
+          TENANT_ID,
+          expect.objectContaining({
+            status: SubscriptionStatus.CANCELLED,
+          }),
+        );
+      });
+
+      it('does not clear cancellation fields when pending cancellation', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({ planTier: 'BUSINESS' }),
+        );
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'active',
+          billing_cycle: { interval: 'month' },
+          items: [{ price: { custom_data: { plan_tier: 'BUSINESS' } } }],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+          scheduled_change: { action: 'cancel' },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        const [, updatePayload] = subscriptionsRepo.update.mock.calls[0];
+        expect(updatePayload.cancelledAt).toBeUndefined();
+        expect(updatePayload.cancelEffectiveAt).toBeUndefined();
+      });
+
+      it('clears cancellation fields when status is active and no pending cancellation', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({ planTier: 'BUSINESS' }),
+        );
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'active',
+          billing_cycle: { interval: 'month' },
+          items: [{ price: { custom_data: { plan_tier: 'BUSINESS' } } }],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        const [, updatePayload] = subscriptionsRepo.update.mock.calls[0];
+        expect(updatePayload.cancelledAt).toBeNull();
+        expect(updatePayload.cancelEffectiveAt).toBeNull();
+      });
+
+      it('maps paddle status "past_due" to PAST_DUE', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({ planTier: 'BUSINESS' }),
+        );
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'past_due',
+          billing_cycle: { interval: 'month' },
+          items: [{ price: { custom_data: { plan_tier: 'BUSINESS' } } }],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.update).toHaveBeenCalledWith(
+          TENANT_ID,
+          expect.objectContaining({
+            status: SubscriptionStatus.PAST_DUE,
+            paddleStatus: 'past_due',
+          }),
+        );
+      });
+
+      it('maps paddle status "paused" to PAUSED', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({ planTier: 'BUSINESS' }),
+        );
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'paused',
+          billing_cycle: { interval: 'month' },
+          items: [{ price: { custom_data: { plan_tier: 'BUSINESS' } } }],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.update).toHaveBeenCalledWith(
+          TENANT_ID,
+          expect.objectContaining({
+            status: SubscriptionStatus.PAUSED,
+            paddleStatus: 'paused',
+          }),
+        );
+      });
+
+      it('maps paddle status "trialing" to TRIALING', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({ planTier: 'BUSINESS' }),
+        );
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'trialing',
+          billing_cycle: { interval: 'month' },
+          items: [{ price: { custom_data: { plan_tier: 'BUSINESS' } } }],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.update).toHaveBeenCalledWith(
+          TENANT_ID,
+          expect.objectContaining({
+            status: SubscriptionStatus.TRIALING,
+            paddleStatus: 'trialing',
+          }),
+        );
+      });
+
+      it('defaults unknown paddle status to ACTIVE', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({ planTier: 'BUSINESS' }),
+        );
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'some_future_status',
+          billing_cycle: { interval: 'month' },
+          items: [{ price: { custom_data: { plan_tier: 'BUSINESS' } } }],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.update).toHaveBeenCalledWith(
+          TENANT_ID,
+          expect.objectContaining({
+            status: SubscriptionStatus.ACTIVE,
+            paddleStatus: 'some_future_status',
+          }),
+        );
+      });
+
+      it('updates billingInterval when switching from monthly to yearly', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({
+            planTier: 'BUSINESS',
+            billingInterval: 'MONTHLY',
+          }),
+        );
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'active',
+          billing_cycle: { interval: 'year' },
+          items: [{ price: { custom_data: { plan_tier: 'BUSINESS' } } }],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2027-03-01T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.update).toHaveBeenCalledWith(
+          TENANT_ID,
+          expect.objectContaining({
+            billingInterval: 'YEARLY',
+          }),
+        );
+      });
+
+      it('does not call update when subscription id is missing from payload', async () => {
+        const data = {
+          status: 'active',
+          billing_cycle: { interval: 'month' },
+          items: [],
+          current_billing_period: {},
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        expect(
+          subscriptionsRepo.findByPaddleSubscriptionId,
+        ).not.toHaveBeenCalled();
+        expect(subscriptionsRepo.update).not.toHaveBeenCalled();
+      });
+
+      it('deletes addon items with quantity 0 from Paddle payload', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({ planTier: 'BUSINESS' }),
+        );
+        subscriptionsRepo.findAddons.mockResolvedValue([]);
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'active',
+          billing_cycle: { interval: 'month' },
+          items: [
+            {
+              price: {
+                id: 'pri_business_monthly',
+                custom_data: { plan_tier: 'BUSINESS' },
+              },
+              quantity: 1,
+            },
+            { price: { id: 'pri_addon_branches' }, quantity: 0 },
+          ],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.deleteAddon).toHaveBeenCalledWith(
+          'sub-internal-1',
+          'branches',
+        );
+        expect(subscriptionsRepo.upsertAddon).not.toHaveBeenCalled();
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // subscription.created — missing id edge case
+    // -----------------------------------------------------------------------
+
+    describe('subscription.created — missing id', () => {
+      it('does not call update when id is missing from data', async () => {
+        const data = {
+          customer_id: PADDLE_CUSTOMER_ID,
+          custom_data: { tenantId: TENANT_ID },
+          billing_cycle: { interval: 'month' },
+          items: [{ price: { custom_data: { plan_tier: 'BUSINESS' } } }],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.created', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.update).not.toHaveBeenCalled();
+      });
+
+      it('does not call update when id is empty string', async () => {
+        const data = {
+          id: '',
+          customer_id: PADDLE_CUSTOMER_ID,
+          custom_data: { tenantId: TENANT_ID },
+          billing_cycle: { interval: 'month' },
+          items: [{ price: { custom_data: { plan_tier: 'BUSINESS' } } }],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.created', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.update).not.toHaveBeenCalled();
+      });
+
+      it('does not call update when id is a number instead of string', async () => {
+        const data = {
+          id: 12345,
+          customer_id: PADDLE_CUSTOMER_ID,
+          custom_data: { tenantId: TENANT_ID },
+          billing_cycle: { interval: 'month' },
+          items: [{ price: { custom_data: { plan_tier: 'BUSINESS' } } }],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.created', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.update).not.toHaveBeenCalled();
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // subscription.canceled — missing id
+    // -----------------------------------------------------------------------
+
+    describe('subscription.canceled — missing id', () => {
+      it('does not call update when id is missing', async () => {
+        const data = {
+          current_billing_period: { ends_at: '2026-04-01T00:00:00Z' },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.canceled', data, uniqueEventId()),
+        );
+
+        expect(
+          subscriptionsRepo.findByPaddleSubscriptionId,
+        ).not.toHaveBeenCalled();
+        expect(subscriptionsRepo.update).not.toHaveBeenCalled();
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // subscription.past_due — missing id
+    // -----------------------------------------------------------------------
+
+    describe('subscription.past_due — missing id', () => {
+      it('does not call update when id is missing', async () => {
+        await service.processEvent(
+          makePaddleEvent('subscription.past_due', {}, uniqueEventId()),
+        );
+
+        expect(
+          subscriptionsRepo.findByPaddleSubscriptionId,
+        ).not.toHaveBeenCalled();
+        expect(subscriptionsRepo.update).not.toHaveBeenCalled();
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // subscription.paused — missing id
+    // -----------------------------------------------------------------------
+
+    describe('subscription.paused — missing id', () => {
+      it('does not call update when id is missing', async () => {
+        await service.processEvent(
+          makePaddleEvent('subscription.paused', {}, uniqueEventId()),
+        );
+
+        expect(
+          subscriptionsRepo.findByPaddleSubscriptionId,
+        ).not.toHaveBeenCalled();
+        expect(subscriptionsRepo.update).not.toHaveBeenCalled();
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // subscription.resumed — missing id
+    // -----------------------------------------------------------------------
+
+    describe('subscription.resumed — missing id', () => {
+      it('does not call update when id is missing', async () => {
+        await service.processEvent(
+          makePaddleEvent('subscription.resumed', {}, uniqueEventId()),
+        );
+
+        expect(
+          subscriptionsRepo.findByPaddleSubscriptionId,
+        ).not.toHaveBeenCalled();
+        expect(subscriptionsRepo.update).not.toHaveBeenCalled();
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // Idempotency logic prevents duplicate processing
+    // NOTE: These tests verify idempotency via mocked Redis NX semantics.
+    // True concurrency testing (real race conditions on Redis SET NX)
+    // requires integration tests with a real Redis instance.
+    // -----------------------------------------------------------------------
+
+    describe('idempotency logic prevents duplicate processing', () => {
+      it('processes both events when they have different event IDs', async () => {
+        redisMock.set.mockResolvedValue('OK');
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({ planTier: 'STARTER' }),
+        );
+
+        const updateData = {
+          id: PADDLE_SUB_ID,
+          status: 'active',
+          billing_cycle: { interval: 'month' },
+          items: [{ price: { custom_data: { plan_tier: 'BUSINESS' } } }],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+        };
+
+        const txnData = {
+          subscription_id: PADDLE_SUB_ID,
+          billing_period: { ends_at: '2026-05-01T00:00:00Z' },
+        };
+
+        const [result1, result2] = await Promise.allSettled([
+          service.processEvent(
+            makePaddleEvent(
+              'subscription.updated',
+              updateData,
+              uniqueEventId(),
+            ),
+          ),
+          service.processEvent(
+            makePaddleEvent('transaction.completed', txnData, uniqueEventId()),
+          ),
+        ]);
+
+        expect(result1.status).toBe('fulfilled');
+        expect(result2.status).toBe('fulfilled');
+        // Both events trigger repo.update
+        expect(subscriptionsRepo.update).toHaveBeenCalledTimes(2);
+      });
+
+      it('idempotency prevents duplicate processing when both have the same event ID', async () => {
+        redisMock.set.mockResolvedValueOnce('OK').mockResolvedValueOnce(null);
+
+        const sharedEventId = uniqueEventId();
+        const data = makeSubscriptionCreatedData();
+
+        await Promise.allSettled([
+          service.processEvent(
+            makePaddleEvent('subscription.created', data, sharedEventId),
+          ),
+          service.processEvent(
+            makePaddleEvent('subscription.created', data, sharedEventId),
+          ),
+        ]);
+
+        expect(subscriptionsRepo.update).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // Error handling: handler throws releases idempotency key
+    // -----------------------------------------------------------------------
+
+    describe('error handling and idempotency key cleanup', () => {
+      it('releases idempotency key on subscription.updated handler error', async () => {
+        const eventId = uniqueEventId();
+        subscriptionsRepo.findByPaddleSubscriptionId.mockRejectedValueOnce(
+          new Error('DB connection lost'),
+        );
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'active',
+          billing_cycle: { interval: 'month' },
+          items: [],
+          current_billing_period: {},
+        };
+
+        await expect(
+          service.processEvent(
+            makePaddleEvent('subscription.updated', data, eventId),
+          ),
+        ).rejects.toThrow('DB connection lost');
+
+        expect(redisMock.del).toHaveBeenCalledWith(eventId);
+      });
+
+      it('releases idempotency key on subscription.canceled handler error', async () => {
+        const eventId = uniqueEventId();
+        subscriptionsRepo.findByPaddleSubscriptionId.mockRejectedValueOnce(
+          new Error('Query timeout'),
+        );
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          current_billing_period: { ends_at: '2026-04-01T00:00:00Z' },
+        };
+
+        await expect(
+          service.processEvent(
+            makePaddleEvent('subscription.canceled', data, eventId),
+          ),
+        ).rejects.toThrow('Query timeout');
+
+        expect(redisMock.del).toHaveBeenCalledWith(eventId);
+      });
+
+      it('releases idempotency key on transaction.completed handler error', async () => {
+        const eventId = uniqueEventId();
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription(),
+        );
+        subscriptionsRepo.update.mockRejectedValueOnce(
+          new Error('Write conflict'),
+        );
+
+        const data = {
+          subscription_id: PADDLE_SUB_ID,
+          billing_period: { ends_at: '2026-05-01T00:00:00Z' },
+        };
+
+        await expect(
+          service.processEvent(
+            makePaddleEvent('transaction.completed', data, eventId),
+          ),
+        ).rejects.toThrow('Write conflict');
+
+        expect(redisMock.del).toHaveBeenCalledWith(eventId);
+      });
+
+      it('allows retry after error releases idempotency key', async () => {
+        const eventId = uniqueEventId();
+
+        // First attempt: DB error → idempotency key released
+        subscriptionsRepo.update.mockRejectedValueOnce(new Error('DB error'));
+        redisMock.set.mockResolvedValueOnce('OK');
+
+        const data = makeSubscriptionCreatedData();
+        await expect(
+          service.processEvent(
+            makePaddleEvent('subscription.created', data, eventId),
+          ),
+        ).rejects.toThrow('DB error');
+
+        expect(redisMock.del).toHaveBeenCalledWith(eventId);
+
+        // Second attempt: succeeds
+        subscriptionsRepo.update.mockResolvedValueOnce(undefined);
+        redisMock.set.mockResolvedValueOnce('OK');
+
+        await service.processEvent(
+          makePaddleEvent('subscription.created', data, eventId),
+        );
+
+        // update called twice: first attempt (failed) + second attempt (succeeded)
+        expect(subscriptionsRepo.update).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // subscription.canceled — no billing period (effective date fallback)
+    // -----------------------------------------------------------------------
+
+    describe('subscription.canceled — missing billing period', () => {
+      it('dispatches event with current date ISO string when period end is undefined', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription(),
+        );
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          // No current_billing_period at all
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.canceled', data, uniqueEventId()),
+        );
+
+        expect(eventDispatcher.dispatch).toHaveBeenCalledTimes(1);
+        const [event] = eventDispatcher.dispatch.mock.calls[0];
+        // effectiveAt should be a valid ISO date string (fallback to new Date())
+        expect(() => new Date(event.payload.effectiveAt)).not.toThrow();
+        const parsed = new Date(event.payload.effectiveAt);
+        expect(parsed.getTime()).not.toBeNaN();
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // subscription.created — addon sync edge cases
+    // -----------------------------------------------------------------------
+
+    describe('subscription.created — addon sync edge cases', () => {
+      it('does not upsert addons when items array is empty', async () => {
+        const data = makeSubscriptionCreatedData({ items: [] });
+        await service.processEvent(
+          makePaddleEvent('subscription.created', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.upsertAddon).not.toHaveBeenCalled();
+      });
+
+      it('does not upsert addons when items is undefined', async () => {
+        const data = makeSubscriptionCreatedData({ items: undefined });
+        await service.processEvent(
+          makePaddleEvent('subscription.created', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.upsertAddon).not.toHaveBeenCalled();
+      });
+
+      it('does not sync addons when subscription is not found after update', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(null);
+
+        const data = makeSubscriptionCreatedData({
+          items: [
+            {
+              price: {
+                id: 'pri_business_monthly',
+                custom_data: { plan_tier: 'BUSINESS' },
+              },
+              quantity: 1,
+            },
+            { price: { id: 'pri_addon_branches' }, quantity: 2 },
+          ],
+        });
+        await service.processEvent(
+          makePaddleEvent('subscription.created', data, uniqueEventId()),
+        );
+
+        // update is called (for the main subscription), but no addon sync
+        expect(subscriptionsRepo.update).toHaveBeenCalledTimes(1);
+        expect(subscriptionsRepo.upsertAddon).not.toHaveBeenCalled();
+      });
+
+      it('ignores items with unknown price IDs (not a known plan or addon)', async () => {
+        const data = makeSubscriptionCreatedData({
+          items: [
+            {
+              price: {
+                id: 'pri_business_monthly',
+                custom_data: { plan_tier: 'BUSINESS' },
+              },
+              quantity: 1,
+            },
+            { price: { id: 'pri_unknown_thing' }, quantity: 5 },
+          ],
+        });
+        await service.processEvent(
+          makePaddleEvent('subscription.created', data, uniqueEventId()),
+        );
+
+        // Unknown price ID should not trigger upsertAddon
+        expect(subscriptionsRepo.upsertAddon).not.toHaveBeenCalled();
+      });
+
+      it('handles items with missing price.id gracefully', async () => {
+        const data = makeSubscriptionCreatedData({
+          items: [
+            {
+              price: { custom_data: { plan_tier: 'BUSINESS' } },
+              quantity: 1,
+            },
+            { price: {}, quantity: 3 },
+          ],
+        });
+        await service.processEvent(
+          makePaddleEvent('subscription.created', data, uniqueEventId()),
+        );
+
+        // No addon items should be synced because price.id is missing
+        expect(subscriptionsRepo.upsertAddon).not.toHaveBeenCalled();
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // Addon price ID coverage — workPosts and services resources
+    // -----------------------------------------------------------------------
+
+    describe('addon sync — workPosts and services price IDs', () => {
+      it('maps pri_addon_work_posts to workPosts resource on subscription.created', async () => {
+        const data = makeSubscriptionCreatedData({
+          items: [
+            {
+              price: {
+                id: 'pri_business_monthly',
+                custom_data: { plan_tier: 'BUSINESS' },
+              },
+              quantity: 1,
+            },
+            { price: { id: 'pri_addon_work_posts' }, quantity: 4 },
+          ],
+        });
+        await service.processEvent(
+          makePaddleEvent('subscription.created', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.upsertAddon).toHaveBeenCalledWith(
+          'sub-internal-1',
+          'workPosts',
+          4,
+          'pri_addon_work_posts',
+        );
+      });
+
+      it('maps pri_addon_services to services resource on subscription.created', async () => {
+        const data = makeSubscriptionCreatedData({
+          items: [
+            {
+              price: {
+                id: 'pri_business_monthly',
+                custom_data: { plan_tier: 'BUSINESS' },
+              },
+              quantity: 1,
+            },
+            { price: { id: 'pri_addon_services' }, quantity: 3 },
+          ],
+        });
+        await service.processEvent(
+          makePaddleEvent('subscription.created', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.upsertAddon).toHaveBeenCalledWith(
+          'sub-internal-1',
+          'services',
+          3,
+          'pri_addon_services',
+        );
+      });
+
+      it('maps pri_addon_work_posts to workPosts resource on subscription.updated', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({ planTier: 'BUSINESS' }),
+        );
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'active',
+          billing_cycle: { interval: 'month' },
+          items: [
+            {
+              price: {
+                id: 'pri_business_monthly',
+                custom_data: { plan_tier: 'BUSINESS' },
+              },
+              quantity: 1,
+            },
+            { price: { id: 'pri_addon_work_posts' }, quantity: 2 },
+          ],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.upsertAddon).toHaveBeenCalledWith(
+          'sub-internal-1',
+          'workPosts',
+          2,
+          'pri_addon_work_posts',
+        );
+      });
+
+      it('maps pri_addon_services to services resource on subscription.updated', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({ planTier: 'BUSINESS' }),
+        );
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'active',
+          billing_cycle: { interval: 'month' },
+          items: [
+            {
+              price: {
+                id: 'pri_business_monthly',
+                custom_data: { plan_tier: 'BUSINESS' },
+              },
+              quantity: 1,
+            },
+            { price: { id: 'pri_addon_services' }, quantity: 5 },
+          ],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.upsertAddon).toHaveBeenCalledWith(
+          'sub-internal-1',
+          'services',
+          5,
+          'pri_addon_services',
+        );
+      });
+
+      it('syncs all four addon types in a single subscription.created event', async () => {
+        const data = makeSubscriptionCreatedData({
+          items: [
+            {
+              price: {
+                id: 'pri_business_monthly',
+                custom_data: { plan_tier: 'BUSINESS' },
+              },
+              quantity: 1,
+            },
+            { price: { id: 'pri_addon_branches' }, quantity: 2 },
+            { price: { id: 'pri_addon_work_posts' }, quantity: 3 },
+            { price: { id: 'pri_addon_users' }, quantity: 1 },
+            { price: { id: 'pri_addon_services' }, quantity: 4 },
+          ],
+        });
+        await service.processEvent(
+          makePaddleEvent('subscription.created', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.upsertAddon).toHaveBeenCalledTimes(4);
+        expect(subscriptionsRepo.upsertAddon).toHaveBeenCalledWith(
+          'sub-internal-1',
+          'branches',
+          2,
+          'pri_addon_branches',
+        );
+        expect(subscriptionsRepo.upsertAddon).toHaveBeenCalledWith(
+          'sub-internal-1',
+          'workPosts',
+          3,
+          'pri_addon_work_posts',
+        );
+        expect(subscriptionsRepo.upsertAddon).toHaveBeenCalledWith(
+          'sub-internal-1',
+          'users',
+          1,
+          'pri_addon_users',
+        );
+        expect(subscriptionsRepo.upsertAddon).toHaveBeenCalledWith(
+          'sub-internal-1',
+          'services',
+          4,
+          'pri_addon_services',
+        );
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // subscription.updated — stale addon removal edge cases
+    // -----------------------------------------------------------------------
+
+    describe('subscription.updated — stale addon removal', () => {
+      it('removes all existing addons when Paddle payload has no addon items', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({ planTier: 'BUSINESS' }),
+        );
+        subscriptionsRepo.findAddons.mockResolvedValue([
+          { resource: 'branches', quantity: 2 },
+          { resource: 'users', quantity: 1 },
+        ]);
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'active',
+          billing_cycle: { interval: 'month' },
+          items: [
+            {
+              price: {
+                id: 'pri_business_monthly',
+                custom_data: { plan_tier: 'BUSINESS' },
+              },
+              quantity: 1,
+            },
+          ],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.deleteAddon).toHaveBeenCalledWith(
+          'sub-internal-1',
+          'branches',
+        );
+        expect(subscriptionsRepo.deleteAddon).toHaveBeenCalledWith(
+          'sub-internal-1',
+          'users',
+        );
+      });
+
+      it('does not delete addons that are still present in Paddle items', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({ planTier: 'BUSINESS' }),
+        );
+        subscriptionsRepo.findAddons.mockResolvedValue([
+          { resource: 'branches', quantity: 3 },
+        ]);
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'active',
+          billing_cycle: { interval: 'month' },
+          items: [
+            {
+              price: {
+                id: 'pri_business_monthly',
+                custom_data: { plan_tier: 'BUSINESS' },
+              },
+              quantity: 1,
+            },
+            { price: { id: 'pri_addon_branches' }, quantity: 5 },
+          ],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        // branches is upserted with new quantity, not deleted
+        expect(subscriptionsRepo.upsertAddon).toHaveBeenCalledWith(
+          'sub-internal-1',
+          'branches',
+          5,
+          'pri_addon_branches',
+        );
+        expect(subscriptionsRepo.deleteAddon).not.toHaveBeenCalled();
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // Upgrade → immediate plan change with new limits
+    // -----------------------------------------------------------------------
+
+    describe('subscription upgrade — immediate plan change with new limits', () => {
+      it('recalculates effective limits after plan upgrade', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({ planTier: 'STARTER' }),
+        );
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'active',
+          billing_cycle: { interval: 'month' },
+          items: [{ price: { custom_data: { plan_tier: 'ENTERPRISE' } } }],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.update).toHaveBeenCalledWith(
+          TENANT_ID,
+          expect.objectContaining({ planTier: 'ENTERPRISE' }),
+        );
+        expect(
+          subscriptionsService.recalculateEffectiveLimits,
+        ).toHaveBeenCalledWith(TENANT_ID);
+      });
+
+      it('dispatches upgrade event with correct payload for STARTER → ENTERPRISE', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({ planTier: 'STARTER' }),
+        );
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'active',
+          billing_cycle: { interval: 'month' },
+          items: [{ price: { custom_data: { plan_tier: 'ENTERPRISE' } } }],
+          current_billing_period: {
+            starts_at: '2026-03-01T00:00:00Z',
+            ends_at: '2026-04-01T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        const [event] = eventDispatcher.dispatch.mock.calls[0];
+        expect(event.payload).toEqual({
+          previousPlanTier: 'STARTER',
+          newPlanTier: 'ENTERPRISE',
+          changeType: 'upgrade',
+        });
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // Downgrade mid-billing — plan change with prorated billing
+    // -----------------------------------------------------------------------
+
+    describe('subscription downgrade mid-billing', () => {
+      it('updates the plan tier and recalculates limits on downgrade', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({ planTier: 'ENTERPRISE' }),
+        );
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'active',
+          billing_cycle: { interval: 'month' },
+          items: [{ price: { custom_data: { plan_tier: 'STARTER' } } }],
+          current_billing_period: {
+            starts_at: '2026-03-15T00:00:00Z',
+            ends_at: '2026-04-15T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        expect(subscriptionsRepo.update).toHaveBeenCalledWith(
+          TENANT_ID,
+          expect.objectContaining({
+            planTier: 'STARTER',
+            currentPeriodStart: new Date('2026-03-15T00:00:00Z'),
+            currentPeriodEnd: new Date('2026-04-15T00:00:00Z'),
+          }),
+        );
+        expect(
+          subscriptionsService.recalculateEffectiveLimits,
+        ).toHaveBeenCalledWith(TENANT_ID);
+      });
+
+      it('dispatches downgrade event for ENTERPRISE → STARTER', async () => {
+        subscriptionsRepo.findByPaddleSubscriptionId.mockResolvedValue(
+          makeSubscription({ planTier: 'ENTERPRISE' }),
+        );
+
+        const data = {
+          id: PADDLE_SUB_ID,
+          status: 'active',
+          billing_cycle: { interval: 'month' },
+          items: [{ price: { custom_data: { plan_tier: 'STARTER' } } }],
+          current_billing_period: {
+            starts_at: '2026-03-15T00:00:00Z',
+            ends_at: '2026-04-15T00:00:00Z',
+          },
+        };
+        await service.processEvent(
+          makePaddleEvent('subscription.updated', data, uniqueEventId()),
+        );
+
+        const [event] = eventDispatcher.dispatch.mock.calls[0];
+        expect(event.payload).toEqual({
+          previousPlanTier: 'ENTERPRISE',
+          newPlanTier: 'STARTER',
+          changeType: 'downgrade',
+        });
+      });
+    });
+  });
+
+  // =========================================================================
+  // verifySignature() — production mode without secret
+  // =========================================================================
+
+  describe('verifySignature() — production mode without secret', () => {
+    let prodService: PaddleWebhookService;
+
+    beforeEach(async () => {
+      const prodConfigService = {
+        get: jest.fn((key: string, defaultValue?: unknown) => {
+          if (key === 'paddle.webhookSecret') return '';
+          if (key === 'nodeEnv') return 'production';
+          return defaultValue ?? undefined;
+        }),
+      };
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          PaddleWebhookService,
+          { provide: ConfigService, useValue: prodConfigService },
+          { provide: SubscriptionsRepository, useValue: subscriptionsRepo },
+          { provide: SubscriptionsService, useValue: subscriptionsService },
+          { provide: EventDispatcherService, useValue: eventDispatcher },
+          { provide: WEBHOOK_REDIS, useValue: redisMock },
+        ],
+      }).compile();
+
+      prodService = module.get<PaddleWebhookService>(PaddleWebhookService);
+    });
+
+    it('rejects all webhooks in production when secret is empty', () => {
+      expect(prodService.verifySignature('any-body', 'ts=1;h1=any')).toBe(
+        false,
+      );
+    });
+
+    it('rejects even with a valid-looking signature when secret is empty in production', () => {
+      const rawBody = 'test';
+      const header = buildSignatureHeader(rawBody, WEBHOOK_SECRET);
+
+      expect(prodService.verifySignature(rawBody, header)).toBe(false);
+    });
+  });
+
+  // =========================================================================
+  // onModuleDestroy
+  // =========================================================================
+
+  describe('onModuleDestroy()', () => {
+    it('calls redis.quit() on module destroy', async () => {
+      await service.onModuleDestroy();
+
+      expect(redisMock.quit).toHaveBeenCalledTimes(1);
     });
   });
 });

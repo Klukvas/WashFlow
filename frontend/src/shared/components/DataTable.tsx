@@ -90,7 +90,7 @@ export function DataTable<T>({
 
   if (loading) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" data-testid="datatable-loading">
         {Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="h-12 w-full" />
         ))}
@@ -178,6 +178,7 @@ export function DataTable<T>({
                 className="h-8 w-8"
                 onClick={() => onPageChange(1)}
                 disabled={page <= 1}
+                aria-label="First page"
               >
                 <ChevronsLeft className="h-4 w-4" />
               </Button>
@@ -187,6 +188,7 @@ export function DataTable<T>({
                 className="h-8 w-8"
                 onClick={() => onPageChange(page - 1)}
                 disabled={page <= 1}
+                aria-label="Previous page"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -220,6 +222,7 @@ export function DataTable<T>({
                 className="h-8 w-8"
                 onClick={() => onPageChange(page + 1)}
                 disabled={page >= totalPages}
+                aria-label="Next page"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -229,6 +232,7 @@ export function DataTable<T>({
                 className="h-8 w-8"
                 onClick={() => onPageChange(totalPages)}
                 disabled={page >= totalPages}
+                aria-label="Last page"
               >
                 <ChevronsRight className="h-4 w-4" />
               </Button>
