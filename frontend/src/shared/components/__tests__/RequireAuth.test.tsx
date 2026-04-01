@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { RequireAuth } from '../RequireAuth';
 
@@ -61,14 +61,14 @@ describe('RequireAuth', () => {
     expect(screen.getByText('Login Page')).toBeInTheDocument();
   });
 
-  it('preserves the original path in location state when redirecting', () => {
+  it('preserves the original path in location state when redirecting', async () => {
     mockIsAuthenticated = false;
 
-    let navigatedState: unknown = null;
+    const onState = vi.fn();
 
-    function CaptureState() {
+    function CaptureState({ onCapture }: { onCapture: (s: unknown) => void }) {
       const loc = useLocation();
-      navigatedState = loc.state;
+      onCapture(loc.state);
       return <div>Login Page With State</div>;
     }
 
@@ -83,13 +83,15 @@ describe('RequireAuth', () => {
               </RequireAuth>
             }
           />
-          <Route path="/login" element={<CaptureState />} />
+          <Route path="/login" element={<CaptureState onCapture={onState} />} />
         </Routes>
       </MemoryRouter>,
     );
 
     expect(screen.queryByText('Settings')).not.toBeInTheDocument();
     expect(screen.getByText('Login Page With State')).toBeInTheDocument();
-    expect(navigatedState).toEqual({ from: '/dashboard/settings' });
+    await waitFor(() => {
+      expect(onState).toHaveBeenCalledWith({ from: '/dashboard/settings' });
+    });
   });
 });
