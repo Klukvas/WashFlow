@@ -52,8 +52,8 @@ ON CONFLICT (module, action) DO NOTHING;
 
 -- Fix existing admin roles that have no permissions
 -- (created when permissions table was empty)
-INSERT INTO role_permissions ("roleId", "permissionId")
-SELECT r.id, p.id
+INSERT INTO role_permissions (id, "roleId", "permissionId")
+SELECT gen_random_uuid(), r.id, p.id
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Admin'
