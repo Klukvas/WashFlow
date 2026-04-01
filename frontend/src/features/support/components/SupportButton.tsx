@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { MessageCircleQuestion } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
@@ -19,13 +19,15 @@ export function SupportButton() {
   const [message, setMessage] = useState('');
   const { mutate, isPending } = useCreateSupportRequest();
 
+  const handleClose = useCallback(() => setOpen(false), []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     mutate(
       { subject: subject.trim(), message: message.trim() },
       {
         onSuccess: () => {
-          setOpen(false);
+          handleClose();
           setSubject('');
           setMessage('');
         },
@@ -45,7 +47,7 @@ export function SupportButton() {
         <MessageCircleQuestion className="h-6 w-6" />
       </button>
 
-      <Dialog open={open} onClose={() => setOpen(false)}>
+      <Dialog open={open} onClose={handleClose}>
         <DialogHeader>
           <DialogTitle>{t('support.title')}</DialogTitle>
         </DialogHeader>
@@ -84,7 +86,7 @@ export function SupportButton() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setOpen(false)}
+                onClick={handleClose}
                 disabled={isPending}
               >
                 {t('actions.cancel')}

@@ -1,9 +1,8 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiTags } from '@nestjs/swagger';
+import type { Request } from 'express';
 import { Public } from '../../common/decorators/public.decorator';
-import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../common/types/jwt-payload.type';
 import { SupportService } from './support.service';
 import { CreateSupportRequestDto } from './dto/create-support-request.dto';
@@ -17,12 +16,13 @@ export class SupportController {
   @Public()
   @Throttle({ short: { limit: 3, ttl: 60000 } })
   async create(
-    @CurrentTenant() tenantId: string | undefined,
-    @CurrentUser() user: JwtPayload | undefined,
+    @Req() req: Request & { user?: JwtPayload },
     @Body() dto: CreateSupportRequestDto,
   ) {
+    const user = req.user;
+
     await this.supportService.createRequest(dto, {
-      tenantId: tenantId ?? 'anonymous',
+      tenantId: user?.tenantId ?? 'anonymous',
       userId: user?.sub ?? 'anonymous',
       userEmail: user?.email ?? dto.email ?? 'anonymous',
     });
