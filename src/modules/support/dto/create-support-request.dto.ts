@@ -1,4 +1,10 @@
-import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  MaxLength,
+  IsOptional,
+  IsEmail,
+} from 'class-validator';
 
 export class CreateSupportRequestDto {
   @IsString()
@@ -10,4 +16,8 @@ export class CreateSupportRequestDto {
   @IsNotEmpty()
   @MaxLength(2000)
   message: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
 }

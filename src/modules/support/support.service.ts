@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CreateSupportRequestDto } from './dto/create-support-request.dto';
 
@@ -29,9 +25,7 @@ export class SupportService {
   ): Promise<void> {
     if (!this.botToken || !this.chatId) {
       this.logger.warn('Telegram support not configured — request dropped');
-      throw new ServiceUnavailableException(
-        'Support channel is temporarily unavailable',
-      );
+      return;
     }
 
     const text = [
@@ -68,9 +62,7 @@ export class SupportService {
 
       if (!response.ok) {
         const body = await response.text();
-        this.logger.error(
-          `Telegram API error: ${response.status} — ${body}`,
-        );
+        this.logger.error(`Telegram API error: ${response.status} — ${body}`);
       }
     } catch (error) {
       this.logger.error('Failed to send Telegram message', error);
