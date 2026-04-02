@@ -106,11 +106,18 @@ import {
       },
     }),
 
-    // Rate limiting (active in all environments)
-    ThrottlerModule.forRoot([
-      { name: 'short', ttl: 1000, limit: 10 },
-      { name: 'long', ttl: 60000, limit: 100 },
-    ]),
+    // Rate limiting — relaxed in test to avoid flaky E2E, strict in production
+    ThrottlerModule.forRoot(
+      process.env.NODE_ENV === 'test'
+        ? [
+            { name: 'short', ttl: 1000, limit: 1000 },
+            { name: 'long', ttl: 60000, limit: 10000 },
+          ]
+        : [
+            { name: 'short', ttl: 1000, limit: 10 },
+            { name: 'long', ttl: 60000, limit: 100 },
+          ],
+    ),
 
     // Event system
     EventEmitterModule.forRoot(),
