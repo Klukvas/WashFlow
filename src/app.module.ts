@@ -106,13 +106,11 @@ import {
       },
     }),
 
-    // Rate limiting — relaxed in test to avoid flaky E2E, strict in production
+    // Rate limiting — disabled in test env to avoid E2E overhead and flakiness.
+    // ThrottlerGuard becomes a no-op when no throttler configs are registered.
     ThrottlerModule.forRoot(
       process.env.NODE_ENV === 'test'
-        ? [
-            { name: 'short', ttl: 1000, limit: 1000 },
-            { name: 'long', ttl: 60000, limit: 10000 },
-          ]
+        ? []
         : [
             { name: 'short', ttl: 1000, limit: 10 },
             { name: 'long', ttl: 60000, limit: 100 },
