@@ -6,6 +6,9 @@ WORKDIR /app
 ARG VITE_SENTRY_DSN=""
 ENV VITE_SENTRY_DSN=${VITE_SENTRY_DSN}
 
+ARG VITE_PADDLE_SANDBOX="false"
+ENV VITE_PADDLE_SANDBOX=${VITE_PADDLE_SANDBOX}
+
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
