@@ -16,6 +16,26 @@ const LandingPage = lazy(() =>
     default: m.LandingPage,
   })),
 );
+const LegalLayout = lazy(() =>
+  import('@/features/legal/components/LegalLayout').then((m) => ({
+    default: m.LegalLayout,
+  })),
+);
+const PrivacyPolicyPage = lazy(() =>
+  import('@/features/legal/pages/PrivacyPolicyPage').then((m) => ({
+    default: m.PrivacyPolicyPage,
+  })),
+);
+const TermsPage = lazy(() =>
+  import('@/features/legal/pages/TermsPage').then((m) => ({
+    default: m.TermsPage,
+  })),
+);
+const RefundPolicyPage = lazy(() =>
+  import('@/features/legal/pages/RefundPolicyPage').then((m) => ({
+    default: m.RefundPolicyPage,
+  })),
+);
 const RegisterPage = lazy(() =>
   import('@/features/auth/pages/RegisterPage').then((m) => ({
     default: m.RegisterPage,
@@ -262,6 +282,44 @@ export const router = createBrowserRouter([
         element: (
           <SuspenseWrapper>
             <BlogPostPage />
+          </SuspenseWrapper>
+        ),
+      },
+    ],
+  },
+  {
+    path: '/legal',
+    element: (
+      <SuspenseWrapper>
+        <LegalLayout />
+      </SuspenseWrapper>
+    ),
+    children: [
+      {
+        index: true,
+        element: <Navigate to="/legal/privacy" replace />,
+      },
+      {
+        path: 'privacy',
+        element: (
+          <SuspenseWrapper>
+            <PrivacyPolicyPage />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: 'terms',
+        element: (
+          <SuspenseWrapper>
+            <TermsPage />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: 'refund',
+        element: (
+          <SuspenseWrapper>
+            <RefundPolicyPage />
           </SuspenseWrapper>
         ),
       },
