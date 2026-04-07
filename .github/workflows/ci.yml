@@ -418,30 +418,55 @@ jobs:
           ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
       - name: Generate .env file
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          PADDLE_API_KEY: ${{ secrets.PADDLE_API_KEY }}
+          PADDLE_CLIENT_TOKEN: ${{ secrets.PADDLE_CLIENT_TOKEN }}
+          PADDLE_WEBHOOK_SECRET: ${{ secrets.PADDLE_WEBHOOK_SECRET }}
+          PADDLE_PRICE_IDS: ${{ secrets.PADDLE_PRICE_IDS }}
+          PADDLE_ADDON_PRICE_IDS: ${{ secrets.PADDLE_ADDON_PRICE_IDS }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          GRAFANA_LOKI_HOST: ${{ secrets.GRAFANA_LOKI_HOST }}
+          GRAFANA_LOKI_USERNAME: ${{ secrets.GRAFANA_LOKI_USERNAME }}
+          GRAFANA_LOKI_PASSWORD: ${{ secrets.GRAFANA_LOKI_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_SUPPORT_CHAT_ID: ${{ secrets.TELEGRAM_SUPPORT_CHAT_ID }}
         run: |
+          # Use printf to safely write key=value lines even when values contain
+          # double quotes, JSON, dollar signs, etc. Values are read from env
+          # vars so they are NEVER interpolated into the bash command line.
           {
-            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}"
-            echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}"
-            echo "JWT_ACCESS_SECRET=${{ secrets.JWT_ACCESS_SECRET }}"
-            echo "JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}"
-            echo "CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}"
-            echo "DOCKER_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/washflow"
-            echo "DOCKER_IMAGE_FRONTEND=${{ secrets.DOCKERHUB_USERNAME }}/washflow-frontend"
-            echo "DOCKER_TAG=${{ needs.build-and-push.outputs.image_tag }}"
-            echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}"
-            echo "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}"
-            echo "PADDLE_API_KEY=${{ secrets.PADDLE_API_KEY }}"
-            echo "PADDLE_CLIENT_TOKEN=${{ secrets.PADDLE_CLIENT_TOKEN }}"
-            echo "PADDLE_WEBHOOK_SECRET=${{ secrets.PADDLE_WEBHOOK_SECRET }}"
-            echo "PADDLE_PRICE_IDS=${{ secrets.PADDLE_PRICE_IDS }}"
-            echo "PADDLE_ADDON_PRICE_IDS=${{ secrets.PADDLE_ADDON_PRICE_IDS }}"
-            echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}"
-            echo "VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}"
-            echo "GRAFANA_LOKI_HOST=${{ secrets.GRAFANA_LOKI_HOST }}"
-            echo "GRAFANA_LOKI_USERNAME=${{ secrets.GRAFANA_LOKI_USERNAME }}"
-            echo "GRAFANA_LOKI_PASSWORD=${{ secrets.GRAFANA_LOKI_PASSWORD }}"
-            echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}"
-            echo "TELEGRAM_SUPPORT_CHAT_ID=${{ secrets.TELEGRAM_SUPPORT_CHAT_ID }}"
+            printf 'POSTGRES_PASSWORD=%s\n' "$POSTGRES_PASSWORD"
+            printf 'REDIS_PASSWORD=%s\n' "$REDIS_PASSWORD"
+            printf 'JWT_ACCESS_SECRET=%s\n' "$JWT_ACCESS_SECRET"
+            printf 'JWT_REFRESH_SECRET=%s\n' "$JWT_REFRESH_SECRET"
+            printf 'CORS_ORIGINS=%s\n' "$CORS_ORIGINS"
+            printf 'DOCKER_IMAGE=%s/washflow\n' "$DOCKERHUB_USERNAME"
+            printf 'DOCKER_IMAGE_FRONTEND=%s/washflow-frontend\n' "$DOCKERHUB_USERNAME"
+            printf 'DOCKER_TAG=%s\n' "$IMAGE_TAG"
+            printf 'FRONTEND_URL=%s\n' "$FRONTEND_URL"
+            printf 'RESEND_API_KEY=%s\n' "$RESEND_API_KEY"
+            printf 'PADDLE_API_KEY=%s\n' "$PADDLE_API_KEY"
+            printf 'PADDLE_CLIENT_TOKEN=%s\n' "$PADDLE_CLIENT_TOKEN"
+            printf 'PADDLE_WEBHOOK_SECRET=%s\n' "$PADDLE_WEBHOOK_SECRET"
+            printf 'PADDLE_PRICE_IDS=%s\n' "$PADDLE_PRICE_IDS"
+            printf 'PADDLE_ADDON_PRICE_IDS=%s\n' "$PADDLE_ADDON_PRICE_IDS"
+            printf 'SENTRY_DSN=%s\n' "$SENTRY_DSN"
+            printf 'VITE_SENTRY_DSN=%s\n' "$VITE_SENTRY_DSN"
+            printf 'GRAFANA_LOKI_HOST=%s\n' "$GRAFANA_LOKI_HOST"
+            printf 'GRAFANA_LOKI_USERNAME=%s\n' "$GRAFANA_LOKI_USERNAME"
+            printf 'GRAFANA_LOKI_PASSWORD=%s\n' "$GRAFANA_LOKI_PASSWORD"
+            printf 'TELEGRAM_BOT_TOKEN=%s\n' "$TELEGRAM_BOT_TOKEN"
+            printf 'TELEGRAM_SUPPORT_CHAT_ID=%s\n' "$TELEGRAM_SUPPORT_CHAT_ID"
           } > .env.production
           chmod 600 .env.production
 
