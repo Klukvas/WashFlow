@@ -9,8 +9,12 @@ export function BlogListPage() {
     <div className="mx-auto max-w-4xl px-4 py-12">
       <Seo
         title="Blog"
-        description="Tips, guides, and insights on car wash management, online booking, and growing your auto detailing business."
+        description="Car wash business tips, guides, and software insights. Learn how to manage your car wash more efficiently with WashFlow."
         path="/blog"
+        breadcrumbs={[
+          { name: 'Home', url: 'https://washflow.com/' },
+          { name: 'Blog', url: 'https://washflow.com/blog' },
+        ]}
       />
 
       <h1 className="mb-2 text-3xl font-bold tracking-tight sm:text-4xl">
