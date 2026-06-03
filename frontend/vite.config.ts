@@ -1,10 +1,8 @@
 import { defineConfig } from 'vite';
+import type { PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import vitePrerender from 'vite-plugin-prerender';
 import path from 'path';
-
-const PuppeteerRenderer = vitePrerender.PuppeteerRenderer;
 
 // ---------------------------------------------------------------------------
 // Routes to prerender at build time (public / SEO-critical pages)
@@ -70,25 +68,30 @@ const prerenderRoutes: readonly string[] = [
   '/legal/refund',
 ];
 
-export default defineConfig({
+async function prerenderPlugin(): Promise<PluginOption> {
+  const vitePrerender = (await import('vite-plugin-prerender')).default;
+  const PuppeteerRenderer = vitePrerender.PuppeteerRenderer;
+
+  return vitePrerender({
+    staticDir: path.join(__dirname, 'dist'),
+    routes: [...prerenderRoutes],
+    renderer: new PuppeteerRenderer({
+      headless: true,
+      renderAfterTime: 500,
+      maxConcurrentRoutes: 4,
+    }),
+    postProcess(renderedRoute) {
+      renderedRoute.route = renderedRoute.originalRoute;
+      return renderedRoute;
+    },
+  });
+}
+
+export default defineConfig(async ({ command }) => ({
   plugins: [
     react(),
     tailwindcss(),
-    vitePrerender({
-      staticDir: path.join(__dirname, 'dist'),
-      routes: [...prerenderRoutes],
-      renderer: new PuppeteerRenderer({
-        headless: true,
-        // Wait until the app has finished its first render
-        renderAfterTime: 500,
-        maxConcurrentRoutes: 4,
-      }),
-      postProcess(renderedRoute) {
-        // Ensure the route stays as originally requested (ignore redirects)
-        renderedRoute.route = renderedRoute.originalRoute;
-        return renderedRoute;
-      },
-    }),
+    ...(command === 'build' ? [await prerenderPlugin()] : []),
   ],
   resolve: {
     alias: {
