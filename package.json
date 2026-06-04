@@ -104,8 +104,7 @@
       "prisma",
       "argon2",
       "@nestjs/core",
-      "msgpackr-extract",
-      "puppeteer"
+      "msgpackr-extract"
     ],
     "overrides": {
       "multer": ">=2.1.0"
