@@ -1,0 +1,1709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<meta name="theme-color" content="#38BDF8" />
+
+<title>Car Wash Management Software & Booking CRM | WashFlow</title>
+<meta name="description" content="Car wash management software: scheduling, online booking, client CRM, analytics & multi-location support. Free 30-day trial — US & Ukraine." />
+<meta name="keywords" content="car wash management software, car wash scheduling software, car wash booking software, car wash CRM, car wash POS, auto detailing software, програма для автомийки, CRM для автомийки, управління автомийкою" />
+<meta name="author" content="WashFlow" />
+<meta name="robots" content="index, follow" />
+
+<!-- Open Graph -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Car Wash Management Software & Booking CRM | WashFlow" />
+<meta property="og:description" content="Car wash management software: scheduling, online booking, client CRM, analytics & multi-location support. Free 30-day trial — US & Ukraine." />
+<meta property="og:url" content="https://washflow.com" />
+<meta property="og:site_name" content="WashFlow" />
+<meta property="og:image" content="https://washflow.com/screenshots/orders.png" />
+<meta property="og:locale" content="en_US" />
+<meta property="og:locale:alternate" content="uk_UA" />
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Car Wash Management Software & Booking CRM | WashFlow" />
+<meta name="twitter:description" content="Car wash management software: scheduling, online booking, client CRM, analytics & multi-location support. Free 30-day trial — US & Ukraine." />
+<meta name="twitter:image" content="https://washflow.com/screenshots/orders.png" />
+
+<link rel="canonical" href="https://washflow.com" />
+<link rel="alternate" hreflang="en" href="https://washflow.com/" />
+<link rel="alternate" hreflang="uk" href="https://washflow.com/" />
+<link rel="alternate" hreflang="x-default" href="https://washflow.com/" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<!-- Structured Data: Organization -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "WashFlow",
+  "url": "https://washflow.com",
+  "logo": "https://washflow.com/favicon.svg",
+  "description": "Car wash management software for scheduling, booking, CRM, and analytics.",
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "customer support",
+    "url": "https://washflow.com"
+  }
+}
+</script>
+<!-- Structured Data: SoftwareApplication -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "WashFlow",
+  "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "Car Wash Management",
+  "operatingSystem": "Web",
+  "description": "Car wash management software with scheduling, online booking, client CRM, workforce management, analytics, and multi-location support.",
+  "url": "https://washflow.com",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD",
+    "description": "30-day free trial, no credit card required"
+  },
+  "featureList": "Scheduling, Online Booking, Client CRM, Vehicle Database, Analytics, Multi-branch Support, Workforce Management, Role-based Access"
+}
+</script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-base:    #090E18;
+    --bg-surface: #0F1623;
+    --bg-raised:  #162033;
+    --bg-input:   #111828;
+    --border:       rgba(255,255,255,0.07);
+    --border-hover: rgba(255,255,255,0.14);
+    --border-accent: rgba(56,189,248,0.3);
+    --text-primary:   #F1F5F9;
+    --text-secondary: #94A3B8;
+    --text-tertiary:  #475569;
+    --accent: #38BDF8;
+    --accent-dim: rgba(56,189,248,0.12);
+    --accent-glow: rgba(56,189,248,0.06);
+    --sky: #38BDF8;
+    --teal: #2DD4BF;
+    --danger: #F87171;
+    --warning: #FACC15;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    line-height: 1.6;
+    overflow-x: hidden;
+    font-optical-sizing: auto;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ── GRID TEXTURE ── */
+  .bg-grid {
+    background-color: var(--bg-base);
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; } to { opacity: 1; }
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+  @keyframes blink-bar {
+    0%, 100% { opacity: 1; } 50% { opacity: 0; }
+  }
+  @keyframes slide-right {
+    from { transform: translateX(-8px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+  }
+  @keyframes counter {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .a1 { animation: fadeUp 0.55s ease forwards; }
+  .a2 { animation: fadeUp 0.55s ease 0.1s both; }
+  .a3 { animation: fadeUp 0.55s ease 0.2s both; }
+  .a4 { animation: fadeUp 0.55s ease 0.3s both; }
+  .a5 { animation: fadeUp 0.55s ease 0.4s both; }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 40px;
+    background: rgba(9,14,24,0.55);
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    border-bottom: 1px solid transparent;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); /* bright top edge = light on the material */
+    transition: background 0.3s ease, border-color 0.3s ease;
+  }
+  /* Chrome materializes once content scrolls under it */
+  nav.scrolled {
+    background: rgba(9,14,24,0.85);
+    border-bottom-color: var(--border);
+  }
+  .nav-logo {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 15px; font-weight: 700; color: var(--text-primary);
+    text-decoration: none; letter-spacing: -0.02em;
+  }
+  .nav-logo-icon {
+    width: 28px; height: 28px; border-radius: 7px;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    color: #0B0F17; font-size: 14px;
+  }
+  .nav-links {
+    display: flex; gap: 4px; list-style: none;
+  }
+  .nav-links a {
+    color: var(--text-secondary); text-decoration: none;
+    font-size: 13px; font-weight: 500;
+    padding: 5px 12px; border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+  }
+  .nav-links a:hover { color: var(--text-primary); background: var(--bg-raised); }
+  .nav-actions { display: flex; gap: 8px; align-items: center; }
+  .btn-sm-ghost {
+    background: transparent; color: var(--text-secondary);
+    border: 1px solid var(--border); font-size: 13px; font-weight: 500;
+    padding: 6px 14px; border-radius: 6px; cursor: pointer; font-family: inherit;
+    transition: border-color 0.15s, color 0.15s, transform 0.1s;
+    text-decoration: none; display: inline-flex; align-items: center;
+  }
+  .btn-sm-ghost:hover { border-color: var(--border-hover); color: var(--text-primary); }
+  .btn-sm-ghost:active { transform: scale(0.97); }
+  .btn-sm-lime {
+    background: var(--accent); color: #0B0F17;
+    font-size: 13px; font-weight: 600;
+    padding: 6px 14px; border-radius: 6px; cursor: pointer; font-family: inherit;
+    border: none; transition: opacity 0.15s, transform 0.1s;
+    text-decoration: none; display: inline-flex; align-items: center;
+  }
+  .btn-sm-lime:hover { opacity: 0.88; }
+  .btn-sm-lime:active { transform: scale(0.97); }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 120px 24px 80px;
+    position: relative; overflow: hidden;
+    text-align: center;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; top: -10%; left: 50%; transform: translateX(-50%);
+    width: 900px; height: 500px;
+    background: radial-gradient(ellipse 70% 55% at 50% 0%, rgba(56,189,248,0.09) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 11px; font-weight: 500; font-family: 'DM Mono', monospace;
+    color: var(--accent); border: 1px solid rgba(56,189,248,0.22);
+    background: rgba(56,189,248,0.07); padding: 4px 12px; border-radius: 20px;
+    margin-bottom: 28px; letter-spacing: 0.02em;
+  }
+  .hero-badge-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+  .hero h1 {
+    font-size: clamp(40px, 6vw, 72px);
+    font-weight: 800; letter-spacing: -0.035em; line-height: 1.05;
+    color: var(--text-primary); max-width: 820px; margin: 0 auto 20px;
+  }
+  .hero h1 em {
+    font-style: normal;
+    background: linear-gradient(135deg, var(--accent) 30%, #7DD3FC 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-sub {
+    font-size: 17px; color: var(--text-secondary); max-width: 540px;
+    margin: 0 auto 40px; line-height: 1.65;
+  }
+  .hero-ctas {
+    display: flex; justify-content: center; flex-wrap: wrap;
+    margin-bottom: 72px;
+  }
+  .btn-lg-lime {
+    background: var(--accent); color: #0B0F17;
+    font-size: 14px; font-weight: 700;
+    padding: 11px 24px; border-radius: 8px; cursor: pointer; font-family: inherit;
+    border: none; transition: opacity 0.15s, transform 0.1s; letter-spacing: -0.01em;
+    display: inline-flex; align-items: center; gap: 7px; text-decoration: none;
+  }
+  .btn-lg-lime:hover { opacity: 0.88; }
+  .btn-lg-lime:active { transform: scale(0.97); }
+  .btn-lg-ghost {
+    background: transparent; color: var(--text-secondary);
+    border: 1px solid var(--border); font-size: 14px; font-weight: 500;
+    padding: 11px 24px; border-radius: 8px; cursor: pointer; font-family: inherit;
+    transition: border-color 0.15s, color 0.15s, transform 0.1s; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .btn-lg-ghost:hover { border-color: var(--border-hover); color: var(--text-primary); }
+  .btn-lg-ghost:active { transform: scale(0.97); }
+
+  /* ── HERO DASHBOARD MOCK ── */
+  .hero-preview-wrap {
+    width: 100%; max-width: 960px; margin: 0 auto;
+    position: relative;
+  }
+  .hero-preview-wrap::before {
+    content: '';
+    position: absolute; bottom: -40px; left: 50%; transform: translateX(-50%);
+    width: 80%; height: 80px;
+    background: radial-gradient(ellipse at center, rgba(56,189,248,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-preview {
+    border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden;
+    background: var(--bg-surface);
+    box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.03);
+  }
+  .preview-topbar {
+    height: 40px; background: var(--bg-raised);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 16px; gap: 6px;
+  }
+  .preview-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .preview-dot.r { background: #F87171; }
+  .preview-dot.y { background: #FACC15; }
+  .preview-dot.g { background: #4ADE80; }
+  .preview-url {
+    flex: 1; margin: 0 12px;
+    background: var(--bg-input); border: 1px solid var(--border);
+    border-radius: 5px; height: 22px; display: flex; align-items: center;
+    padding: 0 10px; max-width: 280px;
+    font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-tertiary);
+  }
+  .preview-body {
+    display: grid; grid-template-columns: 180px 1fr;
+    height: 420px;
+  }
+  .preview-sidebar {
+    background: var(--bg-input); border-right: 1px solid var(--border);
+    padding: 16px 10px;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .ps-section { font-size: 9px; font-weight: 600; color: var(--text-tertiary);
+    font-family: 'DM Mono', monospace; letter-spacing: 0.08em;
+    padding: 12px 8px 6px; text-transform: uppercase; }
+  .ps-item {
+    display: flex; align-items: center; gap: 7px;
+    padding: 6px 8px; border-radius: 5px; font-size: 11px; color: var(--text-secondary);
+    cursor: pointer; transition: background 0.1s, color 0.1s;
+  }
+  .ps-item:hover { background: var(--bg-raised); color: var(--text-primary); }
+  .ps-item.active { background: var(--bg-raised); color: var(--text-primary); }
+  .ps-item.active .ps-icon { color: var(--accent); }
+  .ps-icon { width: 14px; text-align: center; font-size: 12px; }
+  .ps-badge {
+    margin-left: auto; font-size: 9px; font-family: 'DM Mono', monospace;
+    background: rgba(56,189,248,0.12); color: var(--accent);
+    padding: 1px 5px; border-radius: 3px;
+  }
+  .preview-main { padding: 20px 20px 16px; overflow: hidden; }
+  .pm-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .pm-title { font-size: 13px; font-weight: 700; letter-spacing: -0.02em; }
+  .pm-actions { display: flex; gap: 6px; }
+  .pm-btn {
+    font-size: 10px; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border);
+    background: var(--bg-raised); color: var(--text-secondary); cursor: pointer;
+    font-family: inherit;
+  }
+  .pm-btn.lime { background: var(--accent); color: #0B0F17; border-color: transparent; font-weight: 600; }
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  .kpi-card {
+    background: var(--bg-raised); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px;
+  }
+  .kpi-label { font-size: 9px; color: var(--text-tertiary); font-family: 'DM Mono', monospace;
+    text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .kpi-value { font-size: 18px; font-weight: 700; letter-spacing: -0.03em; color: var(--text-primary); }
+  .kpi-delta { font-size: 9px; font-family: 'DM Mono', monospace; margin-top: 3px; }
+  .kpi-delta.up { color: #4ADE80; }
+  .kpi-delta.down { color: var(--danger); }
+  .chart-area {
+    background: var(--bg-raised); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px; height: 150px; position: relative; overflow: hidden;
+  }
+  .chart-label { font-size: 9px; color: var(--text-tertiary); font-family: 'DM Mono', monospace;
+    text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+  .chart-bars {
+    display: flex; align-items: flex-end; gap: 4px; height: 100px;
+  }
+  .chart-bar {
+    flex: 1; border-radius: 3px 3px 0 0;
+    background: rgba(56,189,248,0.15); transition: background 0.2s;
+    position: relative;
+  }
+  .chart-bar:hover { background: rgba(56,189,248,0.35); }
+  .chart-bar.peak { background: rgba(56,189,248,0.5); }
+  .chart-bar.today { background: var(--accent); }
+
+  /* orders table */
+  .orders-strip { margin-top: 12px; }
+  .orders-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 8px; border-radius: 5px; font-size: 10px;
+    border-bottom: 1px solid var(--border); color: var(--text-secondary);
+    transition: background 0.1s;
+  }
+  .orders-row:hover { background: var(--bg-raised); }
+  .orders-status {
+    font-size: 9px; font-family: 'DM Mono', monospace;
+    padding: 2px 6px; border-radius: 3px; font-weight: 500;
+  }
+  .s-inprog { background: rgba(56,189,248,0.12); color: var(--sky); }
+  .s-done   { background: rgba(74,222,128,0.1); color: #4ADE80; }
+  .s-booked { background: rgba(56,189,248,0.1); color: var(--accent); }
+  .o-car { color: var(--text-primary); font-weight: 600; }
+  .o-service { flex: 1; }
+  .o-price { font-family: 'DM Mono', monospace; color: var(--text-primary); }
+
+  /* ── SECTION WRAPPER ── */
+  section { padding: 96px 24px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  .section-label {
+    font-size: 11px; font-weight: 500; font-family: 'DM Mono', monospace;
+    color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-size: clamp(28px, 4vw, 44px); font-weight: 800;
+    letter-spacing: -0.035em; line-height: 1.1; color: var(--text-primary);
+    margin-bottom: 16px;
+  }
+  .section-sub {
+    font-size: 16px; color: var(--text-secondary); max-width: 520px; line-height: 1.65;
+  }
+
+  /* ── FEATURES ── */
+  .features-section { background: var(--bg-base); }
+  .features-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+    background: var(--border); border: 1px solid var(--border); border-radius: 14px;
+    overflow: hidden; margin-top: 60px;
+  }
+  .feat-card {
+    background: var(--bg-surface); padding: 32px 28px;
+    transition: background 0.15s;
+    position: relative;
+  }
+  .feat-card:hover { background: var(--bg-raised); }
+  .feat-card:hover .feat-icon-wrap { border-color: rgba(56,189,248,0.3); }
+  .feat-icon-wrap {
+    width: 40px; height: 40px; border-radius: 9px;
+    background: var(--bg-raised); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; margin-bottom: 18px;
+    transition: border-color 0.15s;
+  }
+  .feat-title { font-size: 14px; font-weight: 700; letter-spacing: -0.02em;
+    margin-bottom: 8px; color: var(--text-primary); }
+  .feat-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.65; }
+  .feat-tag {
+    margin-top: 14px; display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; font-family: 'DM Mono', monospace; font-weight: 500;
+    color: var(--text-tertiary); border: 1px solid var(--border);
+    padding: 2px 8px; border-radius: 4px;
+  }
+
+  /* ── ARCHITECTURE STRIP ── */
+  .arch-section {
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 64px 24px;
+  }
+  .arch-inner { max-width: 1100px; margin: 0 auto; }
+  .arch-title { font-size: 11px; color: var(--text-tertiary); font-family: 'DM Mono', monospace;
+    text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 24px; text-align: center; }
+  .stack-row {
+    display: flex; align-items: center; justify-content: center;
+    flex-wrap: wrap; gap: 8px;
+  }
+  .stack-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 500; font-family: 'DM Mono', monospace;
+    color: var(--text-secondary); border: 1px solid var(--border);
+    background: var(--bg-raised); padding: 5px 12px; border-radius: 6px;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .stack-chip:hover { border-color: var(--border-hover); color: var(--text-primary); }
+  .stack-chip-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  /* ── HOW IT WORKS ── */
+  .how-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 60px;
+    align-items: center; margin-top: 60px;
+  }
+  .steps-list { display: flex; flex-direction: column; gap: 0; }
+  .step-item {
+    display: flex; gap: 18px; padding: 24px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .step-item:first-child { padding-top: 0; }
+  .step-item:last-child { border-bottom: none; }
+  .step-num {
+    width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0;
+    background: var(--bg-raised); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; font-family: 'DM Mono', monospace;
+    color: var(--text-tertiary); transition: all 0.2s;
+  }
+  .step-item:hover .step-num, .step-item.active .step-num {
+    background: var(--accent); border-color: var(--accent); color: #0B0F17;
+  }
+  .step-content h4 { font-size: 14px; font-weight: 700; letter-spacing: -0.02em;
+    margin-bottom: 5px; color: var(--text-primary); }
+  .step-content p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+
+  .how-visual {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 24px; min-height: 380px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .hv-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .hv-title { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+  .hv-date { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text-tertiary); }
+  .slot-grid { display: flex; flex-direction: column; gap: 6px; }
+  .slot-row { display: flex; gap: 5px; align-items: center; }
+  .slot-label { font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text-tertiary);
+    width: 35px; flex-shrink: 0; }
+  .slot-cell {
+    height: 22px; border-radius: 4px; display: flex; align-items: center;
+    justify-content: center; font-size: 9px; font-family: 'DM Mono', monospace;
+    font-weight: 500; flex: 1; cursor: pointer; transition: all 0.15s;
+  }
+  .slot-free {
+    background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.15);
+    color: var(--accent);
+  }
+  .slot-free:hover { background: rgba(56,189,248,0.2); }
+  .slot-busy {
+    background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.12);
+    color: rgba(248,113,113,0.6);
+  }
+  .slot-cur {
+    background: rgba(56,189,248,0.25); border: 1px solid rgba(56,189,248,0.5);
+    color: var(--accent); box-shadow: 0 0 8px rgba(56,189,248,0.15);
+  }
+  .slot-empty { background: transparent; border: 1px solid var(--border); color: transparent; }
+
+  /* ── METRICS STRIP ── */
+  .metrics-section { border-top: 1px solid var(--border); padding: 72px 24px; }
+  .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+    background: var(--border); border: 1px solid var(--border); border-radius: 12px;
+    overflow: hidden; margin-top: 48px; }
+  .metric-cell {
+    background: var(--bg-surface); padding: 32px 28px;
+    text-align: center;
+  }
+  .metric-num {
+    font-size: 40px; font-weight: 800; letter-spacing: -0.04em;
+    color: var(--text-primary); line-height: 1;
+    font-family: 'DM Sans', sans-serif; margin-bottom: 8px;
+  }
+  .metric-num span { color: var(--accent); }
+  .metric-label { font-size: 12px; color: var(--text-secondary); }
+  .metric-note { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text-tertiary); margin-top: 4px; }
+
+  /* ── PRICING ── */
+  .pricing-section { padding: 96px 24px; }
+  .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 60px; }
+  .plan-card {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 28px; position: relative;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .plan-card:hover { border-color: var(--border-hover); }
+  .plan-card.popular {
+    border-color: rgba(56,189,248,0.3);
+    box-shadow: 0 0 0 1px rgba(56,189,248,0.08), 0 8px 32px rgba(56,189,248,0.04);
+  }
+  .plan-popular-badge {
+    position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+    font-size: 10px; font-weight: 600; font-family: 'DM Mono', monospace;
+    background: var(--accent); color: #0B0F17;
+    padding: 2px 10px; border-radius: 10px; white-space: nowrap;
+  }
+  .plan-name { font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+  .plan-desc { font-size: 12px; color: var(--text-secondary); margin-bottom: 20px; }
+  .plan-price { margin-bottom: 24px; }
+  .plan-amount {
+    font-size: 36px; font-weight: 800; letter-spacing: -0.04em; color: var(--text-primary);
+  }
+  .plan-period { font-size: 13px; color: var(--text-secondary); margin-left: 3px; }
+  .plan-features { list-style: none; display: flex; flex-direction: column; gap: 9px; margin-bottom: 28px; }
+  .plan-features li { display: flex; gap: 9px; font-size: 13px; color: var(--text-secondary); align-items: flex-start; }
+  .plan-features li::before { content: '✓'; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+  .plan-features li.na { color: var(--text-tertiary); }
+  .plan-features li.na::before { content: '—'; color: var(--text-tertiary); }
+  .plan-btn {
+    width: 100%; padding: 10px; border-radius: 7px;
+    font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+    transition: all 0.15s; border: 1px solid var(--border);
+    background: var(--bg-raised); color: var(--text-secondary);
+  }
+  .plan-btn:hover { border-color: var(--border-hover); color: var(--text-primary); }
+  .plan-btn.lime { background: var(--accent); color: #0B0F17; border-color: transparent; }
+  .plan-btn.lime:hover { opacity: 0.88; }
+
+  /* ── REALTIME FEATURE HIGHLIGHT ── */
+  .rt-section { padding: 96px 24px; }
+  .rt-inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 72px; align-items: center; }
+  .rt-events {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden;
+  }
+  .rt-topbar {
+    background: var(--bg-raised); padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text-secondary);
+  }
+  .rt-live { display: flex; align-items: center; gap: 5px; font-size: 10px;
+    color: #4ADE80; margin-left: auto; }
+  .rt-live-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ADE80;
+    animation: pulse-dot 1.5s ease-in-out infinite; }
+  .rt-feed { padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+  .rt-event {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 6px; font-size: 11px;
+    animation: slide-right 0.35s ease forwards;
+    transition: background 0.1s;
+  }
+  .rt-event:hover { background: var(--bg-raised); }
+  .rt-event-icon { font-size: 14px; flex-shrink: 0; }
+  .rt-event-text { flex: 1; color: var(--text-secondary); }
+  .rt-event-text strong { color: var(--text-primary); font-weight: 600; }
+  .rt-event-time { font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text-tertiary); }
+  .rt-event-badge { font-size: 9px; font-family: 'DM Mono', monospace; padding: 2px 6px; border-radius: 3px; }
+
+  /* ── CTA ── */
+  .cta-section {
+    padding: 120px 24px;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    text-align: center; position: relative; overflow: hidden;
+  }
+  .cta-section::before {
+    content: '';
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 600px; height: 300px;
+    background: radial-gradient(ellipse at center top, rgba(56,189,248,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .cta-section h2 { font-size: clamp(32px, 4.5vw, 52px); font-weight: 800;
+    letter-spacing: -0.035em; line-height: 1.1; margin-bottom: 16px; }
+  .cta-section p { font-size: 16px; color: var(--text-secondary); max-width: 440px;
+    margin: 0 auto 40px; }
+  .cta-trial-note { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text-tertiary);
+    margin-top: 16px; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 40px;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 16px;
+  }
+  .footer-left { display: flex; align-items: center; gap: 10px; }
+  .footer-logo { display: flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 700; color: var(--text-secondary); text-decoration: none; }
+  .footer-copy { font-size: 12px; color: var(--text-tertiary); }
+  .footer-links { display: flex; gap: 20px; }
+  .footer-links a { font-size: 12px; color: var(--text-tertiary); text-decoration: none;
+    transition: color 0.15s; }
+  .footer-links a:hover { color: var(--text-secondary); }
+
+  /* ── PRESS FEEDBACK (instant, works on touch — not hover-only) ── */
+  .nav-links a, .stack-chip, .ps-item, .plan-btn, .pm-btn,
+  .feat-card, .slot-cell, .step-item {
+    transition-property: background, color, border-color, transform;
+    transition-duration: 0.15s;
+  }
+  .nav-links a:active, .stack-chip:active, .ps-item:active,
+  .plan-btn:active, .pm-btn:active { transform: scale(0.97); }
+  .feat-card:active, .step-item:active { background: var(--bg-raised); }
+  .slot-free:active { background: rgba(56,189,248,0.28); }
+
+  /* ── SCROLL REVEAL ── */
+  .reveal {
+    opacity: 0; transform: translateY(18px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* ── ACCESSIBILITY: motion / transparency / contrast ── */
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    /* Stop looping/oscillating motion */
+    .hero-badge-dot, .rt-live-dot { animation: none; }
+    /* Entrances become gentle cross-fades, no slide (vestibular-safe) */
+    .a1, .a2, .a3, .a4, .a5 { animation: fadeIn 0.4s ease both; }
+    .rt-event { animation: fadeIn 0.3s ease forwards; }
+    .reveal { transform: none; transition: opacity 0.3s ease; }
+    .reveal.visible { transform: none; }
+    /* Neutralize any remaining transform-based transitions */
+    *, *::before, *::after {
+      scroll-behavior: auto !important;
+      animation-iteration-count: 1 !important;
+    }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    nav, nav.scrolled { background: var(--bg-base); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  }
+  @media (prefers-contrast: more) {
+    :root {
+      --border: rgba(255,255,255,0.22);
+      --border-hover: rgba(255,255,255,0.4);
+      --text-secondary: #C3CCD8;
+      --text-tertiary: #8A97A8;
+    }
+    nav, nav.scrolled { background: var(--bg-base); backdrop-filter: none; -webkit-backdrop-filter: none;
+      border-bottom-color: rgba(255,255,255,0.25); }
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    nav { padding: 0 20px; }
+    .nav-links { display: none; }
+    .features-grid { grid-template-columns: 1fr 1fr; }
+    .pricing-grid { grid-template-columns: 1fr; max-width: 400px; margin-left: auto; margin-right: auto; }
+    .how-grid { grid-template-columns: 1fr; }
+    .rt-inner { grid-template-columns: 1fr; }
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+    .preview-body { grid-template-columns: 1fr; }
+    .preview-sidebar { display: none; }
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 600px) {
+    .features-grid { grid-template-columns: 1fr; }
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+    nav { padding: 0 16px; }
+    section { padding: 72px 16px; }
+    .preview-body { height: 300px; }
+  }
+</style>
+</head>
+<body class="bg-grid">
+
+<!-- ────────────────── NAV ────────────────── -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+        <path d="M3 13h2l2 5 4-10 3 7 2-4h5" stroke="#0B0F17" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    WashFlow
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+    <li><a href="#realtime">Realtime</a></li>
+  </ul>
+  <div class="nav-actions">
+    <a href="#" class="btn-sm-ghost">Sign in</a>
+    <a href="#" class="btn-sm-lime">Start free trial</a>
+  </div>
+</nav>
+
+<!-- ────────────────── HERO ────────────────── -->
+<section class="hero">
+  <div class="hero-badge a1">
+    <div class="hero-badge-dot"></div>
+    Multi-tenant · RBAC · Real-time scheduling
+  </div>
+  <h1 class="a2">The CRM that keeps<br /><em>every wash bay</em> running.</h1>
+  <p class="hero-sub a3">
+    Full-stack car wash management — bookings, workforce, payments, and analytics — in one platform built for operators who want control.
+  </p>
+  <div class="hero-ctas a4">
+    <a href="#" class="btn-lg-lime">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Start free — 30 days
+    </a>
+  </div>
+
+  <!-- DASHBOARD PREVIEW -->
+  <div class="hero-preview-wrap a5">
+    <div class="hero-preview">
+      <div class="preview-topbar">
+        <div class="preview-dot r"></div>
+        <div class="preview-dot y"></div>
+        <div class="preview-dot g"></div>
+        <div class="preview-url">app.washflow.com/dashboard</div>
+      </div>
+      <div class="preview-body">
+        <div class="preview-sidebar">
+          <div class="ps-section">Main</div>
+          <div class="ps-item active">
+            <span class="ps-icon">◈</span> Dashboard <span class="ps-badge">Live</span>
+          </div>
+          <div class="ps-item">
+            <span class="ps-icon">≡</span> Orders
+          </div>
+          <div class="ps-item">
+            <span class="ps-icon">⊡</span> Schedule
+          </div>
+          <div class="ps-item">
+            <span class="ps-icon">◎</span> Clients
+          </div>
+          <div class="ps-section">Business</div>
+          <div class="ps-item">
+            <span class="ps-icon">⊞</span> Branches
+          </div>
+          <div class="ps-item">
+            <span class="ps-icon">⊙</span> Workforce
+          </div>
+          <div class="ps-item">
+            <span class="ps-icon">▦</span> Services
+          </div>
+          <div class="ps-section">Reports</div>
+          <div class="ps-item">
+            <span class="ps-icon">△</span> Analytics
+          </div>
+          <div class="ps-item">
+            <span class="ps-icon">⊟</span> Audit Log
+          </div>
+        </div>
+        <div class="preview-main">
+          <div class="pm-header">
+            <span class="pm-title">Dashboard</span>
+            <div class="pm-actions">
+              <button class="pm-btn">Today</button>
+              <button class="pm-btn">Branch ▾</button>
+              <button class="pm-btn lime">+ New Order</button>
+            </div>
+          </div>
+          <div class="kpi-row">
+            <div class="kpi-card">
+              <div class="kpi-label">Revenue</div>
+              <div class="kpi-value">₴47,230</div>
+              <div class="kpi-delta up">↑ 12.4%</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Orders</div>
+              <div class="kpi-value">184</div>
+              <div class="kpi-delta up">↑ 8.1%</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Occupancy</div>
+              <div class="kpi-value">73%</div>
+              <div class="kpi-delta up">↑ 5.6%</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Cancel Rate</div>
+              <div class="kpi-value">3.2%</div>
+              <div class="kpi-delta down">↑ 0.4%</div>
+            </div>
+          </div>
+          <div class="chart-area">
+            <div class="chart-label">Daily Revenue — March 2025</div>
+            <div class="chart-bars">
+              <div class="chart-bar" style="height:42%"></div>
+              <div class="chart-bar" style="height:55%"></div>
+              <div class="chart-bar" style="height:48%"></div>
+              <div class="chart-bar" style="height:60%"></div>
+              <div class="chart-bar peak" style="height:72%"></div>
+              <div class="chart-bar" style="height:65%"></div>
+              <div class="chart-bar" style="height:80%"></div>
+              <div class="chart-bar" style="height:58%"></div>
+              <div class="chart-bar" style="height:45%"></div>
+              <div class="chart-bar" style="height:70%"></div>
+              <div class="chart-bar" style="height:62%"></div>
+              <div class="chart-bar" style="height:75%"></div>
+              <div class="chart-bar" style="height:68%"></div>
+              <div class="chart-bar" style="height:55%"></div>
+              <div class="chart-bar" style="height:82%"></div>
+              <div class="chart-bar peak" style="height:90%"></div>
+              <div class="chart-bar" style="height:74%"></div>
+              <div class="chart-bar" style="height:66%"></div>
+              <div class="chart-bar" style="height:71%"></div>
+              <div class="chart-bar today" style="height:85%"></div>
+              <div class="chart-bar" style="height:15%; opacity:0.3"></div>
+              <div class="chart-bar" style="height:12%; opacity:0.2"></div>
+              <div class="chart-bar" style="height:10%; opacity:0.15"></div>
+              <div class="chart-bar" style="height:8%; opacity:0.1"></div>
+            </div>
+          </div>
+          <div class="orders-strip">
+            <div class="orders-row">
+              <span class="orders-status s-inprog">IN PROGRESS</span>
+              <span class="o-car">Honda CR-V</span>
+              <span class="o-service">Full detailing</span>
+              <span class="o-price">₴ 1,200</span>
+            </div>
+            <div class="orders-row">
+              <span class="orders-status s-done">COMPLETED</span>
+              <span class="o-car">BMW X5</span>
+              <span class="o-service">Express wash</span>
+              <span class="o-price">₴ 250</span>
+            </div>
+            <div class="orders-row">
+              <span class="orders-status s-booked">BOOKED</span>
+              <span class="o-car">Toyota Camry</span>
+              <span class="o-service">Body polishing</span>
+              <span class="o-price">₴ 850</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+<!-- ────────────────── FEATURES ────────────────── -->
+<section class="features-section" id="features">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label">Features</div>
+      <h2 class="section-title">Everything an operator needs.<br/>Nothing they don't.</h2>
+      <p class="section-sub">From slot-locking to subscription billing — WashFlow covers the full operational stack.</p>
+    </div>
+    <div class="features-grid reveal">
+      <div class="feat-card">
+        <div class="feat-icon-wrap">🏗️</div>
+        <div class="feat-title">Multi-Tenant Architecture</div>
+        <div class="feat-desc">Full data isolation per tenant enforced at the ORM layer via Prisma Client Extensions. No cross-tenant leakage, guaranteed.</div>
+        <div class="feat-tag">Prisma Extensions · Row isolation</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon-wrap">🔒</div>
+        <div class="feat-title">RBAC with 47 Permissions</div>
+        <div class="feat-desc">Granular role-based access control across 14 modules. Custom roles per tenant, permission gates in both UI and API.</div>
+        <div class="feat-tag">JWT · Passport · Guards</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon-wrap">📅</div>
+        <div class="feat-title">Conflict-Free Scheduling</div>
+        <div class="feat-desc">Row-level locking inside Serializable transactions. Concurrent bookings guaranteed to never double-book a bay.</div>
+        <div class="feat-tag">SELECT FOR UPDATE · Serializable tx</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon-wrap">👥</div>
+        <div class="feat-title">Workforce Capacity Engine</div>
+        <div class="feat-desc">Effective capacity = min(free bays, available workers on shift). Auto-assigns the best employee at booking time.</div>
+        <div class="feat-tag">EmployeeProfile · Auto-assign</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon-wrap">⚡</div>
+        <div class="feat-title">Real-Time Operations</div>
+        <div class="feat-desc">Socket.IO broadcasts every order event to tenant rooms. Live dashboard reflects status changes across all devices instantly.</div>
+        <div class="feat-tag">Socket.IO · Domain Events</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon-wrap">🌐</div>
+        <div class="feat-title">Public Booking Widget</div>
+        <div class="feat-desc">Embeddable standalone booking widget. Tenant resolved by header UUID. Rate-limited, idempotent, fully public API.</div>
+        <div class="feat-tag">Widget · Slug routing</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon-wrap">💳</div>
+        <div class="feat-title">Paddle Subscription Billing</div>
+        <div class="feat-desc">4-tier plans with per-resource add-ons. Webhook-driven lifecycle, HMAC verification, Redis idempotency, downgrade guard.</div>
+        <div class="feat-tag">Paddle.js · HMAC · Add-ons</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon-wrap">📊</div>
+        <div class="feat-title">Analytics & CSV Export</div>
+        <div class="feat-desc">KPI cards, branch comparisons, employee performance, cancellation anomaly alerts, and one-click CSV export of orders & clients.</div>
+        <div class="feat-tag">Recharts · Prometheus · Grafana</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon-wrap">🗑️</div>
+        <div class="feat-title">Unified Soft Delete</div>
+        <div class="feat-desc">9 models with soft-delete, auto-filtered reads, restore endpoints, partial unique indexes, and 30-day hard-delete cron.</div>
+        <div class="feat-tag">Auto-filter · Restore · Cron</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ────────────────── SCREEN: SCHEDULE ────────────────── -->
+<section style="padding: 96px 24px; border-top: 1px solid var(--border); overflow: hidden;">
+  <div class="container">
+    <div style="display:grid; grid-template-columns: 1fr 1.55fr; gap: 64px; align-items: center;">
+      <div class="reveal">
+        <div class="section-label">Schedule view</div>
+        <h2 class="section-title" style="font-size: clamp(26px,3.2vw,40px)">Every bay, every hour — at a glance.</h2>
+        <p class="section-sub" style="margin-top:14px;">The schedule grid shows all work posts as rows and 30-minute slots as columns. Click any free slot and a pre-filled order wizard opens instantly.</p>
+        <div style="margin-top: 28px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--text-secondary);">
+            <span style="color:var(--accent);margin-top:1px">◆</span>
+            Rows locked with <code style="font-family:'DM Mono',monospace;font-size:11px;background:var(--bg-raised);padding:1px 6px;border-radius:3px;color:var(--sky)">SELECT FOR UPDATE</code> — zero double-booking
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--text-secondary);">
+            <span style="color:var(--accent);margin-top:1px">◆</span>
+            Workforce cap applied — slot hidden when all workers are busy
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--text-secondary);">
+            <span style="color:var(--accent);margin-top:1px">◆</span>
+            URL params <code style="font-family:'DM Mono',monospace;font-size:11px;background:var(--bg-raised);padding:1px 6px;border-radius:3px;color:var(--sky)">?branchId&date&time</code> pre-fill the create wizard
+          </div>
+        </div>
+        <div style="margin-top:24px; display:flex;gap:8px;flex-wrap:wrap;">
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:10px;font-family:'DM Mono',monospace;color:var(--text-secondary);border:1px solid var(--border);background:var(--bg-raised);padding:4px 10px;border-radius:5px;"><span style="width:8px;height:8px;border-radius:2px;background:rgba(56,189,248,0.25);border:1px solid rgba(56,189,248,0.5);display:inline-block"></span>Free slot</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:10px;font-family:'DM Mono',monospace;color:var(--text-secondary);border:1px solid var(--border);background:var(--bg-raised);padding:4px 10px;border-radius:5px;"><span style="width:8px;height:8px;border-radius:2px;background:rgba(56,189,248,0.7);border:1px solid var(--accent);display:inline-block"></span>Booking block</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:10px;font-family:'DM Mono',monospace;color:var(--text-secondary);border:1px solid var(--border);background:var(--bg-raised);padding:4px 10px;border-radius:5px;"><span style="width:8px;height:8px;border-radius:2px;background:rgba(250,204,21,0.3);border:1px solid rgba(250,204,21,0.4);display:inline-block"></span>In progress</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:10px;font-family:'DM Mono',monospace;color:var(--text-secondary);border:1px solid var(--border);background:var(--bg-raised);padding:4px 10px;border-radius:5px;"><span style="width:8px;height:8px;border-radius:2px;background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.3);display:inline-block"></span>Completed</span>
+        </div>
+      </div>
+
+      <!-- SCHEDULE SCREEN MOCKUP -->
+      <div class="reveal" style="position:relative;">
+        <div style="position:absolute;top:-20px;right:-20px;width:180px;height:180px;background:radial-gradient(ellipse at center,rgba(56,189,248,0.06) 0%,transparent 70%);pointer-events:none;"></div>
+        <div style="border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--bg-surface);box-shadow:0 24px 60px rgba(0,0,0,0.5);">
+          <!-- browser chrome -->
+          <div style="height:38px;background:var(--bg-raised);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:5px;">
+            <div style="width:9px;height:9px;border-radius:50%;background:#F87171;"></div>
+            <div style="width:9px;height:9px;border-radius:50%;background:#FACC15;"></div>
+            <div style="width:9px;height:9px;border-radius:50%;background:#4ADE80;"></div>
+            <div style="flex:1;margin:0 10px;max-width:260px;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;height:20px;display:flex;align-items:center;padding:0 8px;font-family:'DM Mono',monospace;font-size:9px;color:var(--text-tertiary);">app.washflow.com/orders → Schedule</div>
+          </div>
+          <!-- tabs -->
+          <div style="display:flex;align-items:center;gap:0;border-bottom:1px solid var(--border);padding:0 16px;background:var(--bg-surface);">
+            <div style="padding:9px 14px;font-size:10px;font-weight:600;color:var(--text-tertiary);cursor:pointer;">Orders</div>
+            <div style="padding:9px 14px;font-size:10px;font-weight:700;color:var(--accent);border-bottom:2px solid var(--accent);cursor:pointer;">Schedule</div>
+            <div style="margin-left:auto;display:flex;gap:6px;padding:6px 0;">
+              <div style="font-size:9px;padding:3px 9px;border-radius:4px;border:1px solid var(--border);background:var(--bg-raised);color:var(--text-secondary);font-family:'DM Mono',monospace;">Mon 24 Mar ▾</div>
+              <div style="font-size:9px;padding:3px 9px;border-radius:4px;border:1px solid var(--border);background:var(--bg-raised);color:var(--text-secondary);font-family:'DM Mono',monospace;">Центральний ▾</div>
+            </div>
+          </div>
+          <!-- schedule grid -->
+          <div style="padding:12px 14px;overflow-x:auto;">
+            <!-- time header -->
+            <div style="display:flex;margin-left:60px;margin-bottom:4px;">
+              <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);width:48px;text-align:center;flex-shrink:0;">08:00</div>
+              <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);width:48px;text-align:center;flex-shrink:0;">09:00</div>
+              <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);width:48px;text-align:center;flex-shrink:0;">10:00</div>
+              <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);width:48px;text-align:center;flex-shrink:0;">11:00</div>
+              <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);width:48px;text-align:center;flex-shrink:0;">12:00</div>
+              <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-accent,#38BDF8);width:48px;text-align:center;flex-shrink:0;color:var(--accent);font-weight:600;">13:00</div>
+              <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);width:48px;text-align:center;flex-shrink:0;">14:00</div>
+              <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);width:48px;text-align:center;flex-shrink:0;">15:00</div>
+              <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);width:48px;text-align:center;flex-shrink:0;">16:00</div>
+            </div>
+
+            <!-- NOW indicator line -->
+            <div style="position:relative;">
+              <div style="position:absolute;left:calc(60px + 48px*5 + 14px);top:0;bottom:0;width:1px;background:var(--accent);opacity:0.6;z-index:2;"></div>
+              <div style="position:absolute;left:calc(60px + 48px*5 + 11px);top:-1px;width:7px;height:7px;border-radius:50%;background:var(--accent);z-index:3;"></div>
+
+              <!-- Bay rows -->
+              <!-- Bay 1 -->
+              <div style="display:flex;align-items:center;margin-bottom:4px;position:relative;">
+                <div style="width:60px;font-size:9px;font-weight:600;color:var(--text-secondary);font-family:'DM Mono',monospace;flex-shrink:0;padding-right:8px;text-align:right;">Bay 1</div>
+                <!-- 08:00-09:30 BMW X5 Full detailing (3 slots) -->
+                <div style="width:72px;height:26px;background:rgba(56,189,248,0.18);border:1px solid rgba(56,189,248,0.4);border-radius:4px;display:flex;align-items:center;padding:0 5px;gap:3px;flex-shrink:0;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='rgba(56,189,248,0.28)'" onmouseout="this.style.background='rgba(56,189,248,0.18)'">
+                  <span style="font-size:8px;font-weight:600;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">BMW X5</span>
+                </div>
+                <div style="width:24px;height:26px;background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.25);border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:2px;cursor:pointer;">
+                  <span style="font-size:7px;color:#4ADE80;">✓</span>
+                </div>
+                <!-- free -->
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.05);border:1px dashed rgba(56,189,248,0.15);border-radius:4px;flex-shrink:0;margin-left:2px;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='rgba(56,189,248,0.15)'" onmouseout="this.style.background='rgba(56,189,248,0.05)'"></div>
+                <!-- 11:00 Toyota Camry -->
+                <div style="width:48px;height:26px;background:rgba(250,204,21,0.15);border:1px solid rgba(250,204,21,0.3);border-radius:4px;display:flex;align-items:center;padding:0 5px;flex-shrink:0;margin-left:2px;cursor:pointer;">
+                  <span style="font-size:8px;font-weight:600;color:#FACC15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Camry</span>
+                </div>
+                <!-- free free -->
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.05);border:1px dashed rgba(56,189,248,0.15);border-radius:4px;flex-shrink:0;margin-left:2px;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='rgba(56,189,248,0.15)'" onmouseout="this.style.background='rgba(56,189,248,0.05)'"></div>
+                <!-- NOW zone highlight -->
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.35);border-radius:4px;flex-shrink:0;margin-left:2px;cursor:pointer;box-shadow:0 0 6px rgba(56,189,248,0.1);"></div>
+                <!-- 14:00 Honda -->
+                <div style="width:72px;height:26px;background:rgba(56,189,248,0.18);border:1px solid rgba(56,189,248,0.4);border-radius:4px;display:flex;align-items:center;padding:0 5px;flex-shrink:0;margin-left:2px;cursor:pointer;">
+                  <span style="font-size:8px;font-weight:600;color:var(--accent);">Honda CR-V</span>
+                </div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.05);border:1px dashed rgba(56,189,248,0.15);border-radius:4px;flex-shrink:0;margin-left:2px;"></div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.05);border:1px dashed rgba(56,189,248,0.15);border-radius:4px;flex-shrink:0;margin-left:2px;"></div>
+              </div>
+
+              <!-- Bay 2 -->
+              <div style="display:flex;align-items:center;margin-bottom:4px;">
+                <div style="width:60px;font-size:9px;font-weight:600;color:var(--text-secondary);font-family:'DM Mono',monospace;flex-shrink:0;padding-right:8px;text-align:right;">Bay 2</div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.05);border:1px dashed rgba(56,189,248,0.15);border-radius:4px;flex-shrink:0;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='rgba(56,189,248,0.15)'" onmouseout="this.style.background='rgba(56,189,248,0.05)'"></div>
+                <div style="width:96px;height:26px;background:rgba(56,189,248,0.18);border:1px solid rgba(56,189,248,0.4);border-radius:4px;display:flex;align-items:center;padding:0 5px;flex-shrink:0;margin-left:2px;cursor:pointer;">
+                  <span style="font-size:8px;font-weight:600;color:var(--accent);">Toyota RAV4</span>
+                </div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.05);border:1px dashed rgba(56,189,248,0.15);border-radius:4px;flex-shrink:0;margin-left:2px;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='rgba(56,189,248,0.15)'" onmouseout="this.style.background='rgba(56,189,248,0.05)'"></div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.05);border:1px dashed rgba(56,189,248,0.15);border-radius:4px;flex-shrink:0;margin-left:2px;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='rgba(56,189,248,0.15)'" onmouseout="this.style.background='rgba(56,189,248,0.05)'"></div>
+                <div style="width:48px;height:26px;background:rgba(250,204,21,0.15);border:1px solid rgba(250,204,21,0.3);border-radius:4px;display:flex;align-items:center;padding:0 5px;flex-shrink:0;margin-left:2px;">
+                  <span style="font-size:8px;font-weight:600;color:#FACC15;">Audi A6</span>
+                </div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.35);border-radius:4px;flex-shrink:0;margin-left:2px;box-shadow:0 0 6px rgba(56,189,248,0.1);cursor:pointer;"></div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.35);border-radius:4px;flex-shrink:0;margin-left:2px;cursor:pointer;"></div>
+                <div style="width:48px;height:26px;background:rgba(56,189,248,0.18);border:1px solid rgba(56,189,248,0.4);border-radius:4px;display:flex;align-items:center;padding:0 5px;flex-shrink:0;margin-left:2px;">
+                  <span style="font-size:8px;font-weight:600;color:var(--accent);">Volvo XC</span>
+                </div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.05);border:1px dashed rgba(56,189,248,0.15);border-radius:4px;flex-shrink:0;margin-left:2px;"></div>
+              </div>
+
+              <!-- Bay 3 -->
+              <div style="display:flex;align-items:center;margin-bottom:4px;">
+                <div style="width:60px;font-size:9px;font-weight:600;color:var(--text-secondary);font-family:'DM Mono',monospace;flex-shrink:0;padding-right:8px;text-align:right;">Bay 3</div>
+                <div style="width:48px;height:26px;background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.2);border-radius:4px;display:flex;align-items:center;padding:0 5px;flex-shrink:0;cursor:pointer;">
+                  <span style="font-size:8px;font-weight:600;color:#4ADE80;">Kia K5</span>
+                </div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.05);border:1px dashed rgba(56,189,248,0.15);border-radius:4px;flex-shrink:0;margin-left:2px;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='rgba(56,189,248,0.15)'" onmouseout="this.style.background='rgba(56,189,248,0.05)'"></div>
+                <div style="width:72px;height:26px;background:rgba(56,189,248,0.18);border:1px solid rgba(56,189,248,0.4);border-radius:4px;display:flex;align-items:center;padding:0 5px;flex-shrink:0;margin-left:2px;cursor:pointer;">
+                  <span style="font-size:8px;font-weight:600;color:var(--accent);">Nissan Qash</span>
+                </div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.05);border:1px dashed rgba(56,189,248,0.15);border-radius:4px;flex-shrink:0;margin-left:2px;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='rgba(56,189,248,0.15)'" onmouseout="this.style.background='rgba(56,189,248,0.05)'"></div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.05);border:1px dashed rgba(56,189,248,0.15);border-radius:4px;flex-shrink:0;margin-left:2px;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='rgba(56,189,248,0.15)'" onmouseout="this.style.background='rgba(56,189,248,0.05)'"></div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.35);border-radius:4px;flex-shrink:0;margin-left:2px;cursor:pointer;"></div>
+                <div style="width:96px;height:26px;background:rgba(56,189,248,0.18);border:1px solid rgba(56,189,248,0.4);border-radius:4px;display:flex;align-items:center;padding:0 5px;flex-shrink:0;margin-left:2px;">
+                  <span style="font-size:8px;font-weight:600;color:var(--accent);">Mercedes E</span>
+                </div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.05);border:1px dashed rgba(56,189,248,0.15);border-radius:4px;flex-shrink:0;margin-left:2px;"></div>
+              </div>
+
+              <!-- Bay 4 -->
+              <div style="display:flex;align-items:center;">
+                <div style="width:60px;font-size:9px;font-weight:600;color:var(--text-secondary);font-family:'DM Mono',monospace;flex-shrink:0;padding-right:8px;text-align:right;">Bay 4</div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.05);border:1px dashed rgba(56,189,248,0.15);border-radius:4px;flex-shrink:0;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='rgba(56,189,248,0.15)'" onmouseout="this.style.background='rgba(56,189,248,0.05)'"></div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.05);border:1px dashed rgba(56,189,248,0.15);border-radius:4px;flex-shrink:0;margin-left:2px;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='rgba(56,189,248,0.15)'" onmouseout="this.style.background='rgba(56,189,248,0.05)'"></div>
+                <div style="width:120px;height:26px;background:rgba(56,189,248,0.18);border:1px solid rgba(56,189,248,0.4);border-radius:4px;display:flex;align-items:center;padding:0 5px;flex-shrink:0;margin-left:2px;cursor:pointer;">
+                  <span style="font-size:8px;font-weight:600;color:var(--accent);">Porsche Cayenne ·  Ceramic</span>
+                </div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.05);border:1px dashed rgba(56,189,248,0.15);border-radius:4px;flex-shrink:0;margin-left:2px;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='rgba(56,189,248,0.15)'" onmouseout="this.style.background='rgba(56,189,248,0.05)'"></div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.35);border-radius:4px;flex-shrink:0;margin-left:2px;cursor:pointer;"></div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.35);border-radius:4px;flex-shrink:0;margin-left:2px;cursor:pointer;"></div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.05);border:1px dashed rgba(56,189,248,0.15);border-radius:4px;flex-shrink:0;margin-left:2px;"></div>
+                <div style="width:48px;height:26px;background:rgba(56,189,248,0.18);border:1px solid rgba(56,189,248,0.4);border-radius:4px;display:flex;align-items:center;padding:0 5px;flex-shrink:0;margin-left:2px;">
+                  <span style="font-size:8px;font-weight:600;color:var(--accent);">Tesla M3</span>
+                </div>
+                <div style="width:22px;height:26px;background:rgba(56,189,248,0.05);border:1px dashed rgba(56,189,248,0.15);border-radius:4px;flex-shrink:0;margin-left:2px;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- capacity footer bar -->
+          <div style="padding:8px 14px 12px;display:flex;align-items:center;gap:12px;border-top:1px solid var(--border);background:var(--bg-raised);">
+            <div style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text-tertiary);">Workforce capacity:</div>
+            <div style="flex:1;height:4px;background:var(--bg-input);border-radius:2px;overflow:hidden;">
+              <div style="height:100%;width:72%;background:var(--accent);border-radius:2px;"></div>
+            </div>
+            <div style="font-size:9px;font-family:'DM Mono',monospace;color:var(--accent);">3/4 workers on shift</div>
+            <div style="font-size:9px;font-family:'DM Mono',monospace;padding:2px 7px;border-radius:3px;background:rgba(74,222,128,0.1);color:#4ADE80;border:1px solid rgba(74,222,128,0.2);">3 free bays</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ────────────────── SCREEN: ANALYTICS ────────────────── -->
+<section style="padding: 96px 24px; border-top: 1px solid var(--border); overflow: hidden;">
+  <div class="container">
+    <div style="display:grid; grid-template-columns: 1.55fr 1fr; gap: 64px; align-items: center;">
+
+      <!-- ANALYTICS SCREEN MOCKUP -->
+      <div class="reveal" style="position:relative; order: 1;">
+        <div style="position:absolute;top:-20px;left:-20px;width:200px;height:200px;background:radial-gradient(ellipse at center,rgba(56,189,248,0.05) 0%,transparent 70%);pointer-events:none;"></div>
+        <div style="border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--bg-surface);box-shadow:0 24px 60px rgba(0,0,0,0.5);">
+          <!-- browser chrome -->
+          <div style="height:38px;background:var(--bg-raised);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:5px;">
+            <div style="width:9px;height:9px;border-radius:50%;background:#F87171;"></div>
+            <div style="width:9px;height:9px;border-radius:50%;background:#FACC15;"></div>
+            <div style="width:9px;height:9px;border-radius:50%;background:#4ADE80;"></div>
+            <div style="flex:1;margin:0 10px;max-width:240px;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;height:20px;display:flex;align-items:center;padding:0 8px;font-family:'DM Mono',monospace;font-size:9px;color:var(--text-tertiary);">app.washflow.com/analytics</div>
+          </div>
+
+          <div style="padding:14px 16px 16px;">
+            <!-- page header -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div style="font-size:12px;font-weight:700;letter-spacing:-0.02em;">Analytics</div>
+              <div style="display:flex;gap:5px;">
+                <div style="font-size:9px;padding:3px 8px;border-radius:4px;background:var(--bg-raised);border:1px solid var(--border);color:var(--text-secondary);font-family:'DM Mono',monospace;">Mar 2025</div>
+                <div style="font-size:9px;padding:3px 8px;border-radius:4px;background:var(--bg-raised);border:1px solid var(--border);color:var(--text-secondary);font-family:'DM Mono',monospace;">All branches</div>
+                <div style="font-size:9px;padding:3px 8px;border-radius:4px;background:var(--accent);color:#090E18;font-family:'DM Mono',monospace;font-weight:700;">↓ Export CSV</div>
+              </div>
+            </div>
+
+            <!-- summary row -->
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
+              <div style="background:var(--bg-raised);border:1px solid var(--border);border-radius:7px;padding:10px 10px 8px;">
+                <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Revenue</div>
+                <div style="font-size:16px;font-weight:800;letter-spacing:-0.03em;">₴189k</div>
+                <div style="font-size:8px;font-family:'DM Mono',monospace;color:#4ADE80;margin-top:2px;">↑ 14.2%</div>
+              </div>
+              <div style="background:var(--bg-raised);border:1px solid var(--border);border-radius:7px;padding:10px 10px 8px;">
+                <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Orders</div>
+                <div style="font-size:16px;font-weight:800;letter-spacing:-0.03em;">2,614</div>
+                <div style="font-size:8px;font-family:'DM Mono',monospace;color:#4ADE80;margin-top:2px;">↑ 8.7%</div>
+              </div>
+              <div style="background:var(--bg-raised);border:1px solid var(--border);border-radius:7px;padding:10px 10px 8px;">
+                <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Avg. Check</div>
+                <div style="font-size:16px;font-weight:800;letter-spacing:-0.03em;">₴723</div>
+                <div style="font-size:8px;font-family:'DM Mono',monospace;color:#4ADE80;margin-top:2px;">↑ 5.1%</div>
+              </div>
+              <div style="background:var(--bg-raised);border:1px solid var(--border);border-radius:7px;padding:10px 10px 8px;">
+                <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Completion</div>
+                <div style="font-size:16px;font-weight:800;letter-spacing:-0.03em;">91.4%</div>
+                <div style="font-size:8px;font-family:'DM Mono',monospace;color:#4ADE80;margin-top:2px;">↑ 1.8%</div>
+              </div>
+            </div>
+
+            <!-- two charts side by side -->
+            <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:8px;margin-bottom:10px;">
+              <!-- branch perf bar chart -->
+              <div style="background:var(--bg-raised);border:1px solid var(--border);border-radius:7px;padding:10px;">
+                <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Branch Performance</div>
+                <!-- bars -->
+                <div style="display:flex;flex-direction:column;gap:7px;">
+                  <div>
+                    <div style="display:flex;justify-content:space-between;font-size:8px;margin-bottom:3px;"><span style="color:var(--text-secondary);">Центральний</span><span style="font-family:'DM Mono',monospace;color:var(--text-primary);">₴72,410</span></div>
+                    <div style="height:5px;background:var(--bg-input);border-radius:2px;"><div style="height:100%;width:100%;background:var(--accent);border-radius:2px;"></div></div>
+                  </div>
+                  <div>
+                    <div style="display:flex;justify-content:space-between;font-size:8px;margin-bottom:3px;"><span style="color:var(--text-secondary);">Лівобережний</span><span style="font-family:'DM Mono',monospace;color:var(--text-primary);">₴63,820</span></div>
+                    <div style="height:5px;background:var(--bg-input);border-radius:2px;"><div style="height:100%;width:88%;background:var(--accent);opacity:0.7;border-radius:2px;"></div></div>
+                  </div>
+                  <div>
+                    <div style="display:flex;justify-content:space-between;font-size:8px;margin-bottom:3px;"><span style="color:var(--text-secondary);">Подільський</span><span style="font-family:'DM Mono',monospace;color:var(--text-primary);">₴52,770</span></div>
+                    <div style="height:5px;background:var(--bg-input);border-radius:2px;"><div style="height:100%;width:72%;background:var(--accent);opacity:0.5;border-radius:2px;"></div></div>
+                  </div>
+                </div>
+                <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">
+                  <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;">Order source</div>
+                  <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                    <span style="font-size:8px;font-family:'DM Mono',monospace;padding:2px 5px;border-radius:3px;background:rgba(56,189,248,0.1);color:var(--accent);border:1px solid rgba(56,189,248,0.2);">INTERNAL 60%</span>
+                    <span style="font-size:8px;font-family:'DM Mono',monospace;padding:2px 5px;border-radius:3px;background:rgba(56,189,248,0.06);color:var(--text-secondary);border:1px solid var(--border);">WEB 20%</span>
+                    <span style="font-size:8px;font-family:'DM Mono',monospace;padding:2px 5px;border-radius:3px;background:rgba(56,189,248,0.06);color:var(--text-secondary);border:1px solid var(--border);">WIDGET 15%</span>
+                    <span style="font-size:8px;font-family:'DM Mono',monospace;padding:2px 5px;border-radius:3px;background:rgba(56,189,248,0.06);color:var(--text-secondary);border:1px solid var(--border);">API 5%</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- services popularity -->
+              <div style="background:var(--bg-raised);border:1px solid var(--border);border-radius:7px;padding:10px;">
+                <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Top Services</div>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                  <div style="display:flex;align-items:center;gap:5px;">
+                    <div style="font-size:8px;color:var(--text-secondary);width:58px;flex-shrink:0;">Exp. wash</div>
+                    <div style="flex:1;height:4px;background:var(--bg-input);border-radius:2px;"><div style="height:100%;width:95%;background:var(--accent);border-radius:2px;"></div></div>
+                    <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);width:26px;text-align:right;">836</div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:5px;">
+                    <div style="font-size:8px;color:var(--text-secondary);width:58px;flex-shrink:0;">Full wash</div>
+                    <div style="flex:1;height:4px;background:var(--bg-input);border-radius:2px;"><div style="height:100%;width:68%;background:var(--accent);opacity:0.7;border-radius:2px;"></div></div>
+                    <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);width:26px;text-align:right;">601</div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:5px;">
+                    <div style="font-size:8px;color:var(--text-secondary);width:58px;flex-shrink:0;">Interior</div>
+                    <div style="flex:1;height:4px;background:var(--bg-input);border-radius:2px;"><div style="height:100%;width:51%;background:var(--accent);opacity:0.55;border-radius:2px;"></div></div>
+                    <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);width:26px;text-align:right;">453</div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:5px;">
+                    <div style="font-size:8px;color:var(--text-secondary);width:58px;flex-shrink:0;">Polishing</div>
+                    <div style="flex:1;height:4px;background:var(--bg-input);border-radius:2px;"><div style="height:100%;width:36%;background:var(--accent);opacity:0.4;border-radius:2px;"></div></div>
+                    <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);width:26px;text-align:right;">318</div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:5px;">
+                    <div style="font-size:8px;color:var(--text-secondary);width:58px;flex-shrink:0;">Ceramic</div>
+                    <div style="flex:1;height:4px;background:var(--bg-input);border-radius:2px;"><div style="height:100%;width:22%;background:var(--accent);opacity:0.3;border-radius:2px;"></div></div>
+                    <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);width:26px;text-align:right;">194</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- alerts strip -->
+            <div style="background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.18);border-radius:7px;padding:9px 12px;display:flex;align-items:center;gap:8px;">
+              <span style="font-size:12px;">⚠️</span>
+              <div style="flex:1;">
+                <div style="font-size:9px;font-weight:700;color:#F87171;margin-bottom:1px;">Anomaly detected — Подільський</div>
+                <div style="font-size:8px;color:var(--text-secondary);">Cancel rate ↑ 18.4% this week vs 3.2% avg — check staffing</div>
+              </div>
+              <div style="font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);white-space:nowrap;">View details →</div>
+            </div>
+
+            <!-- employee table -->
+            <div style="margin-top:8px;background:var(--bg-raised);border:1px solid var(--border);border-radius:7px;overflow:hidden;">
+              <div style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:8px;font-family:'DM Mono',monospace;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;display:flex;gap:4px;">
+                <span style="flex:1.5;">Employee</span><span style="flex:0.8;text-align:right;">Orders</span><span style="flex:1;text-align:right;">Revenue</span><span style="flex:0.7;text-align:right;">Cancel%</span>
+              </div>
+              <div style="padding:0 10px;">
+                <div style="display:flex;align-items:center;gap:4px;padding:5px 0;border-bottom:1px solid var(--border);font-size:9px;">
+                  <span style="flex:1.5;color:var(--text-primary);font-weight:600;">О. Марченко</span>
+                  <span style="flex:0.8;text-align:right;font-family:'DM Mono',monospace;color:var(--text-secondary);">142</span>
+                  <span style="flex:1;text-align:right;font-family:'DM Mono',monospace;color:var(--text-primary);">₴28,410</span>
+                  <span style="flex:0.7;text-align:right;font-family:'DM Mono',monospace;color:#4ADE80;">1.4%</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:4px;padding:5px 0;border-bottom:1px solid var(--border);font-size:9px;">
+                  <span style="flex:1.5;color:var(--text-primary);font-weight:600;">М. Ковален.</span>
+                  <span style="flex:0.8;text-align:right;font-family:'DM Mono',monospace;color:var(--text-secondary);">128</span>
+                  <span style="flex:1;text-align:right;font-family:'DM Mono',monospace;color:var(--text-primary);">₴24,880</span>
+                  <span style="flex:0.7;text-align:right;font-family:'DM Mono',monospace;color:#4ADE80;">2.3%</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:4px;padding:5px 0;font-size:9px;">
+                  <span style="flex:1.5;color:var(--text-primary);font-weight:600;">В. Петренко</span>
+                  <span style="flex:0.8;text-align:right;font-family:'DM Mono',monospace;color:var(--text-secondary);">97</span>
+                  <span style="flex:1;text-align:right;font-family:'DM Mono',monospace;color:var(--text-primary);">₴19,240</span>
+                  <span style="flex:0.7;text-align:right;font-family:'DM Mono',monospace;color:#FACC15;">7.2%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="reveal" style="order: 2;">
+        <div class="section-label">Analytics</div>
+        <h2 class="section-title" style="font-size: clamp(26px,3.2vw,40px)">Numbers that tell you where to act.</h2>
+        <p class="section-sub" style="margin-top:14px;">Branch comparisons, employee performance, service popularity, booking source breakdown, and automated anomaly alerts — all in one screen.</p>
+        <div style="margin-top: 28px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--text-secondary);">
+            <span style="color:var(--accent);margin-top:1px">◆</span>
+            Anomaly alerts fire automatically when cancel rate, revenue, or booking volume deviates from your rolling average
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--text-secondary);">
+            <span style="color:var(--accent);margin-top:1px">◆</span>
+            Per-employee report: orders, revenue, cancel rate — filterable by branch & date range
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--text-secondary);">
+            <span style="color:var(--accent);margin-top:1px">◆</span>
+            One-click CSV export of all orders and clients — no waiting, no email queue
+          </div>
+        </div>
+        <div style="margin-top:28px;display:flex;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:11px;font-family:'DM Mono',monospace;padding:4px 10px;border-radius:5px;background:rgba(248,113,113,0.08);color:#F87171;border:1px solid rgba(248,113,113,0.2);">⚠ Anomaly alerts</span>
+          <span style="font-size:11px;font-family:'DM Mono',monospace;padding:4px 10px;border-radius:5px;background:rgba(56,189,248,0.08);color:var(--accent);border:1px solid rgba(56,189,248,0.2);">↓ CSV export</span>
+          <span style="font-size:11px;font-family:'DM Mono',monospace;padding:4px 10px;border-radius:5px;background:rgba(56,189,248,0.08);color:var(--accent);border:1px solid rgba(56,189,248,0.2);">Branch filter</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ────────────────── HOW IT WORKS ────────────────── -->
+<section id="how" style="padding: 96px 24px; border-top: 1px solid var(--border);">
+  <div class="container">
+    <div class="how-grid">
+      <div class="reveal">
+        <div class="section-label">How it works</div>
+        <h2 class="section-title" style="font-size: clamp(26px,3.5vw,40px)">From setup to<br/>first booking in minutes.</h2>
+        <div class="steps-list" style="margin-top: 36px;">
+          <div class="step-item active">
+            <div class="step-num">01</div>
+            <div class="step-content">
+              <h4>Register your car wash</h4>
+              <p>One form creates your tenant, admin account, and a 30-day trial subscription with full access — no credit card required.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">02</div>
+            <div class="step-content">
+              <h4>Configure branches & bays</h4>
+              <p>Add branches, define work posts, set working hours and booking buffers per location. Each branch gets its own scheduling engine.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">03</div>
+            <div class="step-content">
+              <h4>Set up your team</h4>
+              <p>Invite staff, assign roles with granular permissions, and create workforce profiles with shift hours for capacity tracking.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">04</div>
+            <div class="step-content">
+              <h4>Go live — online & walk-in</h4>
+              <p>Embed the public booking widget on your website. Accept walk-ins from the internal CRM. Everything syncs in real time.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCHEDULING VISUAL -->
+      <div class="how-visual reveal">
+        <div class="hv-header">
+          <span class="hv-title">Schedule — Monday, Mar 24</span>
+          <span class="hv-date">Branch: Центральний</span>
+        </div>
+        <div style="font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text-tertiary); margin-bottom: 10px; display: flex; gap: 12px; padding: 0 36px;">
+          <span>08:00</span><span style="margin-left: auto;">10:00</span><span>12:00</span><span style="margin-left: auto;">14:00</span><span>16:00</span>
+        </div>
+        <div class="slot-grid">
+          <div class="slot-row">
+            <span class="slot-label">Bay 1</span>
+            <div class="slot-cell slot-busy">BMW</div>
+            <div class="slot-cell slot-busy">BMW</div>
+            <div class="slot-cell slot-free">FREE</div>
+            <div class="slot-cell slot-free">FREE</div>
+            <div class="slot-cell slot-cur">← NOW</div>
+            <div class="slot-cell slot-free">FREE</div>
+            <div class="slot-cell slot-busy">Camry</div>
+            <div class="slot-cell slot-busy">Camry</div>
+          </div>
+          <div class="slot-row">
+            <span class="slot-label">Bay 2</span>
+            <div class="slot-cell slot-free">FREE</div>
+            <div class="slot-cell slot-busy">CR-V</div>
+            <div class="slot-cell slot-busy">CR-V</div>
+            <div class="slot-cell slot-busy">CR-V</div>
+            <div class="slot-cell slot-free">FREE</div>
+            <div class="slot-cell slot-busy">X5</div>
+            <div class="slot-cell slot-busy">X5</div>
+            <div class="slot-cell slot-free">FREE</div>
+          </div>
+          <div class="slot-row">
+            <span class="slot-label">Bay 3</span>
+            <div class="slot-cell slot-busy">Audi</div>
+            <div class="slot-cell slot-free">FREE</div>
+            <div class="slot-cell slot-free">FREE</div>
+            <div class="slot-cell slot-busy">Golf</div>
+            <div class="slot-cell slot-busy">Golf</div>
+            <div class="slot-cell slot-free">FREE</div>
+            <div class="slot-cell slot-free">FREE</div>
+            <div class="slot-cell slot-busy">Polo</div>
+          </div>
+          <div class="slot-row">
+            <span class="slot-label">Bay 4</span>
+            <div class="slot-cell slot-free">FREE</div>
+            <div class="slot-cell slot-free">FREE</div>
+            <div class="slot-cell slot-busy">Lexus</div>
+            <div class="slot-cell slot-busy">Lexus</div>
+            <div class="slot-cell slot-free">FREE</div>
+            <div class="slot-cell slot-free">FREE</div>
+            <div class="slot-cell slot-free">FREE</div>
+            <div class="slot-cell slot-free">FREE</div>
+          </div>
+        </div>
+        <div style="margin-top: 16px; padding: 12px; background: var(--bg-raised); border: 1px solid rgba(56,189,248,0.2); border-radius: 8px;">
+          <div style="font-size: 10px; font-family: 'DM Mono', monospace; color: var(--accent); margin-bottom: 6px;">● LOCK ACQUIRED — Booking in progress</div>
+          <div style="font-size: 11px; color: var(--text-secondary);">Bay 1 · 14:00–14:30 · Олена М. · Express wash</div>
+          <div style="font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text-tertiary); margin-top: 4px;">SELECT FOR UPDATE · Serializable transaction</div>
+        </div>
+        <div style="margin-top: 10px; display: flex; gap: 10px; font-size: 10px; font-family: 'DM Mono', monospace;">
+          <span style="display:flex;align-items:center;gap:5px;color:var(--accent)"><span style="width:10px;height:10px;border-radius:2px;background:rgba(56,189,248,0.2);border:1px solid rgba(56,189,248,0.3);display:inline-block"></span>Free</span>
+          <span style="display:flex;align-items:center;gap:5px;color:var(--danger)"><span style="width:10px;height:10px;border-radius:2px;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.2);display:inline-block"></span>Occupied</span>
+          <span style="display:flex;align-items:center;gap:5px;color:var(--text-primary)"><span style="width:10px;height:10px;border-radius:2px;background:rgba(56,189,248,0.35);border:1px solid rgba(56,189,248,0.5);display:inline-block"></span>Now</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+<!-- ────────────────── REALTIME ────────────────── -->
+<section class="rt-section" id="realtime" style="border-top: 1px solid var(--border);">
+  <div class="rt-inner">
+    <div class="reveal">
+      <div class="section-label">Real-time</div>
+      <h2 class="section-title" style="font-size: clamp(26px,3.5vw,40px)">Every event, live — across every screen.</h2>
+      <p class="section-sub" style="margin-top: 16px;">
+        Domain events flow from business logic → EventEmitter2 → Socket.IO → every connected client. Staff at the front desk and managers watching the dashboard see the same truth.
+      </p>
+      <div style="margin-top: 32px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-secondary);">
+          <span style="color:var(--accent);font-size:16px">⊙</span>
+          JWT-authenticated WebSocket handshake — auto-join <code style="font-family:'DM Mono',monospace;font-size:11px;background:var(--bg-raised);padding:2px 6px;border-radius:3px;color:var(--sky)">tenant:{id}</code> room
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-secondary);">
+          <span style="color:var(--accent);font-size:16px">⊙</span>
+          Events: <code style="font-family:'DM Mono',monospace;font-size:11px;background:var(--bg-raised);padding:2px 6px;border-radius:3px;color:var(--sky)">order.created</code> · <code style="font-family:'DM Mono',monospace;font-size:11px;background:var(--bg-raised);padding:2px 6px;border-radius:3px;color:var(--sky)">order.status_changed</code> · <code style="font-family:'DM Mono',monospace;font-size:11px;background:var(--bg-raised);padding:2px 6px;border-radius:3px;color:var(--sky)">order.cancelled</code>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-secondary);">
+          <span style="color:var(--accent);font-size:16px">⊙</span>
+          Background jobs via BullMQ — emails, analytics, booking confirmations
+        </div>
+      </div>
+    </div>
+
+    <div class="rt-events reveal">
+      <div class="rt-topbar">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" stroke-width="1.5"/></svg>
+        /events · tenant:demo
+        <span class="rt-live"><span class="rt-live-dot"></span>LIVE</span>
+      </div>
+      <div class="rt-feed" id="rtFeed">
+        <div class="rt-event" style="animation-delay:0.05s">
+          <span class="rt-event-icon">🆕</span>
+          <span class="rt-event-text"><strong>New booking</strong> — Олена М. · Honda CR-V · Express wash</span>
+          <span class="rt-event-badge s-booked" style="font-size:9px;font-family:'DM Mono',monospace;padding:2px 6px;border-radius:3px;background:rgba(56,189,248,0.1);color:var(--accent)">BOOKED</span>
+          <span class="rt-event-time">just now</span>
+        </div>
+        <div class="rt-event" style="animation-delay:0.15s">
+          <span class="rt-event-icon">⚙️</span>
+          <span class="rt-event-text"><strong>Status changed</strong> — BMW X5 · Full detailing → In Progress</span>
+          <span class="rt-event-badge" style="font-size:9px;font-family:'DM Mono',monospace;padding:2px 6px;border-radius:3px;background:rgba(56,189,248,0.1);color:var(--sky)">IN PROGRESS</span>
+          <span class="rt-event-time">1m ago</span>
+        </div>
+        <div class="rt-event" style="animation-delay:0.25s">
+          <span class="rt-event-icon">✅</span>
+          <span class="rt-event-text"><strong>Order completed</strong> — Toyota Camry · Body polishing</span>
+          <span class="rt-event-badge" style="font-size:9px;font-family:'DM Mono',monospace;padding:2px 6px;border-radius:3px;background:rgba(74,222,128,0.1);color:#4ADE80">DONE ₴850</span>
+          <span class="rt-event-time">3m ago</span>
+        </div>
+        <div class="rt-event" style="animation-delay:0.35s">
+          <span class="rt-event-icon">💳</span>
+          <span class="rt-event-text"><strong>Payment recorded</strong> — Андрій К. · Card · ₴1,200</span>
+          <span class="rt-event-badge" style="font-size:9px;font-family:'DM Mono',monospace;padding:2px 6px;border-radius:3px;background:rgba(250,204,21,0.1);color:var(--warning)">PAID</span>
+          <span class="rt-event-time">5m ago</span>
+        </div>
+        <div class="rt-event" style="animation-delay:0.45s">
+          <span class="rt-event-icon">🌐</span>
+          <span class="rt-event-text"><strong>Web booking</strong> — Марія С. · Audi A6 · Ceramic coating</span>
+          <span class="rt-event-badge" style="font-size:9px;font-family:'DM Mono',monospace;padding:2px 6px;border-radius:3px;background:rgba(56,189,248,0.1);color:var(--accent)">BOOKED</span>
+          <span class="rt-event-time">7m ago</span>
+        </div>
+        <div class="rt-event">
+          <span class="rt-event-icon">❌</span>
+          <span class="rt-event-text"><strong>Order cancelled</strong> — Volkswagen Golf · Express wash</span>
+          <span class="rt-event-badge" style="font-size:9px;font-family:'DM Mono',monospace;padding:2px 6px;border-radius:3px;background:rgba(248,113,113,0.1);color:var(--danger)">CANCELLED</span>
+          <span class="rt-event-time">9m ago</span>
+        </div>
+        <div class="rt-event">
+          <span class="rt-event-icon">👤</span>
+          <span class="rt-event-text"><strong>New client</strong> — Дмитро Петренко · +380 97 *** 4521</span>
+          <span class="rt-event-badge" style="font-size:9px;font-family:'DM Mono',monospace;padding:2px 6px;border-radius:3px;background:rgba(255,255,255,0.05);color:var(--text-secondary)">CREATED</span>
+          <span class="rt-event-time">12m ago</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ────────────────── PRICING ────────────────── -->
+<section class="pricing-section" id="pricing" style="border-top: 1px solid var(--border);">
+  <div class="container">
+    <div style="text-align: center;" class="reveal">
+      <div class="section-label">Pricing</div>
+      <h2 class="section-title">Start free. Scale as you grow.</h2>
+      <p class="section-sub" style="margin: 0 auto;">30-day trial on every account. Annual billing saves 2 months. Add-ons available on Starter & Business.</p>
+    </div>
+    <div class="pricing-grid reveal">
+      <!-- Starter -->
+      <div class="plan-card">
+        <div class="plan-name">Starter</div>
+        <div class="plan-desc">For small single-location operators.</div>
+        <div class="plan-price">
+          <span class="plan-amount">$29</span>
+          <span class="plan-period">/ mo</span>
+        </div>
+        <ul class="plan-features">
+          <li>15 users included</li>
+          <li>3 branches</li>
+          <li>10 work posts</li>
+          <li>20 services</li>
+          <li>Public booking widget</li>
+          <li>Real-time dashboard</li>
+          <li>Per-resource add-ons</li>
+          <li class="na">Custom domain</li>
+          <li class="na">Priority support</li>
+        </ul>
+        <button class="plan-btn">Start free trial</button>
+      </div>
+      <!-- Business -->
+      <div class="plan-card popular">
+        <div class="plan-popular-badge">Most popular</div>
+        <div class="plan-name">Business</div>
+        <div class="plan-desc">For growing multi-location chains.</div>
+        <div class="plan-price">
+          <span class="plan-amount">$79</span>
+          <span class="plan-period">/ mo</span>
+        </div>
+        <ul class="plan-features">
+          <li>50 users included</li>
+          <li>10 branches</li>
+          <li>40 work posts</li>
+          <li>100 services</li>
+          <li>Public booking widget</li>
+          <li>Real-time dashboard</li>
+          <li>Per-resource add-ons</li>
+          <li>Analytics & CSV export</li>
+          <li class="na">Priority support</li>
+        </ul>
+        <button class="plan-btn lime">Start free trial</button>
+      </div>
+      <!-- Enterprise -->
+      <div class="plan-card">
+        <div class="plan-name">Enterprise</div>
+        <div class="plan-desc">Unlimited everything, white-glove support.</div>
+        <div class="plan-price">
+          <span class="plan-amount">$199</span>
+          <span class="plan-period">/ mo</span>
+        </div>
+        <ul class="plan-features">
+          <li>Unlimited users</li>
+          <li>Unlimited branches</li>
+          <li>Unlimited work posts</li>
+          <li>Unlimited services</li>
+          <li>Public booking widget</li>
+          <li>Full analytics suite</li>
+          <li>CSV + audit export</li>
+          <li>Custom domain</li>
+          <li>Priority support + SLA</li>
+        </ul>
+        <button class="plan-btn">Contact sales</button>
+      </div>
+    </div>
+    <div style="text-align:center; margin-top: 28px;">
+      <span style="font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text-tertiary);">
+        All plans include a 30-day free trial · No credit card required · Annual billing: 2 months free
+      </span>
+    </div>
+  </div>
+</section>
+
+<!-- ────────────────── CTA ────────────────── -->
+<section class="cta-section">
+  <div style="position: relative; z-index: 1;">
+    <div class="section-label" style="margin-bottom: 20px;">Get started today</div>
+    <h2>Your first booking<br/>in under 5 minutes.</h2>
+    <p>No setup fees. No credit card. Cancel any time. Just create an account and your 30-day trial starts immediately.</p>
+    <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+      <a href="#" class="btn-lg-lime">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Create free account
+      </a>
+      <a href="#" class="btn-lg-ghost">View documentation</a>
+    </div>
+    <div class="cta-trial-note">30 days free · All features included · No credit card</div>
+  </div>
+</section>
+
+<!-- ────────────────── FOOTER ────────────────── -->
+<footer>
+  <div class="footer-left">
+    <a href="#" class="footer-logo">
+      <div class="nav-logo-icon" style="width:22px;height:22px;border-radius:5px;font-size:11px">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+          <path d="M3 13h2l2 5 4-10 3 7 2-4h5" stroke="#0B0F17" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      WashFlow
+    </a>
+    <span class="footer-copy">© 2025 WashFlow. Multi-Tenant CarWash CRM.</span>
+  </div>
+  <div class="footer-links">
+    <a href="#">Documentation</a>
+    <a href="#">API Reference</a>
+    <a href="#">Privacy</a>
+    <a href="#">Terms</a>
+    <a href="#">Status</a>
+  </div>
+</footer>
+
+<script>
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Nav materializes as a translucent material once content scrolls under it (§12)
+  const navEl = document.querySelector('nav');
+  if (navEl) {
+    const setNavState = () => navEl.classList.toggle('scrolled', window.scrollY > 8);
+    setNavState();
+    window.addEventListener('scroll', setNavState, { passive: true });
+  }
+
+  // Scroll reveal
+  const reveals = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) {
+        setTimeout(() => e.target.classList.add('visible'), prefersReduced ? 0 : i * 60);
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.08 });
+  reveals.forEach(r => io.observe(r));
+
+  // Step hover
+  document.querySelectorAll('.step-item').forEach(item => {
+    item.addEventListener('mouseenter', () => {
+      document.querySelectorAll('.step-item').forEach(s => s.classList.remove('active'));
+      item.classList.add('active');
+    });
+  });
+
+  // Realtime feed simulation
+  const events = [
+    { icon: '🆕', text: '<strong>New booking</strong> — Сергій К. · Mazda CX-5 · Full wash', badge: 'BOOKED', cls: 'rgba(56,189,248,0.1)', col: '#38BDF8', time: 'just now' },
+    { icon: '⚙️', text: '<strong>Status changed</strong> — Audi A4 · Express wash → In Progress', badge: 'IN PROGRESS', cls: 'rgba(56,189,248,0.1)', col: '#38BDF8', time: 'just now' },
+    { icon: '✅', text: '<strong>Order completed</strong> — Nissan Rogue · Express wash', badge: 'DONE ₴250', cls: 'rgba(74,222,128,0.1)', col: '#4ADE80', time: 'just now' },
+    { icon: '🌐', text: '<strong>Web booking</strong> — Ірина В. · Tesla Model 3 · Detailing', badge: 'BOOKED', cls: 'rgba(56,189,248,0.1)', col: '#38BDF8', time: 'just now' },
+    { icon: '💳', text: '<strong>Payment recorded</strong> — Олег Б. · Online · ₴3,500', badge: 'PAID', cls: 'rgba(250,204,21,0.1)', col: '#FACC15', time: 'just now' },
+  ];
+  const feed = document.getElementById('rtFeed');
+  let eIdx = 0;
+  const pushEvent = (animate = true) => {
+    if (!feed) return;
+    const ev = events[eIdx % events.length];
+    eIdx++;
+    const row = document.createElement('div');
+    row.className = 'rt-event';
+    if (!animate) row.style.animation = 'none';
+    row.innerHTML = `
+      <span class="rt-event-icon">${ev.icon}</span>
+      <span class="rt-event-text">${ev.text}</span>
+      <span style="font-size:9px;font-family:'DM Mono',monospace;padding:2px 6px;border-radius:3px;background:${ev.cls};color:${ev.col}">${ev.badge}</span>
+      <span class="rt-event-time">${ev.time}</span>`;
+    feed.insertBefore(row, feed.firstChild);
+    const rows = feed.querySelectorAll('.rt-event');
+    if (rows.length > 8) feed.removeChild(rows[rows.length - 1]);
+  };
+
+  if (feed) {
+    if (prefersReduced) {
+      // Reduced motion: render a static snapshot, no looping injection
+      for (let i = 0; i < 5; i++) pushEvent(false);
+    } else {
+      // Run only while the section is visible AND the tab is focused — no wasted frames (§11)
+      let timer = null, onScreen = false;
+      const start = () => { if (!timer && onScreen && !document.hidden) timer = setInterval(pushEvent, 3500); };
+      const stop  = () => { if (timer) { clearInterval(timer); timer = null; } };
+      const rtSection = document.getElementById('realtime');
+      if (rtSection) {
+        new IntersectionObserver(([e]) => {
+          onScreen = e.isIntersecting;
+          onScreen ? start() : stop();
+        }, { threshold: 0.15 }).observe(rtSection);
+      }
+      document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
+    }
+  }
+</script>
+</body>
+</html>
