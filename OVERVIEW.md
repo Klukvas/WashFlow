@@ -268,6 +268,10 @@ Rate-limited `@Public()` endpoints for customer-facing booking. Two controllers:
 
 Both delegate to shared `*Internal` private methods in `PublicBookingService` (zero duplication). Checks `allowOnlineBooking`. Soft-deleted vehicles/clients filtered from lookups. TOCTOU failures surface as user-friendly "slot unavailable" messages.
 
+### Support Requests
+
+`@Public()` `POST /support` endpoint (rate-limited 3/min) accepts `subject` / `message` / optional `email` and relays them via the email service. Works for both authenticated and anonymous users — falls back to `anonymous` tenant/user when no JWT is present.
+
 ### Global Middleware
 
 `helmet()` | `cookieParser()` | CORS | `ValidationPipe` (whitelist, forbidNonWhitelisted) | `AllExceptionsFilter` | `PrismaExceptionFilter` (P2002→409, P2025→404) | `TransformInterceptor` (response envelope)
@@ -311,6 +315,7 @@ Both delegate to shared `*Internal` private methods in `PublicBookingService` (z
 | `/workforce` | Workforce | Employee profiles with working hours (Start/End Time); create, edit, activate/deactivate |
 | `/subscription` | Subscription | Plan tier badge, status badge, resource usage cards with progress bars, trial banner, upgrade CTA, add-on manager (+/- controls), cancel button; admin-only (`tenants.read`) |
 | `/subscription/plans` | Plans | Plan selection page — 3 tiers (Starter/Business/Enterprise), monthly/yearly toggle, pricing cards with feature comparison, Paddle checkout integration |
+| `/subscription/billing` | Billing | Billing details / history view |
 | `/how-to` | How To (Wiki) | In-app help: 11 reference topics + 4 step-by-step flows (New Client Call, Online Booking, New Employee, Branch Setup), TOC sidebar, EN + UK |
 
 #### Public
@@ -323,6 +328,8 @@ Both delegate to shared `*Internal` private methods in `PublicBookingService` (z
 | `/forgot-password` | Forgot Password | Email form → sends reset link; always shows success (no info leak) |
 | `/reset-password` | Reset Password | Token from URL, new password form → redirects to login |
 | `/public/:slug` | Public Booking | 4-step customer booking wizard |
+| `/blog`, `/blog/:slug` | Blog | Content-marketing / SEO articles (list + post), data-loaded via `blog-loader` |
+| `/legal/privacy`, `/legal/terms`, `/legal/refund` | Legal | Privacy Policy, Terms of Service, Refund Policy (static) |
 
 ### Cross-Cutting
 
@@ -339,6 +346,7 @@ Both delegate to shared `*Internal` private methods in `PublicBookingService` (z
 - **Enhanced pagination**: page numbers with ellipsis, first/last page buttons, page size selector (10/20/50/100)
 - **Password management**: self-service change password (Header), admin reset password per user (UsersPage)
 - **In-app wiki** ("How To"): data-driven help system — 11 reference topics + 4 step-by-step flows with numbered steps and location badges; TOC sidebar with Topics/Flows sections; i18n `how-to` namespace
+- **Support button**: floating in-app widget that posts to `POST /support` (auth optional)
 - Skeleton loaders, confirm dialogs for destructive actions
 
 ---
@@ -399,7 +407,7 @@ Both delegate to shared `*Internal` private methods in `PublicBookingService` (z
 ## API Reference
 
 All endpoints prefixed with `/api/v1`. Protected by JWT unless marked Public.
-**104 endpoints** (92 protected, 12 public) across 21 controllers.
+**105 endpoints** (92 protected, 13 public) across 22 controllers.
 
 ### Auth
 
@@ -504,6 +512,12 @@ All endpoints require `analytics.view` permission. Params: `dateFrom`, `dateTo`,
 |--------|------|-------------|
 | GET | `/audit-logs` | Filterable by entity, action, date range |
 
+### Support
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/support` | Public | Send a support request (subject/message/optional email); 3/min rate limit; auth optional |
+
 ### Public Booking — slug-based (rate-limited, no auth)
 
 | Method | Path | Limit | Description |
@@ -574,7 +588,8 @@ src/
     ├── realtime/                    # Socket.IO gateway
     ├── jobs/                        # BullMQ producers + processors
     ├── idempotency/                 # Keys, interceptor, cron
-    └── cleanup/                     # Hard-delete cron (30-day retention)
+    ├── cleanup/                     # Hard-delete cron (30-day retention)
+    └── support/                     # Public support-request endpoint (email relay)
 ```
 
 Module convention:
@@ -619,7 +634,10 @@ frontend/src/
 │   ├── payments/                    # Payments API, hooks, types
 │   ├── landing/                     # LandingPage (Hero, Features, Pricing, Header, Footer)
 │   ├── public-booking/              # PublicBookingPage
-│   └── how-to/                      # In-app wiki (HowToLayout, TopicSidebar, TopicContent)
+│   ├── how-to/                      # In-app wiki (HowToLayout, TopicSidebar, TopicContent)
+│   ├── blog/                        # Content-marketing/SEO articles (BlogListPage, BlogPostPage, blog-loader)
+│   ├── legal/                       # Privacy, Terms, Refund pages (static)
+│   └── support/                     # SupportButton + API/hooks (posts to /support)
 ├── shared/
 │   ├── api/client.ts                # Axios + interceptors + refresh
 │   ├── components/                  # DataTable, PageHeader, PermissionGate, ConfirmDialog, RequireAuth, ErrorBoundary, GlobalSearch
@@ -675,6 +693,7 @@ Routes: `/` (landing), `/book` (wizard). No auth, no sockets, no Sentry.
 | Partial unique indexes | `WHERE deleted_at IS NULL` — re-use unique fields after soft-delete |
 | Feature-based folder structure | Self-contained features, scales without cross-feature coupling |
 | i18n from day one | EN + UK translations; namespace-based for lazy loading |
+| Per-route meta prerender (`frontend/scripts/prerender-meta.mjs`) | Client-rendered SPA → social scrapers/non-JS crawlers otherwise get homepage meta on every URL. Post-build Node script writes `dist/<route>/index.html` with correct per-route `<title>`/description/canonical/OG/Article-JSON-LD for public routes (landing, blog, blog posts, legal, how-to). No React render (avoids browser-API crashes), no deploy change (nginx `try_files $uri $uri/` serves them, then the SPA boots). Runs in `pnpm build`. |
 | Permission gates in UI | `PermissionGate` component matches backend RBAC |
 | Workforce separate from RBAC | `EmployeeProfile` is an operational layer (who is on shift) — User/Role/Permission tables remain unchanged; branches without profiles get legacy behavior automatically |
 | Employee auto-assignment inside Serializable tx | Assigned inside the same lock that reserves the slot — eliminates TOCTOU race between capacity check and assignment |
