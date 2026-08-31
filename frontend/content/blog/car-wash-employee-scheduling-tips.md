@@ -114,4 +114,4 @@ If you're doing this manually, it takes longer. If your [management software](/b
 
 WashFlow gives you a visual schedule for every branch, every work post, and every time slot. You can assign employees, track their orders, and see your daily coverage at a glance. Role-based permissions let branch managers handle their own scheduling while owners see the full picture.
 
-[Start your free 30-day trial](https://washflow.com) and take the guesswork out of employee scheduling.
+[Start your free 30-day trial](https://washflow.solutions) and take the guesswork out of employee scheduling.

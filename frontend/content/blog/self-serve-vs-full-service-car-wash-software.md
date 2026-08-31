@@ -129,4 +129,4 @@ The worst mistake is buying software designed for a different car wash model. A 
 
 WashFlow is built for full-service and hybrid car wash operations. It covers scheduling, online booking, client and vehicle management, employee roles and permissions, multi-branch support, and analytics — the complete toolkit for businesses where people management is central to operations.
 
-If you run a full-service or hybrid car wash, [try WashFlow free for 30 days](https://washflow.com) and see if it fits your workflow.
+If you run a full-service or hybrid car wash, [try WashFlow free for 30 days](https://washflow.solutions) and see if it fits your workflow.
