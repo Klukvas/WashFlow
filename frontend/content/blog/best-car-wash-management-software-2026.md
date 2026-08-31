@@ -127,4 +127,4 @@ Here's a simple evaluation process:
 
 The best software is the one your team actually uses every day. Features on paper mean nothing if the interface is painful.
 
-[Try WashFlow free for 30 days](https://washflow.com) — no credit card required.
+[Try WashFlow free for 30 days](https://washflow.solutions) — no credit card required.

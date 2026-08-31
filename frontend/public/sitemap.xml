@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- Landing -->
   <url>
-    <loc>https://washflow.com/</loc>
+    <loc>https://washflow.solutions/</loc>
     <lastmod>2026-06-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
@@ -10,65 +10,65 @@
 
   <!-- Blog -->
   <url>
-    <loc>https://washflow.com/blog</loc>
+    <loc>https://washflow.solutions/blog</loc>
     <lastmod>2026-06-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <!-- Existing EN blog posts -->
-  <url><loc>https://washflow.com/blog/why-car-wash-needs-software</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/online-booking-for-car-wash</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/managing-multiple-car-wash-locations</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/5-mistakes-car-wash-owners-make</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/car-wash-analytics-guide</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/why-car-wash-needs-software</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/online-booking-for-car-wash</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/managing-multiple-car-wash-locations</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/5-mistakes-car-wash-owners-make</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/car-wash-analytics-guide</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
 
   <!-- Existing UK blog posts -->
-  <url><loc>https://washflow.com/blog/yak-avtomatyzuvaty-avtomyiku</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/roli-ta-dozvoly-na-avtomyitsi</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/yak-zbilshyty-dokhid-avtomyiky</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/onlain-zapys-na-myiku</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/pomylky-pry-vidkrytti-avtomyiky</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/analityka-avtomyiky-shcho-vidstezhuvaty</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/yak-motyvuvaty-komandu-avtomyiky</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/yak-obraty-programu-dlya-avtomyiky</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/yak-pracyuvaty-z-sezonnistyu</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/google-maps-dlya-avtomyiky</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/yak-avtomatyzuvaty-avtomyiku</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/roli-ta-dozvoly-na-avtomyitsi</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/yak-zbilshyty-dokhid-avtomyiky</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/onlain-zapys-na-myiku</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/pomylky-pry-vidkrytti-avtomyiky</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/analityka-avtomyiky-shcho-vidstezhuvaty</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/yak-motyvuvaty-komandu-avtomyiky</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/yak-obraty-programu-dlya-avtomyiky</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/yak-pracyuvaty-z-sezonnistyu</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/google-maps-dlya-avtomyiky</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
 
   <!-- New EN blog posts -->
-  <url><loc>https://washflow.com/blog/best-car-wash-management-software-2026</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/how-to-start-car-wash-business</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/car-wash-pos-vs-management-software</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/increase-car-wash-revenue-online-booking</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/car-wash-employee-scheduling-tips</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/self-serve-vs-full-service-car-wash-software</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/best-car-wash-management-software-2026</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/how-to-start-car-wash-business</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/car-wash-pos-vs-management-software</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/increase-car-wash-revenue-online-booking</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/car-wash-employee-scheduling-tips</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/self-serve-vs-full-service-car-wash-software</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
 
   <!-- New UK blog posts -->
-  <url><loc>https://washflow.com/blog/yak-vidkryty-avtomyiku-z-nulya</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/skilky-koshtuye-avtomyika-2026</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/crm-dlya-avtomyiky-porivnyannya</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/yak-zaluchyty-kliyentiv-na-avtomyiku</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/avtomyika-yak-biznes-rentabelnist</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://washflow.com/blog/yak-vesty-oblik-na-avtomyitsi</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/yak-vidkryty-avtomyiku-z-nulya</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/skilky-koshtuye-avtomyika-2026</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/crm-dlya-avtomyiky-porivnyannya</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/yak-zaluchyty-kliyentiv-na-avtomyiku</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/avtomyika-yak-biznes-rentabelnist</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://washflow.solutions/blog/yak-vesty-oblik-na-avtomyitsi</loc><lastmod>2026-06-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
 
   <!-- How-To: Reference Topics -->
-  <url><loc>https://washflow.com/how-to/getting-started</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://washflow.com/how-to/dashboard</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://washflow.com/how-to/orders</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://washflow.com/how-to/clients</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://washflow.com/how-to/vehicles</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://washflow.com/how-to/services</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://washflow.com/how-to/branches</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://washflow.com/how-to/users-roles</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://washflow.com/how-to/workforce</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://washflow.com/how-to/analytics</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://washflow.com/how-to/subscription</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://washflow.com/how-to/public-booking</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.solutions/how-to/getting-started</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.solutions/how-to/dashboard</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.solutions/how-to/orders</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.solutions/how-to/clients</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.solutions/how-to/vehicles</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.solutions/how-to/services</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.solutions/how-to/branches</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.solutions/how-to/users-roles</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.solutions/how-to/workforce</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.solutions/how-to/analytics</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.solutions/how-to/subscription</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://washflow.solutions/how-to/public-booking</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
 
   <!-- How-To: Step-by-Step Flows -->
-  <url><loc>https://washflow.com/how-to/flow-client-via-order</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://washflow.com/how-to/flow-client-via-tabs</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://washflow.com/how-to/flow-online-booking</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://washflow.com/how-to/flow-new-employee</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://washflow.com/how-to/flow-branch-setup</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://washflow.solutions/how-to/flow-client-via-order</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://washflow.solutions/how-to/flow-client-via-tabs</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://washflow.solutions/how-to/flow-online-booking</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://washflow.solutions/how-to/flow-new-employee</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://washflow.solutions/how-to/flow-branch-setup</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
 </urlset>

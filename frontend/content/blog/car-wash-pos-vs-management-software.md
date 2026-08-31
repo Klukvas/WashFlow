@@ -103,4 +103,4 @@ WashFlow is a management platform built for car wash businesses. It covers sched
 
 For payment processing, WashFlow tracks order payments and statuses within the platform, so you have full visibility into revenue alongside your operational data.
 
-[Start your free 30-day trial](https://washflow.com) and see how it fits your workflow.
+[Start your free 30-day trial](https://washflow.solutions) and see how it fits your workflow.

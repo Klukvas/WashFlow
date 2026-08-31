@@ -15,7 +15,7 @@ interface SeoProps {
   breadcrumbs?: { name: string; url: string }[];
 }
 
-const BASE_URL = 'https://washflow.com';
+const BASE_URL = 'https://washflow.solutions';
 const DEFAULT_TITLE = 'WashFlow — Car Wash Management Platform';
 const DEFAULT_DESC =
   'Streamline your car wash operations. Orders, scheduling, clients, analytics, and online booking — all in one platform.';

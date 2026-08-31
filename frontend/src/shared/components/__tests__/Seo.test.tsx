@@ -42,14 +42,14 @@ describe('Seo', () => {
     renderWithHelmet(<Seo path="/orders" />);
 
     const link = document.querySelector('link[rel="canonical"]');
-    expect(link?.getAttribute('href')).toBe('https://washflow.com/orders');
+    expect(link?.getAttribute('href')).toBe('https://washflow.solutions/orders');
   });
 
   it('defaults canonical URL to root', () => {
     renderWithHelmet(<Seo />);
 
     const link = document.querySelector('link[rel="canonical"]');
-    expect(link?.getAttribute('href')).toBe('https://washflow.com/');
+    expect(link?.getAttribute('href')).toBe('https://washflow.solutions/');
   });
 
   it('sets og:title meta tag', () => {
@@ -64,16 +64,16 @@ describe('Seo', () => {
 
     const meta = document.querySelector('meta[property="og:image"]');
     expect(meta?.getAttribute('content')).toBe(
-      'https://washflow.com/screenshots/orders.png',
+      'https://washflow.solutions/screenshots/orders.png',
     );
   });
 
   it('sets og:image with custom image when provided', () => {
-    renderWithHelmet(<Seo image="https://washflow.com/custom.png" />);
+    renderWithHelmet(<Seo image="https://washflow.solutions/custom.png" />);
 
     const meta = document.querySelector('meta[property="og:image"]');
     expect(meta?.getAttribute('content')).toBe(
-      'https://washflow.com/custom.png',
+      'https://washflow.solutions/custom.png',
     );
   });
 });

@@ -141,4 +141,4 @@ For a deeper look, read our post on [5 mistakes car wash owners make](/blog/5-mi
 
 Starting a car wash business takes planning, investment, and the right tools. WashFlow helps you get the operational side right from the beginning — scheduling, bookings, client management, and analytics, all in one platform.
 
-[Start your free 30-day trial](https://washflow.com) and set up your car wash operations in under 10 minutes.
+[Start your free 30-day trial](https://washflow.solutions) and set up your car wash operations in under 10 minutes.

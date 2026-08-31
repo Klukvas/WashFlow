@@ -20,7 +20,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 const DIST = join(ROOT, 'dist');
 const BLOG_DIR = join(ROOT, 'content', 'blog');
-const BASE_URL = 'https://washflow.com';
+const BASE_URL = 'https://washflow.solutions';
 const DEFAULT_IMAGE = `${BASE_URL}/screenshots/orders.png`;
 
 const escapeAttr = (s) =>

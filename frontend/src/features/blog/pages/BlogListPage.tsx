@@ -12,8 +12,8 @@ export function BlogListPage() {
         description="Car wash business tips, guides, and software insights. Learn how to manage your car wash more efficiently with WashFlow."
         path="/blog"
         breadcrumbs={[
-          { name: 'Home', url: 'https://washflow.com/' },
-          { name: 'Blog', url: 'https://washflow.com/blog' },
+          { name: 'Home', url: 'https://washflow.solutions/' },
+          { name: 'Blog', url: 'https://washflow.solutions/blog' },
         ]}
       />
 

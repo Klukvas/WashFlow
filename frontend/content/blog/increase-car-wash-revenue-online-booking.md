@@ -115,4 +115,4 @@ WashFlow includes a built-in online booking widget that connects directly to you
 
 Setup takes about 5 minutes. You get a shareable booking link and an embeddable widget for your website.
 
-[Start your free 30-day trial](https://washflow.com) and share your booking page today.
+[Start your free 30-day trial](https://washflow.solutions) and share your booking page today.

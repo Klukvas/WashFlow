@@ -18,18 +18,18 @@ export function BlogPostPage() {
         title={post.title}
         description={post.description}
         path={`/blog/${post.slug}`}
-        image={post.image ? `https://washflow.com${post.image}` : undefined}
+        image={post.image ? `https://washflow.solutions${post.image}` : undefined}
         lang={post.lang}
         article={{
           publishedTime: post.date,
           author: 'WashFlow Team',
         }}
         breadcrumbs={[
-          { name: 'Home', url: 'https://washflow.com/' },
-          { name: 'Blog', url: 'https://washflow.com/blog' },
+          { name: 'Home', url: 'https://washflow.solutions/' },
+          { name: 'Blog', url: 'https://washflow.solutions/blog' },
           {
             name: post.title,
-            url: `https://washflow.com/blog/${post.slug}`,
+            url: `https://washflow.solutions/blog/${post.slug}`,
           },
         ]}
       />
