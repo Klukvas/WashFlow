@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   NotFoundException,
@@ -7,6 +8,8 @@ import {
 import { BranchesService } from './branches.service';
 import { BranchesRepository } from './branches.repository';
 import { SubscriptionLimitsService } from '../subscriptions/subscription-limits.service';
+
+const quotaTx = {} as Prisma.TransactionClient;
 
 describe('BranchesService', () => {
   let service: BranchesService;
@@ -38,7 +41,15 @@ describe('BranchesService', () => {
     };
 
     limits = {
-      checkLimit: jest.fn().mockResolvedValue(undefined),
+      withResourceLimit: jest
+        .fn()
+        .mockImplementation(
+          async (
+            _tenantId: string,
+            _resource: string,
+            operation: (tx: Prisma.TransactionClient) => Promise<unknown>,
+          ) => operation(quotaTx),
+        ),
       getUsage: jest.fn(),
     };
 
@@ -156,7 +167,7 @@ describe('BranchesService', () => {
       };
       await service.create(tenantId, dto as any);
 
-      expect(repo.create).toHaveBeenCalledWith(tenantId, { ...dto });
+      expect(repo.create).toHaveBeenCalledWith(tenantId, { ...dto }, quotaTx);
     });
 
     it('should return the created branch from repo', async () => {
@@ -179,20 +190,28 @@ describe('BranchesService', () => {
       const dto = { name: 'Minimal Branch' };
       await service.create(tenantId, dto as any);
 
-      expect(repo.create).toHaveBeenCalledWith(tenantId, {
-        name: 'Minimal Branch',
-      });
+      expect(repo.create).toHaveBeenCalledWith(
+        tenantId,
+        {
+          name: 'Minimal Branch',
+        },
+        quotaTx,
+      );
     });
 
-    it('should call checkLimit before creating the branch', async () => {
+    it('should call withResourceLimit before creating the branch', async () => {
       const dto = { name: 'New Branch' };
       await service.create(tenantId, dto as any);
 
-      expect(limits.checkLimit).toHaveBeenCalledWith(tenantId, 'branches');
+      expect(limits.withResourceLimit).toHaveBeenCalledWith(
+        tenantId,
+        'branches',
+        expect.any(Function),
+      );
     });
 
     it('should throw ForbiddenException when subscription limit is reached on create', async () => {
-      limits.checkLimit.mockRejectedValue(
+      limits.withResourceLimit.mockRejectedValue(
         new ForbiddenException('Subscription limit reached'),
       );
       const dto = { name: 'New Branch' };
@@ -302,8 +321,9 @@ describe('BranchesService', () => {
       expect(repo.findByIdIncludeDeleted).toHaveBeenCalledWith(
         tenantId,
         branchId,
+        quotaTx,
       );
-      expect(repo.restore).toHaveBeenCalledWith(tenantId, branchId);
+      expect(repo.restore).toHaveBeenCalledWith(tenantId, branchId, quotaTx);
     });
 
     it('should return the restored branch from repo', async () => {
@@ -369,7 +389,7 @@ describe('BranchesService', () => {
       expect(repo.restore).not.toHaveBeenCalled();
     });
 
-    it('should call checkLimit before restoring the branch', async () => {
+    it('should call withResourceLimit before restoring the branch', async () => {
       repo.findByIdIncludeDeleted.mockResolvedValue({
         ...mockBranch,
         deletedAt: new Date('2026-01-01'),
@@ -377,7 +397,11 @@ describe('BranchesService', () => {
 
       await service.restore(tenantId, branchId);
 
-      expect(limits.checkLimit).toHaveBeenCalledWith(tenantId, 'branches');
+      expect(limits.withResourceLimit).toHaveBeenCalledWith(
+        tenantId,
+        'branches',
+        expect.any(Function),
+      );
     });
 
     it('should throw ForbiddenException when subscription limit is reached', async () => {
@@ -385,7 +409,7 @@ describe('BranchesService', () => {
         ...mockBranch,
         deletedAt: new Date('2026-01-01'),
       });
-      limits.checkLimit.mockRejectedValue(
+      limits.withResourceLimit.mockRejectedValue(
         new ForbiddenException('Subscription limit reached'),
       );
 
@@ -399,7 +423,7 @@ describe('BranchesService', () => {
         ...mockBranch,
         deletedAt: new Date('2026-01-01'),
       });
-      limits.checkLimit.mockRejectedValue(
+      limits.withResourceLimit.mockRejectedValue(
         new ForbiddenException('Subscription limit reached'),
       );
 

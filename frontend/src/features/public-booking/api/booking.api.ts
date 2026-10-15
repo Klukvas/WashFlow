@@ -1,6 +1,7 @@
 import axios, { type AxiosError } from 'axios';
 import type { ApiError, ApiResponse, TimeSlot } from '@/shared/types/api';
-import type { Service, Branch, Order } from '@/shared/types/models';
+import type { Service, Branch } from '@/shared/types/models';
+import type { BookingConfirmation } from '../types';
 
 const publicClient = axios.create({
   baseURL: '/api/v1/public/booking',
@@ -70,8 +71,8 @@ export async function fetchPublicAvailability(
 export async function createPublicBooking(
   slug: string,
   payload: CreateBookingPayload,
-): Promise<Order> {
-  const { data } = await publicClient.post<ApiResponse<Order>>(
+): Promise<BookingConfirmation> {
+  const { data } = await publicClient.post<ApiResponse<BookingConfirmation>>(
     `/${slug}/book`,
     payload,
     {

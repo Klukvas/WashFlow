@@ -15,6 +15,11 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { resolveBookingSettings } from '../../common/utils/booking-settings.util';
 import { CheckAvailabilityDto } from './dto/check-availability.dto';
 import { CreateBookingDto } from './dto/create-booking.dto';
+import {
+  BookingConfirmationDto,
+  ConfirmationOrder,
+  toBookingConfirmation,
+} from './dto/booking-confirmation.dto';
 
 @Injectable()
 export class PublicBookingService {
@@ -64,7 +69,7 @@ export class PublicBookingService {
     slug: string,
     dto: CreateBookingDto,
     idempotencyKey?: string,
-  ) {
+  ): Promise<BookingConfirmationDto> {
     const tenant = await this.resolveTenant(slug);
     return this.createBookingInternal(tenant.id, dto, idempotencyKey);
   }
@@ -93,7 +98,7 @@ export class PublicBookingService {
     tenantId: string,
     dto: CreateBookingDto,
     idempotencyKey?: string,
-  ) {
+  ): Promise<BookingConfirmationDto> {
     const tenant = await this.resolveTenantById(tenantId);
     return this.createBookingInternal(tenant.id, dto, idempotencyKey);
   }
@@ -124,7 +129,7 @@ export class PublicBookingService {
     tenantId: string,
     dto: CreateBookingDto,
     idempotencyKey?: string,
-  ) {
+  ): Promise<BookingConfirmationDto> {
     const branch = await this.prisma.branch.findFirst({
       where: { id: dto.branchId, tenantId },
     });
@@ -223,7 +228,7 @@ export class PublicBookingService {
     // ordersService.create uses a Serializable transaction internally
     // with row-level locking (reserveSlot) to prevent double-booking.
     try {
-      return await this.ordersService.create(
+      const order = await this.ordersService.create(
         tenantId,
         {
           branchId: dto.branchId,
@@ -238,6 +243,8 @@ export class PublicBookingService {
         null, // No userId for public booking
         idempotencyKey,
       );
+      // Project after create so cached idempotency results have the same privacy boundary.
+      return toBookingConfirmation(order as ConfirmationOrder, dto);
     } catch (err) {
       if (
         err instanceof BadRequestException &&

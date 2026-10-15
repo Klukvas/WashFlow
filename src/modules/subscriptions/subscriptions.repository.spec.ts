@@ -29,6 +29,7 @@ const mockTrialSubscription = {
 
 function buildPrismaMock() {
   const txClient = {
+    $queryRaw: jest.fn().mockResolvedValue([{ id: TENANT_ID }]),
     subscription: { findUnique: jest.fn() },
     user: { count: jest.fn() },
     branch: { count: jest.fn() },
@@ -407,7 +408,7 @@ describe('SubscriptionsRepository', () => {
       expect(result).toEqual({ allowed: true, current: 19, max: 20 });
     });
 
-    it('uses Serializable isolation level', async () => {
+    it('uses ReadCommitted isolation after locking the tenant row', async () => {
       prisma._txClient.subscription.findUnique.mockResolvedValue(null);
 
       await repo.checkLimitAtomic(TENANT_ID, 'users');
@@ -415,7 +416,7 @@ describe('SubscriptionsRepository', () => {
       expect(prisma.$transaction).toHaveBeenCalledWith(
         expect.any(Function),
         expect.objectContaining({
-          isolationLevel: 'Serializable',
+          isolationLevel: 'ReadCommitted',
         }),
       );
     });
@@ -535,6 +536,45 @@ describe('SubscriptionsRepository', () => {
 
       expect(result.allowed).toBe(true);
       expect(result).not.toHaveProperty('trialExpired');
+    });
+  });
+
+  describe('withResourceLimit', () => {
+    it('locks the tenant before loading subscription and invokes the mutation on the same transaction even without a subscription', async () => {
+      prisma._txClient.subscription.findUnique.mockResolvedValue(null);
+      const operation = jest.fn().mockResolvedValue('created');
+      await expect(
+        repo.withResourceLimit(TENANT_ID, 'users', operation),
+      ).resolves.toBe('created');
+      expect(prisma._txClient.$queryRaw).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.stringContaining('FROM "tenants"'),
+          expect.stringContaining('FOR UPDATE'),
+        ]),
+        TENANT_ID,
+      );
+      expect(
+        prisma._txClient.$queryRaw.mock.invocationCallOrder[0],
+      ).toBeLessThan(
+        prisma._txClient.subscription.findUnique.mock.invocationCallOrder[0],
+      );
+      expect(operation).toHaveBeenCalledWith(prisma._txClient, {
+        allowed: true,
+        current: 0,
+        max: null,
+      });
+    });
+
+    it('propagates mutation failure to the transaction instead of committing a quota reservation', async () => {
+      prisma._txClient.subscription.findUnique.mockResolvedValue(
+        mockSubscription,
+      );
+      prisma._txClient.user.count.mockResolvedValue(0);
+      const failure = new Error('Mutation failed');
+      const operation = jest.fn().mockRejectedValue(failure);
+      await expect(
+        repo.withResourceLimit(TENANT_ID, 'users', operation),
+      ).rejects.toBe(failure);
     });
   });
 

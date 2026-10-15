@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   NotFoundException,
@@ -69,7 +70,15 @@ const makeRepoMock = () => ({
 });
 
 const makeLimitsMock = () => ({
-  checkLimit: jest.fn().mockResolvedValue(undefined),
+  withResourceLimit: jest
+    .fn()
+    .mockImplementation(
+      async (
+        _tenantId: string,
+        _resource: string,
+        operation: (tx: Prisma.TransactionClient) => Promise<unknown>,
+      ) => operation(quotaTx),
+    ),
   getUsage: jest.fn(),
 });
 
@@ -89,6 +98,8 @@ const makePrismaMock = () => ({
 // ---------------------------------------------------------------------------
 // Test suite
 // ---------------------------------------------------------------------------
+
+const quotaTx = {} as Prisma.TransactionClient;
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -328,7 +339,7 @@ describe('UsersService', () => {
       });
     });
 
-    it('calls checkLimit before creating the user', async () => {
+    it('calls withResourceLimit before creating the user', async () => {
       mockedArgon2.hash.mockResolvedValue(HASHED_PASSWORD);
       repo.create.mockResolvedValue(makeUser());
       const dto: CreateUserDto = {
@@ -340,11 +351,15 @@ describe('UsersService', () => {
 
       await service.create(TENANT_ID, dto);
 
-      expect(limits.checkLimit).toHaveBeenCalledWith(TENANT_ID, 'users');
+      expect(limits.withResourceLimit).toHaveBeenCalledWith(
+        TENANT_ID,
+        'users',
+        expect.any(Function),
+      );
     });
 
     it('throws ForbiddenException when subscription limit is reached on create', async () => {
-      limits.checkLimit.mockRejectedValue(
+      limits.withResourceLimit.mockRejectedValue(
         new ForbiddenException('Subscription limit reached'),
       );
       const dto: CreateUserDto = {
@@ -487,8 +502,9 @@ describe('UsersService', () => {
       expect(repo.findByIdIncludeDeleted).toHaveBeenCalledWith(
         TENANT_ID,
         USER_ID,
+        quotaTx,
       );
-      expect(repo.restore).toHaveBeenCalledWith(TENANT_ID, USER_ID);
+      expect(repo.restore).toHaveBeenCalledWith(TENANT_ID, USER_ID, quotaTx);
       expect(result).toEqual(restoredUser);
     });
 
@@ -522,20 +538,24 @@ describe('UsersService', () => {
       expect(repo.findById).not.toHaveBeenCalled();
     });
 
-    it('calls checkLimit before restoring the user', async () => {
+    it('calls withResourceLimit before restoring the user', async () => {
       const deletedUser = makeUser({ deletedAt: new Date() });
       repo.findByIdIncludeDeleted.mockResolvedValue(deletedUser);
       repo.restore.mockResolvedValue(makeUser());
 
       await service.restore(TENANT_ID, USER_ID);
 
-      expect(limits.checkLimit).toHaveBeenCalledWith(TENANT_ID, 'users');
+      expect(limits.withResourceLimit).toHaveBeenCalledWith(
+        TENANT_ID,
+        'users',
+        expect.any(Function),
+      );
     });
 
     it('throws ForbiddenException when subscription limit is reached', async () => {
       const deletedUser = makeUser({ deletedAt: new Date() });
       repo.findByIdIncludeDeleted.mockResolvedValue(deletedUser);
-      limits.checkLimit.mockRejectedValue(
+      limits.withResourceLimit.mockRejectedValue(
         new ForbiddenException('Subscription limit reached'),
       );
 
@@ -547,7 +567,7 @@ describe('UsersService', () => {
     it('does not call repo.restore when limit check fails', async () => {
       const deletedUser = makeUser({ deletedAt: new Date() });
       repo.findByIdIncludeDeleted.mockResolvedValue(deletedUser);
-      limits.checkLimit.mockRejectedValue(
+      limits.withResourceLimit.mockRejectedValue(
         new ForbiddenException('Subscription limit reached'),
       );
 

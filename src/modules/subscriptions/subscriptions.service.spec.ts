@@ -212,6 +212,7 @@ describe('SubscriptionsService', () => {
   // -------------------------------------------------------------------------
 
   describe('createCheckout', () => {
+    const customerEmail = 'owner@example.com';
     const dto = {
       planTier: 'STARTER' as const,
       billingInterval: 'MONTHLY' as const,
@@ -220,9 +221,9 @@ describe('SubscriptionsService', () => {
     it('throws NotFoundException when subscription does not exist', async () => {
       repo.findByTenantIdWithAddons.mockResolvedValue(null);
 
-      await expect(service.createCheckout(TENANT_ID, dto)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.createCheckout(TENANT_ID, dto, customerEmail),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('throws BadRequestException when subscription already has a paddleSubscriptionId', async () => {
@@ -231,9 +232,9 @@ describe('SubscriptionsService', () => {
         paddleSubscriptionId: 'already-set',
       });
 
-      await expect(service.createCheckout(TENANT_ID, dto)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.createCheckout(TENANT_ID, dto, customerEmail),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('throws BadRequestException with "Already subscribed" message when paddleSubscriptionId exists', async () => {
@@ -242,9 +243,9 @@ describe('SubscriptionsService', () => {
         paddleSubscriptionId: 'already-set',
       });
 
-      await expect(service.createCheckout(TENANT_ID, dto)).rejects.toThrow(
-        /Already subscribed/,
-      );
+      await expect(
+        service.createCheckout(TENANT_ID, dto, customerEmail),
+      ).rejects.toThrow(/Already subscribed/);
     });
 
     it('throws BadRequestException for an invalid planTier', async () => {
@@ -254,14 +255,18 @@ describe('SubscriptionsService', () => {
       });
 
       await expect(
-        service.createCheckout(TENANT_ID, {
-          planTier: 'INVALID' as 'STARTER',
-          billingInterval: 'MONTHLY',
-        }),
+        service.createCheckout(
+          TENANT_ID,
+          {
+            planTier: 'INVALID' as 'STARTER',
+            billingInterval: 'MONTHLY',
+          },
+          customerEmail,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('calls paddleService.createCheckoutTransaction with correct items and customData', async () => {
+    it('calls paddleService.createCheckoutTransaction with correct items, customData, and customerEmail', async () => {
       repo.findByTenantIdWithAddons.mockResolvedValue({
         ...baseSubscription,
         paddleSubscriptionId: null,
@@ -270,18 +275,20 @@ describe('SubscriptionsService', () => {
         transactionId: 'txn-abc',
       });
 
-      await service.createCheckout(TENANT_ID, dto);
+      await service.createCheckout(TENANT_ID, dto, customerEmail);
 
       expect(paddle.createCheckoutTransaction).toHaveBeenCalledTimes(1);
       const callArg = paddle.createCheckoutTransaction.mock.calls[0][0] as {
         items: Array<{ priceId: string; quantity: number }>;
         customData: { tenantId: string };
         customerId?: string;
+        customerEmail: string;
       };
       expect(callArg.items).toHaveLength(1);
       expect(callArg.items[0].priceId).toBe('pri_starter_monthly');
       expect(callArg.items[0].quantity).toBe(1);
       expect(callArg.customData).toEqual({ tenantId: TENANT_ID });
+      expect(callArg.customerEmail).toBe(customerEmail);
     });
 
     it('passes paddleCustomerId when it exists on the subscription', async () => {
@@ -294,7 +301,7 @@ describe('SubscriptionsService', () => {
         transactionId: 'txn-xyz',
       });
 
-      await service.createCheckout(TENANT_ID, dto);
+      await service.createCheckout(TENANT_ID, dto, customerEmail);
 
       const callArg = paddle.createCheckoutTransaction.mock.calls[0][0] as {
         customerId?: string;
@@ -312,7 +319,7 @@ describe('SubscriptionsService', () => {
         transactionId: 'txn-xyz',
       });
 
-      await service.createCheckout(TENANT_ID, dto);
+      await service.createCheckout(TENANT_ID, dto, customerEmail);
 
       const callArg = paddle.createCheckoutTransaction.mock.calls[0][0] as {
         customerId?: string;
@@ -329,7 +336,11 @@ describe('SubscriptionsService', () => {
         transactionId: 'txn-returned',
       });
 
-      const result = await service.createCheckout(TENANT_ID, dto);
+      const result = await service.createCheckout(
+        TENANT_ID,
+        dto,
+        customerEmail,
+      );
 
       expect(result).toEqual({
         transactionId: 'txn-returned',
@@ -346,10 +357,14 @@ describe('SubscriptionsService', () => {
         transactionId: 'txn-y',
       });
 
-      await service.createCheckout(TENANT_ID, {
-        planTier: 'BUSINESS',
-        billingInterval: 'YEARLY',
-      });
+      await service.createCheckout(
+        TENANT_ID,
+        {
+          planTier: 'BUSINESS',
+          billingInterval: 'YEARLY',
+        },
+        customerEmail,
+      );
 
       const callArg = paddle.createCheckoutTransaction.mock.calls[0][0] as {
         items: Array<{ priceId: string }>;

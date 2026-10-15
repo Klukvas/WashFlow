@@ -42,9 +42,22 @@ export class WorkPostsRepository {
     return workPost;
   }
 
-  async create(tenantId: string, data: Record<string, unknown>) {
-    return this.db(tenantId).workPost.create({
-      data: data as Prisma.WorkPostUncheckedCreateInput,
+  async findActiveBranch(tenantId: string, branchId: string) {
+    return this.db(tenantId).branch.findFirst({
+      where: { id: branchId, isActive: true },
+      select: { id: true },
+    });
+  }
+
+  async create(
+    tenantId: string,
+    data: Record<string, unknown>,
+    tx?: Prisma.TransactionClient,
+  ) {
+    return (tx ?? this.db(tenantId)).workPost.create({
+      data: (tx
+        ? { ...data, tenantId }
+        : data) as Prisma.WorkPostUncheckedCreateInput,
       include: { branch: true },
     });
   }
@@ -57,9 +70,15 @@ export class WorkPostsRepository {
     });
   }
 
-  async findByIdIncludeDeleted(tenantId: string, id: string) {
-    return this.db(tenantId).workPost.findFirst({
-      where: { id, _includeDeleted: true } as Prisma.WorkPostWhereInput,
+  async findByIdIncludeDeleted(
+    tenantId: string,
+    id: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    return (tx ?? this.db(tenantId)).workPost.findFirst({
+      where: (tx
+        ? { id, tenantId }
+        : { id, _includeDeleted: true }) as Prisma.WorkPostWhereInput,
       include: { branch: true },
     });
   }
@@ -71,9 +90,9 @@ export class WorkPostsRepository {
     });
   }
 
-  async restore(tenantId: string, id: string) {
-    return this.db(tenantId).workPost.update({
-      where: { id, _includeDeleted: true } as Prisma.WorkPostWhereUniqueInput,
+  async restore(tenantId: string, id: string, tx?: Prisma.TransactionClient) {
+    return (tx ?? this.db(tenantId)).workPost.update({
+      where: tx ? { id, tenantId, deletedAt: { not: null } } : { id },
       data: { deletedAt: null },
       include: { branch: true },
     });

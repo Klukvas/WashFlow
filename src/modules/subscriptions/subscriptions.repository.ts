@@ -4,6 +4,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 import type { ResourceKey } from './plan.constants';
 import { SubscriptionStatus } from './plan.constants';
 
+export type ResourceLimitResult = {
+  allowed: boolean;
+  current: number;
+  max: number | null;
+  trialExpired?: boolean;
+  subscriptionInactive?: boolean;
+};
+
 @Injectable()
 export class SubscriptionsRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -97,82 +105,99 @@ export class SubscriptionsRepository {
     });
   }
 
-  /**
-   * Atomically checks whether the tenant can create one more resource.
-   * Runs inside a Serializable transaction to prevent TOCTOU races.
-   */
+  /** A preview only; resource writes must use withResourceLimit. */
   async checkLimitAtomic(
     tenantId: string,
-    resource: 'users' | 'branches' | 'workPosts' | 'services',
-  ): Promise<{
-    allowed: boolean;
-    current: number;
-    max: number | null;
-    trialExpired?: boolean;
-    subscriptionInactive?: boolean;
-  }> {
+    resource: ResourceKey,
+  ): Promise<ResourceLimitResult> {
+    return this.withResourceLimit(tenantId, resource, (_tx, result) =>
+      Promise.resolve(result),
+    );
+  }
+
+  /**
+   * Lock the persistent tenant row even when no subscription exists. ReadCommitted
+   * makes a waiter count the preceding writer's committed resources after the lock.
+   * Transaction clients bypass TenantPrismaService, so callbacks must scope writes.
+   */
+  async withResourceLimit<T>(
+    tenantId: string,
+    resource: ResourceKey,
+    operation: (
+      tx: Prisma.TransactionClient,
+      result: ResourceLimitResult,
+    ) => Promise<T>,
+  ): Promise<T> {
     return this.prisma.$transaction(
       async (tx) => {
-        const subscription = await tx.subscription.findUnique({
-          where: { tenantId },
-        });
-
-        if (!subscription) {
-          return { allowed: true, current: 0, max: null };
-        }
-
-        // Check trial expiry
-        if (
-          subscription.isTrial &&
-          subscription.trialEndsAt &&
-          subscription.trialEndsAt < new Date()
-        ) {
-          return { allowed: false, current: 0, max: null, trialExpired: true };
-        }
-
-        // Check subscription status — deny resource creation for:
-        // CANCELLED (past effective date), PAUSED, or PAST_DUE
-        if (subscription.status === SubscriptionStatus.CANCELLED) {
-          const now = new Date();
-          if (
-            !subscription.cancelEffectiveAt ||
-            subscription.cancelEffectiveAt <= now
-          ) {
-            return {
-              allowed: false,
-              current: 0,
-              max: null,
-              subscriptionInactive: true,
-            };
-          }
-        }
-
-        if (
-          subscription.status === SubscriptionStatus.PAUSED ||
-          subscription.status === SubscriptionStatus.PAST_DUE
-        ) {
-          return {
-            allowed: false,
-            current: 0,
-            max: null,
-            subscriptionInactive: true,
-          };
-        }
-
-        const count = await this.countResourceTx(tx, tenantId, resource);
-        const max = this.getMax(subscription, resource);
-
-        // null max = unlimited → always allowed
-        if (max === null) {
-          return { allowed: true, current: count, max: null };
-        }
-
-        return { allowed: count < max, current: count, max };
+        await tx.$queryRaw`SELECT "id" FROM "tenants" WHERE "id" = ${tenantId} FOR UPDATE`;
+        const result = await this.checkLimitTx(tx, tenantId, resource);
+        return operation(tx, result);
       },
-      {
-        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
     );
+  }
+
+  private async checkLimitTx(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    resource: ResourceKey,
+  ): Promise<ResourceLimitResult> {
+    const subscription = await tx.subscription.findUnique({
+      where: { tenantId },
+    });
+
+    if (!subscription) {
+      return { allowed: true, current: 0, max: null };
+    }
+
+    // Check trial expiry
+    if (
+      subscription.isTrial &&
+      subscription.trialEndsAt &&
+      subscription.trialEndsAt < new Date()
+    ) {
+      return { allowed: false, current: 0, max: null, trialExpired: true };
+    }
+
+    // Check subscription status — deny resource creation for:
+    // CANCELLED (past effective date), PAUSED, or PAST_DUE
+    if (subscription.status === SubscriptionStatus.CANCELLED) {
+      const now = new Date();
+      if (
+        !subscription.cancelEffectiveAt ||
+        subscription.cancelEffectiveAt <= now
+      ) {
+        return {
+          allowed: false,
+          current: 0,
+          max: null,
+          subscriptionInactive: true,
+        };
+      }
+    }
+
+    if (
+      subscription.status === SubscriptionStatus.PAUSED ||
+      subscription.status === SubscriptionStatus.PAST_DUE
+    ) {
+      return {
+        allowed: false,
+        current: 0,
+        max: null,
+        subscriptionInactive: true,
+      };
+    }
+
+    const count = await this.countResourceTx(tx, tenantId, resource);
+    const max = this.getMax(subscription, resource);
+
+    // null max = unlimited → always allowed
+    if (max === null) {
+      return { allowed: true, current: count, max: null };
+    }
+
+    return { allowed: count < max, current: count, max };
   }
 
   /** Count active (non-deleted) resources for a tenant — usable outside transactions. */

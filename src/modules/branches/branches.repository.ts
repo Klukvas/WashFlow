@@ -66,9 +66,12 @@ export class BranchesRepository {
   async create(
     tenantId: string,
     data: { name: string; address?: string; phone?: string },
+    tx?: Prisma.TransactionClient,
   ) {
-    return this.db(tenantId).branch.create({
-      data: data as Prisma.BranchUncheckedCreateInput,
+    return (tx ?? this.db(tenantId)).branch.create({
+      data: (tx
+        ? { ...data, tenantId }
+        : data) as Prisma.BranchUncheckedCreateInput,
     });
   }
 
@@ -86,16 +89,24 @@ export class BranchesRepository {
     });
   }
 
-  async findByIdIncludeDeleted(tenantId: string, id: string) {
-    return this.db(tenantId).branch.findFirst({
-      where: { id, _includeDeleted: true } as Prisma.BranchWhereInput,
+  async findByIdIncludeDeleted(
+    tenantId: string,
+    id: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    return (tx ?? this.db(tenantId)).branch.findFirst({
+      where: (tx
+        ? { id, tenantId }
+        : { id, _includeDeleted: true }) as Prisma.BranchWhereInput,
       include: { workPosts: true },
     });
   }
 
-  async restore(tenantId: string, id: string) {
-    return this.db(tenantId).branch.update({
-      where: { id } as Prisma.BranchWhereUniqueInput,
+  async restore(tenantId: string, id: string, tx?: Prisma.TransactionClient) {
+    return (tx ?? this.db(tenantId)).branch.update({
+      where: (tx
+        ? { id, tenantId, deletedAt: { not: null } }
+        : { id }) as Prisma.BranchWhereUniqueInput,
       data: { deletedAt: null },
       include: { workPosts: true },
     });

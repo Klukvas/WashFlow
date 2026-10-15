@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ForbiddenException } from '@nestjs/common';
 import { SubscriptionLimitsService } from './subscription-limits.service';
@@ -14,6 +15,7 @@ describe('SubscriptionLimitsService', () => {
       findByTenantId: jest.fn().mockResolvedValue(null),
       findByTenantIdWithAddons: jest.fn().mockResolvedValue(null),
       checkLimitAtomic: jest.fn(),
+      withResourceLimit: jest.fn(),
       countUsers: jest.fn(),
       countBranches: jest.fn(),
       countWorkPosts: jest.fn(),
@@ -128,6 +130,40 @@ describe('SubscriptionLimitsService', () => {
         service.checkLimit(tenantId, 'users'),
       ).resolves.toBeUndefined();
     });
+  });
+
+  describe('withResourceLimit', () => {
+    const tx = {} as Prisma.TransactionClient;
+
+    it('returns the mutation result from inside the checked transaction', async () => {
+      repo.withResourceLimit.mockImplementation(
+        async (_tenantId, _resource, operation) =>
+          operation(tx, { allowed: true, current: 0, max: 1 }),
+      );
+      const operation = jest.fn().mockResolvedValue({ id: 'created' });
+      await expect(
+        service.withResourceLimit(tenantId, 'users', operation),
+      ).resolves.toEqual({ id: 'created' });
+      expect(operation).toHaveBeenCalledWith(tx);
+    });
+
+    it.each([
+      { allowed: false, current: 1, max: 1 },
+      { allowed: false, current: 0, max: null, trialExpired: true },
+      { allowed: false, current: 0, max: null, subscriptionInactive: true },
+    ])(
+      'never runs the mutation when the quota decision denies it: %p',
+      async (result) => {
+        repo.withResourceLimit.mockImplementation(
+          async (_tenantId, _resource, operation) => operation(tx, result),
+        );
+        const operation = jest.fn();
+        await expect(
+          service.withResourceLimit(tenantId, 'users', operation),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(operation).not.toHaveBeenCalled();
+      },
+    );
   });
 
   describe('getUsage', () => {

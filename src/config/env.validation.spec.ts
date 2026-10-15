@@ -11,7 +11,181 @@ const validEnv = {
   JWT_REFRESH_SECRET: 'b'.repeat(32),
 };
 
+const paddleCredentials = {
+  PADDLE_API_KEY: 'synthetic-api-key',
+  PADDLE_CLIENT_TOKEN: 'synthetic-client-token',
+  PADDLE_WEBHOOK_SECRET: 'synthetic-webhook-secret',
+};
+const paddleFields = [
+  'PADDLE_API_KEY',
+  'PADDLE_CLIENT_TOKEN',
+  'PADDLE_WEBHOOK_SECRET',
+] as const;
+
+const credentialCases = [
+  {
+    label: 'missing credentials',
+    credentials: {},
+    validWhenDisabled: true,
+    validWhenEnabled: false,
+  },
+  {
+    label: 'all credentials',
+    credentials: paddleCredentials,
+    validWhenDisabled: true,
+    validWhenEnabled: true,
+  },
+  {
+    label: 'all empty credentials',
+    credentials: {
+      PADDLE_API_KEY: '',
+      PADDLE_CLIENT_TOKEN: '',
+      PADDLE_WEBHOOK_SECRET: '',
+    },
+    validWhenDisabled: true,
+    validWhenEnabled: false,
+  },
+  {
+    label: 'all whitespace credentials',
+    credentials: {
+      PADDLE_API_KEY: '  ',
+      PADDLE_CLIENT_TOKEN: '\t',
+      PADDLE_WEBHOOK_SECRET: '\n',
+    },
+    validWhenDisabled: true,
+    validWhenEnabled: false,
+  },
+  ...paddleFields.flatMap((field) => [
+    {
+      label: `only ${field} provided`,
+      credentials: { [field]: paddleCredentials[field] },
+      validWhenDisabled: false,
+      validWhenEnabled: false,
+    },
+    ...[undefined, '', ' \t\n'].map((value) => ({
+      label: `${field} ${value === undefined ? 'missing' : value === '' ? 'empty' : 'whitespace'}`,
+      credentials: { ...paddleCredentials, [field]: value },
+      validWhenDisabled: false,
+      validWhenEnabled: false,
+    })),
+  ]),
+];
+
 describe('envSchema', () => {
+  describe('payment enablement', () => {
+    it('rejects enabled production payments without Paddle credentials', () => {
+      const result = envSchema.safeParse({
+        ...validEnv,
+        NODE_ENV: 'production',
+        PAYMENTS_ENABLED: 'true',
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects enabled payments with whitespace-only Paddle credentials', () => {
+      const result = envSchema.safeParse({
+        ...validEnv,
+        PAYMENTS_ENABLED: 'true',
+        PADDLE_API_KEY: '  ',
+        PADDLE_CLIENT_TOKEN: '\t',
+        PADDLE_WEBHOOK_SECRET: '\n',
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects partial credentials with a whitespace-only field when disabled', () => {
+      const result = envSchema.safeParse({
+        ...validEnv,
+        PAYMENTS_ENABLED: 'false',
+        PADDLE_API_KEY: 'synthetic-api-key',
+        PADDLE_CLIENT_TOKEN: 'synthetic-client-token',
+        PADDLE_WEBHOOK_SECRET: '  ',
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe.each(['development', 'production', 'test'])(
+    '%s payments',
+    (nodeEnv) => {
+      describe.each([
+        { label: 'default flag', flag: undefined, enabled: false },
+        { label: 'disabled flag', flag: 'false', enabled: false },
+        { label: 'enabled flag', flag: 'true', enabled: true },
+      ])('$label', ({ flag, enabled }) => {
+        it.each(credentialCases)(
+          '$label',
+          ({ credentials, validWhenDisabled, validWhenEnabled }) => {
+            const result = envSchema.safeParse({
+              ...validEnv,
+              ...credentials,
+              NODE_ENV: nodeEnv,
+              PAYMENTS_ENABLED: flag,
+            });
+
+            expect(result.success).toBe(
+              enabled ? validWhenEnabled : validWhenDisabled,
+            );
+            if (result.success) {
+              expect(result.data.PAYMENTS_ENABLED).toBe(enabled);
+            }
+          },
+        );
+      });
+    },
+  );
+
+  it.each(['', 'TRUE', 'FALSE', '1', '0', 'yes'])(
+    'rejects invalid PAYMENTS_ENABLED value %j',
+    (flag) => {
+      expect(
+        envSchema.safeParse({
+          ...validEnv,
+          ...paddleCredentials,
+          PAYMENTS_ENABLED: flag,
+        }).success,
+      ).toBe(false);
+    },
+  );
+
+  describe.each(['PADDLE_PRICE_IDS', 'PADDLE_ADDON_PRICE_IDS'] as const)(
+    '%s validation',
+    (field) => {
+      it.each([undefined, ''])('defaults %j to an empty mapping', (value) => {
+        expect(envSchema.parse({ ...validEnv, [field]: value })[field]).toEqual(
+          {},
+        );
+      });
+
+      it('accepts a JSON object with string values when payments are enabled', () => {
+        const result = envSchema.parse({
+          ...validEnv,
+          ...paddleCredentials,
+          PAYMENTS_ENABLED: 'true',
+          [field]: '{"synthetic_plan":"pri_synthetic"}',
+        });
+
+        expect(result[field]).toEqual({ synthetic_plan: 'pri_synthetic' });
+      });
+
+      it.each(['invalid-json', '[]', 'null', '"price"', '{"plan":42}'])(
+        'rejects invalid mapping %s even when payments are disabled',
+        (value) => {
+          expect(() =>
+            envSchema.parse({
+              ...validEnv,
+              PAYMENTS_ENABLED: 'false',
+              [field]: value,
+            }),
+          ).toThrow(field);
+        },
+      );
+    },
+  );
+
   // =========================================================================
   // Defaults
   // =========================================================================

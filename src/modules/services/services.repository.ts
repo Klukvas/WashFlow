@@ -47,9 +47,15 @@ export class ServicesRepository {
     return rows.map((s) => this.mapService(s));
   }
 
-  async create(tenantId: string, data: Record<string, unknown>) {
-    const row = await this.db(tenantId).service.create({
-      data: data as Prisma.ServiceUncheckedCreateInput,
+  async create(
+    tenantId: string,
+    data: Record<string, unknown>,
+    tx?: Prisma.TransactionClient,
+  ) {
+    const row = await (tx ?? this.db(tenantId)).service.create({
+      data: (tx
+        ? { ...data, tenantId }
+        : data) as Prisma.ServiceUncheckedCreateInput,
     });
     return this.mapService(row);
   }
@@ -70,16 +76,24 @@ export class ServicesRepository {
     return this.mapService(row);
   }
 
-  async findByIdIncludeDeleted(tenantId: string, id: string) {
-    const row = await this.db(tenantId).service.findFirst({
-      where: { id, _includeDeleted: true } as Prisma.ServiceWhereInput,
+  async findByIdIncludeDeleted(
+    tenantId: string,
+    id: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    const row = await (tx ?? this.db(tenantId)).service.findFirst({
+      where: (tx
+        ? { id, tenantId }
+        : { id, _includeDeleted: true }) as Prisma.ServiceWhereInput,
     });
     return row ? this.mapService(row) : row;
   }
 
-  async restore(tenantId: string, id: string) {
-    const row = await this.db(tenantId).service.update({
-      where: { id } as Prisma.ServiceWhereUniqueInput,
+  async restore(tenantId: string, id: string, tx?: Prisma.TransactionClient) {
+    const row = await (tx ?? this.db(tenantId)).service.update({
+      where: (tx
+        ? { id, tenantId, deletedAt: { not: null } }
+        : { id }) as Prisma.ServiceWhereUniqueInput,
       data: { deletedAt: null },
     });
     return this.mapService(row);

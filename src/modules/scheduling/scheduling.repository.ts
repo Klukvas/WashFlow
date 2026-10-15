@@ -10,6 +10,19 @@ export class SchedulingRepository {
     private readonly tenantPrisma: TenantPrismaService,
   ) {}
 
+  /** Lock the stable resource even when no overlapping orders exist yet. */
+  async lockWorkPost(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    workPostId: string,
+  ): Promise<void> {
+    await tx.$queryRaw`
+      SELECT id FROM work_posts
+      WHERE id = ${workPostId} AND "tenantId" = ${tenantId}
+      FOR UPDATE
+    `;
+  }
+
   /**
    * Row-level lock on overlapping orders for a work post.
    * Must be called within an interactive transaction.

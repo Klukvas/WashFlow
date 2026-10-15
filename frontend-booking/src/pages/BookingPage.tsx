@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useBookingSelection } from '@/utils/booking-selection';
 import {
   Check,
   CalendarPlus,
@@ -14,11 +15,10 @@ import {
   Calendar,
   User,
 } from 'lucide-react';
-import type { Order } from '@/types/models';
+import type { BookingConfirmation } from '@/types/models';
 import {
   usePublicServices,
   usePublicBranches,
-  usePublicAvailability,
   useCreateBooking,
 } from '@/hooks/usePublicBooking';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card';
@@ -52,7 +52,8 @@ export function BookingPage() {
   const formId = useId();
   const [step, setStep] = useState(0);
   const [selectedDate, setSelectedDate] = useState('');
-  const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
+  const [confirmedOrder, setConfirmedOrder] =
+    useState<BookingConfirmation | null>(null);
 
   const {
     data: branches,
@@ -72,6 +73,7 @@ export function BookingPage() {
     watch,
     trigger,
     handleSubmit,
+    getValues,
     formState: { errors },
   } = useForm<BookingForm>({
     resolver: zodResolver(bookingSchema),
@@ -81,6 +83,7 @@ export function BookingPage() {
 
   const branchId = watch('branchId');
   const selectedServiceIds = watch('serviceIds');
+  const scheduledStart = watch('scheduledStart');
   const hasSingleBranch = branches && branches.length === 1;
 
   // Auto-select branch if only one exists
@@ -98,11 +101,21 @@ export function BookingPage() {
     .filter((s) => selectedServiceIds.includes(s.id))
     .reduce((sum, s) => sum + Number(s.price), 0);
 
-  const { data: rawSlots, isFetching: slotsFetching } = usePublicAvailability({
-    branchId,
-    date: selectedDate,
-    durationMinutes: totalDuration || undefined,
+  const { hasSelectedSlot, clearSelectedSlot, selectSlot, hasCurrentSelection, rawSlots, slotsFetching } = useBookingSelection({
+    tenant: 'widget', date: selectedDate, services: services ?? [],
+    durationMinutes: totalDuration || undefined, getValues,
+    setScheduledStart: (start) => setValue('scheduledStart', start, { shouldValidate: true }),
   });
+
+  function selectDate(date: string) {
+    if (date !== selectedDate) clearSelectedSlot();
+    setSelectedDate(date);
+  }
+
+  function proceedWithSlot(nextStep: number) {
+    if (hasCurrentSelection()) setStep(nextStep);
+    else { clearSelectedSlot(); setStep(0); }
+  }
 
   // Recompute `now` each time rawSlots or selectedDate changes
   // to avoid showing already-past slots as available
@@ -127,6 +140,7 @@ export function BookingPage() {
   }, [rawSlots, selectedDate]);
 
   function toggleService(id: string) {
+    clearSelectedSlot();
     const current = selectedServiceIds;
     setValue(
       'serviceIds',
@@ -136,6 +150,11 @@ export function BookingPage() {
   }
 
   const onSubmit = (data: BookingForm) => {
+    if (!hasCurrentSelection(data)) {
+      clearSelectedSlot();
+      setStep(0);
+      return;
+    }
     book(
       {
         ...data,
@@ -335,12 +354,16 @@ export function BookingPage() {
 
   const fieldId = (name: string) => `${formId}-${name}`;
 
-  const canProceedStep0 =
-    !!branchId && selectedServiceIds.length > 0 && !!watch('scheduledStart');
-
   return (
     <div>
       <h1 className="mb-6 text-2xl font-bold">{t('title')}</h1>
+
+      {step >= 1 && !hasSelectedSlot && (
+        <div role="alert" className="mb-4 rounded-md bg-muted p-4">
+          <p>{t('selectTimeAgain')}</p>
+          <Button variant="outline" onClick={() => setStep(0)}>{t('chooseDateAndTime')}</Button>
+        </div>
+      )}
 
       {/* Progress bar */}
       <div className="mb-8">
@@ -402,11 +425,12 @@ export function BookingPage() {
                   }))}
                   placeholder={t('chooseLocation')}
                   value={branchId ?? ''}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    clearSelectedSlot();
                     setValue('branchId', e.target.value, {
                       shouldValidate: true,
-                    })
-                  }
+                    });
+                  }}
                 />
               </CardContent>
             </Card>
@@ -494,7 +518,7 @@ export function BookingPage() {
               </CardHeader>
               <CalendarGrid
                 value={selectedDate}
-                onChange={setSelectedDate}
+                onChange={selectDate}
                 min={new Date().toISOString().split('T')[0]}
                 className="mx-auto border-0 p-0"
               />
@@ -517,18 +541,14 @@ export function BookingPage() {
                       key={slot.start}
                       type="button"
                       role="radio"
-                      aria-checked={watch('scheduledStart') === slot.start}
+                      aria-checked={hasSelectedSlot && scheduledStart === slot.start}
                       className={cn(
                         'min-h-[44px] rounded-md border px-3 py-2.5 text-center text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                        watch('scheduledStart') === slot.start
+                        hasSelectedSlot && scheduledStart === slot.start
                           ? 'border-primary bg-primary text-primary-foreground font-semibold'
                           : 'border-input',
                       )}
-                      onClick={() =>
-                        setValue('scheduledStart', slot.start, {
-                          shouldValidate: true,
-                        })
-                      }
+                      onClick={() => selectSlot(slot.start)}
                     >
                       {formatTime(slot.start)}
                     </button>
@@ -554,8 +574,8 @@ export function BookingPage() {
 
           {/* Continue */}
           <Button
-            onClick={() => setStep(1)}
-            disabled={!canProceedStep0}
+            onClick={() => proceedWithSlot(1)}
+            disabled={!branchId || !hasSelectedSlot}
             className="w-full"
             size="lg"
           >
@@ -685,7 +705,7 @@ export function BookingPage() {
                     'phone',
                     'licensePlate',
                   ]);
-                  if (valid) setStep(2);
+                  if (valid) proceedWithSlot(2);
                 }}
                 className="flex-1"
               >
@@ -716,8 +736,8 @@ export function BookingPage() {
                 </span>
                 <span className="font-medium">
                   {selectedDate} {t('at')}{' '}
-                  {watch('scheduledStart')
-                    ? formatTime(watch('scheduledStart'))
+                  {scheduledStart
+                    ? formatTime(scheduledStart)
                     : ''}
                 </span>
               </div>
@@ -765,6 +785,7 @@ export function BookingPage() {
               </Button>
               <Button
                 onClick={handleSubmit(onSubmit)}
+                disabled={!hasSelectedSlot}
                 loading={isPending}
                 className="flex-1"
               >

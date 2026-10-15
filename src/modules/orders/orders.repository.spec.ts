@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Prisma } from '@prisma/client';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { OrdersRepository } from './orders.repository';
 
@@ -34,6 +35,49 @@ describe('OrdersRepository', () => {
 
   it('should be defined', () => {
     expect(repo).toBeDefined();
+  });
+
+  describe('restoreInTransaction', () => {
+    it.each([true, false])(
+      'restores with scoped deleted-state update and includeRelations=%s',
+      async (includeRelations) => {
+        const update = jest
+          .fn()
+          .mockResolvedValue({ id: 'order-1', deletedAt: null });
+        const tx = { order: { update } } as unknown as Prisma.TransactionClient;
+        await repo.restoreInTransaction(
+          tx,
+          'tenant-1',
+          'order-1',
+          'branch-1',
+          includeRelations,
+        );
+        expect(update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: {
+              id: 'order-1',
+              tenantId: 'tenant-1',
+              branchId: 'branch-1',
+              deletedAt: { not: null },
+            },
+            data: { deletedAt: null },
+          }),
+        );
+        const [args] = update.mock.calls[0] as [
+          { include?: Record<string, unknown> },
+        ];
+        if (includeRelations) {
+          expect(args.include).toMatchObject({
+            client: true,
+            vehicle: true,
+            branch: true,
+            workPost: true,
+          });
+        } else {
+          expect(args).not.toHaveProperty('include');
+        }
+      },
+    );
   });
 
   describe('defaultInclude — order response shape', () => {

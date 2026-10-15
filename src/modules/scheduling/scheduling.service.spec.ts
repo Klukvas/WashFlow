@@ -30,6 +30,7 @@ describe('SchedulingService', () => {
         {
           provide: SchedulingRepository,
           useValue: {
+            lockWorkPost: jest.fn().mockResolvedValue(undefined),
             lockOverlappingSlots: jest.fn().mockResolvedValue([]),
             countOverlapping: jest.fn().mockResolvedValue(0),
             findOrdersInRange: jest.fn().mockResolvedValue([]),
@@ -95,6 +96,20 @@ describe('SchedulingService', () => {
 
       expect(schedulingRepo.lockOverlappingSlots).toHaveBeenCalled();
       expect(schedulingRepo.countOverlapping).toHaveBeenCalled();
+    });
+
+    it('locks the stable post before inspecting overlapping orders', async () => {
+      await service.reserveSlot(mockTx, baseParams);
+      expect(schedulingRepo.lockWorkPost).toHaveBeenCalledWith(
+        mockTx,
+        baseParams.tenantId,
+        baseParams.workPostId,
+      );
+      expect(
+        schedulingRepo.lockWorkPost.mock.invocationCallOrder[0],
+      ).toBeLessThan(
+        schedulingRepo.lockOverlappingSlots.mock.invocationCallOrder[0],
+      );
     });
 
     it('should throw ConflictException when slot overlaps', async () => {
@@ -318,6 +333,52 @@ describe('SchedulingService', () => {
       prisma.bookingSettings.findUnique.mockResolvedValue(mockSettings);
       schedulingRepo.findOrdersForWorkPostsInRange.mockResolvedValue([]);
     });
+
+    it.each(['user', 'branch'] as const)(
+      'does not advertise workforce capacity from an inactive %s',
+      async (inactiveRelation) => {
+        mockWorkPostFindMany.mockResolvedValue([{ id: 'wp-1', name: 'Bay 1' }]);
+        workforceRepo.countProfilesForBranch.mockResolvedValue(1);
+        const candidate = {
+          id: 'employee-1',
+          workStartTime: '08:00',
+          workEndTime: '09:00',
+          user: { isActive: true },
+          branch: { isActive: true },
+          [inactiveRelation]: { isActive: false },
+        };
+        mockEmployeeProfileFindMany.mockImplementation(
+          ({
+            where,
+          }: {
+            where: {
+              user: { isActive?: boolean };
+              branch: { isActive?: boolean };
+            };
+          }) =>
+            Promise.resolve(
+              [candidate].filter(
+                (item) =>
+                  (where.user.isActive === undefined ||
+                    item.user.isActive === where.user.isActive) &&
+                  (where.branch.isActive === undefined ||
+                    item.branch.isActive === where.branch.isActive),
+              ),
+            ),
+        );
+        mockOrderFindMany.mockResolvedValue([]);
+
+        const slots = await service.checkAvailability({
+          tenantId,
+          branchId,
+          date,
+          durationMinutes: 30,
+        });
+
+        expect(slots).toHaveLength(2);
+        expect(slots.every((slot) => !slot.available)).toBe(true);
+      },
+    );
 
     it('should use a specified workPostId instead of fetching all posts', async () => {
       const workPostId = 'wp-explicit';
@@ -726,6 +787,41 @@ describe('SchedulingService', () => {
       expect(slots[0].start.toISOString()).toBe('2026-06-15T10:00:00.000Z');
       expect(slots[1].start.toISOString()).toBe('2026-06-15T11:00:00.000Z');
     });
+
+    it.each([
+      ['03:45', false],
+      ['04:00', true],
+    ])(
+      'requires full rollback coverage for a shift ending %s',
+      async (workEndTime, expected) => {
+        tenantPrisma
+          .forTenant(tenantId)
+          .branch.findUnique.mockResolvedValue({ timezone: 'Europe/Kyiv' });
+        prisma.bookingSettings.findUnique.mockResolvedValue({
+          ...mockSettings,
+          workingHoursStart: '00:00',
+          workingHoursEnd: '06:00',
+        });
+        workforceRepo.countProfilesForBranch.mockResolvedValue(1);
+        mockWorkPostFindMany.mockResolvedValue([{ id: 'wp-1', name: 'Bay 1' }]);
+        mockEmployeeProfileFindMany.mockResolvedValue([
+          { id: 'emp-1', workStartTime: '03:00', workEndTime },
+        ]);
+        mockOrderFindMany.mockResolvedValue([]);
+
+        const slots = await service.checkAvailability({
+          ...baseParams,
+          date: new Date('2026-10-25T00:00:00Z'),
+          durationMinutes: 90,
+        });
+        const rollbackSlot = slots.find(
+          (slot) => slot.start.toISOString() === '2026-10-25T00:00:00.000Z',
+        );
+
+        expect(rollbackSlot).toBeDefined();
+        expect(rollbackSlot?.available).toBe(expected);
+      },
+    );
 
     it('should offset slots for Europe/Kyiv timezone (UTC+3 in summer)', async () => {
       mockWorkPostFindMany.mockResolvedValue([{ id: 'wp-1', name: 'Bay 1' }]);

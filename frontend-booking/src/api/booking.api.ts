@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { TENANT_ID } from '@/config/tenant';
 import type { ApiResponse, TimeSlot } from '@/types/api';
-import type { Service, Branch, Order } from '@/types/models';
+import type { Service, Branch, BookingConfirmation } from '@/types/models';
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
 
@@ -57,8 +57,8 @@ export async function fetchAvailability(
 
 export async function createBooking(
   payload: CreateBookingPayload,
-): Promise<Order> {
-  const { data } = await widgetClient.post<ApiResponse<Order>>(
+): Promise<BookingConfirmation> {
+  const { data } = await widgetClient.post<ApiResponse<BookingConfirmation>>(
     '/book',
     payload,
     {

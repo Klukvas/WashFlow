@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   NotFoundException,
@@ -8,6 +9,8 @@ import { WorkPostsService } from './work-posts.service';
 import { WorkPostsRepository } from './work-posts.repository';
 import { SubscriptionLimitsService } from '../subscriptions/subscription-limits.service';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
+
+const quotaTx = {} as Prisma.TransactionClient;
 
 describe('WorkPostsService', () => {
   let service: WorkPostsService;
@@ -38,6 +41,7 @@ describe('WorkPostsService', () => {
       findAll: jest.fn().mockResolvedValue([mockWorkPost]),
       findById: jest.fn().mockResolvedValue(mockWorkPost),
       findByIdIncludeDeleted: jest.fn().mockResolvedValue(mockDeletedWorkPost),
+      findActiveBranch: jest.fn().mockResolvedValue({ id: branchId }),
       create: jest.fn().mockResolvedValue(mockWorkPost),
       update: jest.fn().mockResolvedValue(mockWorkPost),
       softDelete: jest.fn().mockResolvedValue(mockWorkPost),
@@ -51,7 +55,15 @@ describe('WorkPostsService', () => {
         {
           provide: SubscriptionLimitsService,
           useValue: {
-            checkLimit: jest.fn().mockResolvedValue(undefined),
+            withResourceLimit: jest
+              .fn()
+              .mockImplementation(
+                async (
+                  _tenantId: string,
+                  _resource: string,
+                  operation: (tx: Prisma.TransactionClient) => Promise<unknown>,
+                ) => operation(quotaTx),
+              ),
             getUsage: jest.fn(),
           },
         },
@@ -137,28 +149,40 @@ describe('WorkPostsService', () => {
 
     it('should create and return a work post when userBranchId is null', async () => {
       const result = await service.create(tenantId, createDto, null);
-      expect(repo.create).toHaveBeenCalledWith(tenantId, {
-        name: createDto.name,
-        branchId: createDto.branchId,
-      });
+      expect(repo.create).toHaveBeenCalledWith(
+        tenantId,
+        {
+          name: createDto.name,
+          branchId: createDto.branchId,
+        },
+        quotaTx,
+      );
       expect(result).toEqual(mockWorkPost);
     });
 
     it('should create work post when userBranchId matches dto.branchId', async () => {
       const result = await service.create(tenantId, createDto, branchId);
-      expect(repo.create).toHaveBeenCalledWith(tenantId, {
-        name: createDto.name,
-        branchId: createDto.branchId,
-      });
+      expect(repo.create).toHaveBeenCalledWith(
+        tenantId,
+        {
+          name: createDto.name,
+          branchId: createDto.branchId,
+        },
+        quotaTx,
+      );
       expect(result).toEqual(mockWorkPost);
     });
 
     it('should default userBranchId to null and allow creation', async () => {
       await service.create(tenantId, createDto);
-      expect(repo.create).toHaveBeenCalledWith(tenantId, {
-        name: createDto.name,
-        branchId: createDto.branchId,
-      });
+      expect(repo.create).toHaveBeenCalledWith(
+        tenantId,
+        {
+          name: createDto.name,
+          branchId: createDto.branchId,
+        },
+        quotaTx,
+      );
     });
 
     it('should throw BadRequestException when userBranchId does not match dto.branchId', async () => {
@@ -182,10 +206,14 @@ describe('WorkPostsService', () => {
 
     it('should pass only name and branchId to the repository', async () => {
       await service.create(tenantId, { ...createDto, extra: 'field' } as any);
-      expect(repo.create).toHaveBeenCalledWith(tenantId, {
-        name: createDto.name,
-        branchId: createDto.branchId,
-      });
+      expect(repo.create).toHaveBeenCalledWith(
+        tenantId,
+        {
+          name: createDto.name,
+          branchId: createDto.branchId,
+        },
+        quotaTx,
+      );
     });
   });
 
@@ -287,7 +315,7 @@ describe('WorkPostsService', () => {
   describe('restore', () => {
     it('should restore the work post when userBranchId is null', async () => {
       const result = await service.restore(tenantId, workPostId, null);
-      expect(repo.restore).toHaveBeenCalledWith(tenantId, workPostId);
+      expect(repo.restore).toHaveBeenCalledWith(tenantId, workPostId, quotaTx);
       expect(result).toEqual(mockWorkPost);
     });
 
@@ -298,7 +326,7 @@ describe('WorkPostsService', () => {
 
     it('should default userBranchId to null', async () => {
       await service.restore(tenantId, workPostId);
-      expect(repo.restore).toHaveBeenCalledWith(tenantId, workPostId);
+      expect(repo.restore).toHaveBeenCalledWith(tenantId, workPostId, quotaTx);
     });
 
     it('should throw NotFoundException when work post is not found', async () => {

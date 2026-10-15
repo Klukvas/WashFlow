@@ -146,8 +146,14 @@ jobs:
   backend-e2e:
     name: Backend E2E Tests
     runs-on: ubuntu-latest
-    if: ${{ !inputs.skip_e2e }}
-    needs: [backend-lint, backend-test]
+    # Override implicit success() only for unit jobs deliberately skipped by input.
+    if: |
+      always() && !cancelled() && !inputs.skip_e2e &&
+      needs.backend-lint.result == 'success' &&
+      needs.frontend-lint.result == 'success' &&
+      (needs.backend-test.result == 'success' ||
+        (inputs.skip_unit_tests && needs.backend-test.result == 'skipped'))
+    needs: [backend-lint, frontend-lint, backend-test]
     services:
       postgres:
         image: postgres:16-alpine
@@ -183,6 +189,11 @@ jobs:
       RESEND_API_KEY: ''
       FRONTEND_URL: 'http://localhost:5173'
       PAYMENTS_ENABLED: 'true'
+      # Synthetic sandbox credentials keep payment UI/guard coverage enabled.
+      PADDLE_API_KEY: 'ci-synthetic-paddle-api-key'
+      PADDLE_CLIENT_TOKEN: 'ci-synthetic-paddle-client-token'
+      PADDLE_WEBHOOK_SECRET: 'ci-synthetic-paddle-webhook-secret'
+      PADDLE_SANDBOX: 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -212,7 +223,14 @@ jobs:
   frontend-e2e:
     name: Frontend E2E Tests
     runs-on: ubuntu-latest
-    if: ${{ !inputs.skip_e2e }}
+    if: |
+      always() && !cancelled() && !inputs.skip_e2e &&
+      needs.backend-lint.result == 'success' &&
+      needs.frontend-lint.result == 'success' &&
+      (needs.backend-test.result == 'success' ||
+        (inputs.skip_unit_tests && needs.backend-test.result == 'skipped')) &&
+      (needs.frontend-test.result == 'success' ||
+        (inputs.skip_unit_tests && needs.frontend-test.result == 'skipped'))
     needs: [backend-lint, frontend-lint, backend-test, frontend-test]
     services:
       postgres:
@@ -250,6 +268,11 @@ jobs:
       RESEND_API_KEY: ''
       FRONTEND_URL: 'http://localhost:5173'
       PAYMENTS_ENABLED: 'true'
+      # Synthetic sandbox credentials keep payment UI/guard coverage enabled.
+      PADDLE_API_KEY: 'ci-synthetic-paddle-api-key'
+      PADDLE_CLIENT_TOKEN: 'ci-synthetic-paddle-client-token'
+      PADDLE_WEBHOOK_SECRET: 'ci-synthetic-paddle-webhook-secret'
+      PADDLE_SANDBOX: 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -336,11 +359,25 @@ jobs:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
     if: |
-      always() &&
+      always() && !cancelled() &&
       github.ref == 'refs/heads/main' &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled')
-    needs: [backend-lint, frontend-lint, backend-test, frontend-test, backend-e2e, frontend-e2e]
+      needs.backend-lint.result == 'success' &&
+      needs.frontend-lint.result == 'success' &&
+      (needs.backend-test.result == 'success' ||
+        (inputs.skip_unit_tests && needs.backend-test.result == 'skipped')) &&
+      (needs.frontend-test.result == 'success' ||
+        (inputs.skip_unit_tests && needs.frontend-test.result == 'skipped')) &&
+      (needs.backend-e2e.result == 'success' ||
+        (inputs.skip_e2e && needs.backend-e2e.result == 'skipped')) &&
+      (needs.frontend-e2e.result == 'success' ||
+        (inputs.skip_e2e && needs.frontend-e2e.result == 'skipped'))
+    needs:
+      - backend-lint
+      - frontend-lint
+      - backend-test
+      - frontend-test
+      - backend-e2e
+      - frontend-e2e
     outputs:
       image_tag: ${{ steps.meta.outputs.version }}
     steps:
@@ -431,9 +468,11 @@ jobs:
           PADDLE_API_KEY: ${{ secrets.PADDLE_API_KEY }}
           PADDLE_CLIENT_TOKEN: ${{ secrets.PADDLE_CLIENT_TOKEN }}
           PADDLE_WEBHOOK_SECRET: ${{ secrets.PADDLE_WEBHOOK_SECRET }}
+          PAYMENTS_ENABLED: ${{ vars.PAYMENTS_ENABLED || 'false' }}
           PADDLE_PRICE_IDS: ${{ secrets.PADDLE_PRICE_IDS }}
           PADDLE_ADDON_PRICE_IDS: ${{ secrets.PADDLE_ADDON_PRICE_IDS }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          METRICS_TOKEN: ${{ secrets.METRICS_TOKEN }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           GRAFANA_LOKI_HOST: ${{ secrets.GRAFANA_LOKI_HOST }}
           GRAFANA_LOKI_USERNAME: ${{ secrets.GRAFANA_LOKI_USERNAME }}
@@ -458,9 +497,11 @@ jobs:
             printf 'PADDLE_API_KEY=%s\n' "$PADDLE_API_KEY"
             printf 'PADDLE_CLIENT_TOKEN=%s\n' "$PADDLE_CLIENT_TOKEN"
             printf 'PADDLE_WEBHOOK_SECRET=%s\n' "$PADDLE_WEBHOOK_SECRET"
+            printf 'PAYMENTS_ENABLED=%s\n' "$PAYMENTS_ENABLED"
             printf 'PADDLE_PRICE_IDS=%s\n' "$PADDLE_PRICE_IDS"
             printf 'PADDLE_ADDON_PRICE_IDS=%s\n' "$PADDLE_ADDON_PRICE_IDS"
             printf 'SENTRY_DSN=%s\n' "$SENTRY_DSN"
+            printf 'METRICS_TOKEN=%s\n' "$METRICS_TOKEN"
             printf 'VITE_SENTRY_DSN=%s\n' "$VITE_SENTRY_DSN"
             printf 'GRAFANA_LOKI_HOST=%s\n' "$GRAFANA_LOKI_HOST"
             printf 'GRAFANA_LOKI_USERNAME=%s\n' "$GRAFANA_LOKI_USERNAME"

@@ -1,4 +1,4 @@
-import { PrismaService } from '../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 
 export interface ResolvedBookingSettings {
   slotDurationMinutes: number;
@@ -28,7 +28,7 @@ const DEFAULTS: ResolvedBookingSettings = {
  * 3. Hardcoded defaults
  */
 export async function resolveBookingSettings(
-  prisma: PrismaService,
+  prisma: Pick<Prisma.TransactionClient, 'bookingSettings'>,
   tenantId: string,
   branchId?: string | null,
 ): Promise<ResolvedBookingSettings> {

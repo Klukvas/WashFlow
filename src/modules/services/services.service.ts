@@ -30,8 +30,9 @@ export class ServicesService {
   }
 
   async create(tenantId: string, dto: CreateServiceDto) {
-    await this.limits.checkLimit(tenantId, 'services');
-    return this.servicesRepo.create(tenantId, { ...dto });
+    return this.limits.withResourceLimit(tenantId, 'services', (tx) =>
+      this.servicesRepo.create(tenantId, { ...dto }, tx),
+    );
   }
 
   async update(tenantId: string, id: string, dto: UpdateServiceDto) {
@@ -48,14 +49,16 @@ export class ServicesService {
   }
 
   async restore(tenantId: string, id: string) {
-    const service = await this.servicesRepo.findByIdIncludeDeleted(
-      tenantId,
-      id,
-    );
-    if (!service) throw new NotFoundException('Service not found');
-    if (!service.deletedAt)
-      throw new BadRequestException('Service is not deleted');
-    await this.limits.checkLimit(tenantId, 'services');
-    return this.servicesRepo.restore(tenantId, id);
+    return this.limits.withResourceLimit(tenantId, 'services', async (tx) => {
+      const service = await this.servicesRepo.findByIdIncludeDeleted(
+        tenantId,
+        id,
+        tx,
+      );
+      if (!service) throw new NotFoundException('Service not found');
+      if (!service.deletedAt)
+        throw new BadRequestException('Service is not deleted');
+      return this.servicesRepo.restore(tenantId, id, tx);
+    });
   }
 }

@@ -258,7 +258,15 @@ describe('PublicBookingService', () => {
   describe('createBooking', () => {
     const mockClient = { id: 'client-1', phone: '+1234567890' };
     const mockVehicle = { id: 'vehicle-1', licensePlate: 'ABC123' };
-    const mockOrder = { id: 'order-1' };
+    const mockOrder = {
+      id: 'order-1',
+      branchId: 'branch-1',
+      scheduledStart: new Date(baseBookingDto.scheduledStart),
+      scheduledEnd: new Date('2026-03-01T10:30:00Z'),
+      totalPrice: 50,
+      branch: { id: 'branch-1', name: 'Main', address: null, phone: null },
+      services: [],
+    };
 
     beforeEach(() => {
       tenantsRepo.findBySlug.mockResolvedValue(activeTenant);
@@ -303,7 +311,7 @@ describe('PublicBookingService', () => {
 
       const result = await service.createBooking('clean-wash', baseBookingDto);
 
-      expect(result).toBe(mockOrder);
+      expect(result).toMatchObject({ id: mockOrder.id });
     });
 
     it('should not call ordersService when booking is disabled', async () => {
@@ -507,12 +515,12 @@ describe('PublicBookingService', () => {
       });
     });
 
-    it('should return the result from ordersService.create', async () => {
+    it('should return confirmation details from ordersService.create', async () => {
       ordersService.create.mockResolvedValue(mockOrder);
 
       const result = await service.createBooking('clean-wash', baseBookingDto);
 
-      expect(result).toBe(mockOrder);
+      expect(result).toMatchObject({ id: mockOrder.id });
     });
   });
 
@@ -598,7 +606,15 @@ describe('PublicBookingService', () => {
   describe('createBookingByTenantId', () => {
     const mockClient = { id: 'client-1', phone: '+1234567890' };
     const mockVehicle = { id: 'vehicle-1', licensePlate: 'ABC123' };
-    const mockOrder = { id: 'order-1' };
+    const mockOrder = {
+      id: 'order-1',
+      branchId: 'branch-1',
+      scheduledStart: new Date(baseBookingDto.scheduledStart),
+      scheduledEnd: new Date('2026-03-01T10:30:00Z'),
+      totalPrice: 50,
+      branch: { id: 'branch-1', name: 'Main', address: null, phone: null },
+      services: [],
+    };
 
     beforeEach(() => {
       tenantsRepo.findById.mockResolvedValue(activeTenant);
@@ -623,7 +639,7 @@ describe('PublicBookingService', () => {
         null,
         undefined,
       );
-      expect(result).toBe(mockOrder);
+      expect(result).toMatchObject({ id: mockOrder.id });
     });
 
     it('should pass idempotency key through', async () => {

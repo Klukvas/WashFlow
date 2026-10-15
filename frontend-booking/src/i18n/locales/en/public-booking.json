@@ -1,4 +1,5 @@
 {
+  "selectTimeAgain": "Availability has changed. Please choose an available time again.",
   "title": "Book an Appointment",
   "confirmedTitle": "Booking Confirmed!",
   "confirmedMessage": "Your appointment has been submitted. You will receive a confirmation shortly.",

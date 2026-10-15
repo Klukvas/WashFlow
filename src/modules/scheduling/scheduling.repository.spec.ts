@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Prisma } from '@prisma/client';
 import { SchedulingRepository } from './scheduling.repository';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
@@ -51,6 +52,27 @@ describe('SchedulingRepository', () => {
     }).compile();
 
     repo = module.get<SchedulingRepository>(SchedulingRepository);
+  });
+
+  describe('lockWorkPost', () => {
+    it('locks a tenant-scoped stable resource even without existing orders', async () => {
+      mockTx.$queryRaw.mockResolvedValue([]);
+      await repo.lockWorkPost(
+        mockTx as unknown as Prisma.TransactionClient,
+        tenantId,
+        workPostId,
+      );
+      const [parts, ...parameters] = mockTx.$queryRaw.mock.calls[0] as [
+        TemplateStringsArray,
+        ...unknown[],
+      ];
+      const sql = parts.join('?');
+      expect(sql).toContain('FROM work_posts');
+      expect(sql).toContain('"tenantId" = ?');
+      expect(sql).toContain('FOR UPDATE');
+      expect(sql).not.toContain('FROM orders');
+      expect(parameters).toEqual([workPostId, tenantId]);
+    });
   });
 
   describe('lockOverlappingSlots', () => {

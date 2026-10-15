@@ -1,35 +1,48 @@
 # Contributing to WashFlow
 
+Practical guide for setting up, testing, reviewing and shipping WashFlow.
+
+> **Working on the code?** Read [`context/README.md`](context/README.md) first — it is the
+> canonical entry point and links to architecture, modules, data model, frontend and
+> infrastructure documentation. This file covers _workflow_; those cover _the system_.
+
+---
+
 ## Prerequisites
 
 - **Node.js** 20+
-- **pnpm** (enabled via corepack: `corepack enable`)
-- **Docker** & **Docker Compose** (for local infrastructure)
-- **PostgreSQL** 16 (or use Docker)
-- **Redis** 7 (or use Docker)
+- **pnpm** 9 (`corepack enable`)
+- **Docker** & **Docker Compose**
+- **PostgreSQL** 16 and **Redis** 7 (or use `docker-compose.dev.yml`)
 
-## Development Environment Setup
+---
+
+## Development environment
 
 ### 1. Install dependencies
 
-```bash
-# Backend
-pnpm install
+Three independent workspaces, three lockfiles. Never mix package managers.
 
-# Frontend
-cd frontend && pnpm install
+```bash
+pnpm install                                   # backend (root)
+cd frontend && pnpm install && cd ..           # operator dashboard
+cd frontend-booking && pnpm install && cd ..   # booking widget (optional)
 ```
 
 ### 2. Start infrastructure
 
 ```bash
-# Spin up PostgreSQL + Redis for local development
 docker compose -f docker-compose.dev.yml up -d
 ```
 
 This starts:
-- PostgreSQL on `localhost:5432` (db: `washflow_dev`, user: `postgres`, password: `postgres`)
-- Redis on `localhost:6379`
+
+- **PostgreSQL 16** on host port **5433** (container 5432) — database, user and password come
+  from `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD`, defaulting to
+  `washflow` / `washflow` / `washflow_secret`. Volume `postgres_dev`.
+- **Redis 7** on port **6379**, no password, no volume.
+
+Your `DATABASE_URL` must therefore point at port **5433**, not 5432.
 
 ### 3. Configure environment
 
@@ -37,231 +50,282 @@ This starts:
 cp .env.example .env
 ```
 
-Edit `.env` — see the [Environment Variables](#environment-variables) section below.
+Fill in `DATABASE_URL`, `REDIS_URL`, `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` (both at least
+32 characters). Payments default to disabled, including production Compose. Enable
+`PAYMENTS_ENABLED=true` only with all three nonblank Paddle credentials (`PADDLE_API_KEY`,
+`PADDLE_CLIENT_TOKEN`, `PADDLE_WEBHOOK_SECRET`); enabled validation applies in every environment.
+`PAYMENTS_ENABLED` accepts only `true` or `false`, and partial credential sets are rejected.
+
+**Set `PORT=3003`.** The backend defaults to `3000`, but `frontend/vite.config.ts` and
+`frontend-booking/vite.config.ts` proxy `/api` (and `/socket.io`) to `http://localhost:3003`, and
+the CI Playwright job starts the backend on 3003 too.
+
+The full variable reference lives in
+[`context/infrastructure.md`](context/infrastructure.md#3-environment-variables) — it is
+maintained in one place so it cannot drift. Never commit real values; `.env` and `.env.docker`
+are gitignored.
 
 ### 4. Set up the database
 
 ```bash
-# Run migrations
-npx prisma migrate dev
-
-# Seed with initial data
-pnpm seed
+npx prisma generate
+npx prisma migrate dev      # or `migrate deploy` if you are not changing the schema
+pnpm seed                   # optional demo data (idempotent)
 ```
 
-### 5. Start the development servers
+### 5. Run
 
 ```bash
-# Backend (with hot reload) — from project root
-pnpm start:dev
-
-# Frontend (from frontend/ directory)
-cd frontend && pnpm dev
+pnpm start:dev                     # backend  → http://localhost:3003 (with PORT=3003)
+cd frontend && pnpm dev            # dashboard → http://localhost:5173
+cd frontend-booking && pnpm dev    # widget    → http://localhost:5174
 ```
 
-The backend listens on `http://localhost:3000` and the frontend dev server on `http://localhost:5173` (Vite default).
+Run dev servers in tmux so logs stay accessible:
+
+```bash
+tmux new -s dev 'pnpm start:dev'
+tmux attach -t dev
+```
+
+Swagger UI is available at `http://localhost:<PORT>/api/docs` whenever
+`NODE_ENV !== 'production'`.
 
 ---
 
-## Available Scripts
+## Available scripts
 
-<!-- AUTO-GENERATED -->
 ### Backend (project root)
 
-| Command | Description |
-|---------|-------------|
-| `pnpm build` | Compile TypeScript with `nest build` |
-| `pnpm start` | Start compiled server |
-| `pnpm start:dev` | Start with hot reload (watch mode) |
-| `pnpm start:debug` | Start with hot reload + Node.js inspector |
-| `pnpm start:prod` | Run production build from `dist/` |
-| `pnpm format` | Auto-format all `src/**/*.ts` and `test/**/*.ts` files with Prettier |
-| `pnpm lint` | Lint and auto-fix `src/`, `apps/`, `libs/`, `test/` directories with ESLint |
-| `pnpm test` | Run unit test suite (Jest) |
-| `pnpm test:watch` | Run unit tests in watch mode |
-| `pnpm test:cov` | Run unit tests with coverage report |
-| `pnpm test:debug` | Run tests with Node.js inspector attached |
-| `pnpm test:e2e` | Run end-to-end test suite |
-| `pnpm seed` | Seed the database via `prisma/seed.ts` |
-| `pnpm db:reset` | Reset the database and re-run all migrations |
+| Command            | Description                                                           |
+| ------------------ | --------------------------------------------------------------------- |
+| `pnpm build`       | Compile with `nest build`                                             |
+| `pnpm start`       | Start (no watch)                                                      |
+| `pnpm start:dev`   | Start with hot reload                                                 |
+| `pnpm start:debug` | Hot reload + Node inspector                                           |
+| `pnpm start:prod`  | Run `dist/main`                                                       |
+| `pnpm format`      | **Writes** — `prettier --write` over `src/**/*.ts` and `test/**/*.ts` |
+| `pnpm lint`        | **Writes** — `eslint "{src,apps,libs,test}/**/*.ts" --fix`            |
+| `pnpm test`        | Jest unit tests (`rootDir: src`, `*.spec.ts`)                         |
+| `pnpm test:watch`  | Jest in watch mode                                                    |
+| `pnpm test:cov`    | Jest with coverage → `coverage/`                                      |
+| `pnpm test:debug`  | Jest with the Node inspector attached                                 |
+| `pnpm test:e2e`    | Jest E2E (`test/jest-e2e.json`) — needs PostgreSQL + Redis            |
+| `pnpm seed`        | `npx prisma db seed`                                                  |
+| `pnpm db:reset`    | **Destructive** — `npx prisma migrate reset`                          |
 
-### Frontend (`frontend/` directory)
+> `pnpm lint` and `pnpm format` modify files. For a read-only check use:
+>
+> ```bash
+> pnpm exec eslint "{src,apps,libs,test}/**/*.ts"
+> pnpm exec prettier --check "src/**/*.ts" "test/**/*.ts"
+> pnpm exec tsc -p tsconfig.json --noEmit
+> ```
 
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Start Vite development server with HMR |
-| `pnpm build` | Type-check + production build |
-| `pnpm preview` | Preview production build locally |
-| `pnpm lint` | Lint with ESLint |
-| `pnpm test` | Run unit tests (Vitest, single run) |
-| `pnpm test:watch` | Run unit tests in interactive watch mode |
-| `pnpm test:e2e` | Run Playwright end-to-end tests |
-| `pnpm test:e2e:ui` | Open Playwright test runner UI |
-| `pnpm test:e2e:report` | Show last Playwright HTML report |
-<!-- END AUTO-GENERATED -->
+### Frontend (`frontend/`)
 
----
+| Command                | Description                                                      |
+| ---------------------- | ---------------------------------------------------------------- |
+| `pnpm dev`             | Vite dev server on 5173 with `/api` + `/socket.io` proxy to 3003 |
+| `pnpm build`           | `tsc -b && vite build && node scripts/prerender-meta.mjs`        |
+| `pnpm preview`         | Preview the production build                                     |
+| `pnpm lint`            | `eslint .` — read-only, no `--fix`                               |
+| `pnpm test`            | Vitest, single run                                               |
+| `pnpm test:watch`      | Vitest watch mode                                                |
+| `pnpm test:e2e`        | Playwright                                                       |
+| `pnpm test:e2e:ui`     | Playwright UI mode                                               |
+| `pnpm test:e2e:report` | Open the last Playwright HTML report                             |
 
-## Environment Variables
+### Booking widget (`frontend-booking/`)
 
-<!-- AUTO-GENERATED -->
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `DATABASE_URL` | **Yes** | — | PostgreSQL connection string |
-| `REDIS_URL` | **Yes** | — | Redis connection string |
-| `JWT_ACCESS_SECRET` | **Yes** | — | JWT access token signing secret (min 32 chars) |
-| `JWT_REFRESH_SECRET` | **Yes** | — | JWT refresh token signing secret (min 32 chars) |
-| `JWT_ACCESS_EXPIRATION` | No | `15m` | Access token lifetime (e.g. `15m`, `1h`) |
-| `JWT_REFRESH_EXPIRATION` | No | `7d` | Refresh token lifetime (e.g. `7d`, `30d`) |
-| `PORT` | No | `3000` | HTTP server port |
-| `NODE_ENV` | No | `development` | Runtime environment: `development`, `production`, `test` |
-| `CORS_ORIGINS` | No | `*` | Allowed CORS origins (comma-separated or `*`) |
-| `SENTRY_DSN` | No | — | Backend Sentry DSN (leave empty to disable) |
-| `VITE_SENTRY_DSN` | No | — | Frontend Sentry DSN (build-time, leave empty to disable) |
-| `SENTRY_TRACES_SAMPLE_RATE` | No | `0.05` (prod) / `1.0` (dev) | Sentry trace sampling rate (0–1) |
-| `PADDLE_API_KEY` | No | — | Paddle Billing server-side API key |
-| `PADDLE_CLIENT_TOKEN` | No | — | Paddle Billing client-side token (for checkout overlay) |
-| `PADDLE_WEBHOOK_SECRET` | No | — | Paddle webhook HMAC-SHA256 signing secret |
-| `PADDLE_SANDBOX` | No | `true` | Use Paddle sandbox environment (`true`/`false`) |
-| `PADDLE_PRICE_IDS` | No | — | JSON map overriding default Paddle price IDs (e.g. `{"starter_monthly":"pri_xxx"}`) |
-| `RESEND_API_KEY` | No | — | Resend API key for transactional emails |
-| `EMAIL_FROM` | No | `WashFlow <noreply@washflow.solutions>` | Sender address for outgoing emails |
-| `FRONTEND_URL` | No | `http://localhost:5173` | Frontend URL for password reset links and email redirects |
-| `METRICS_TOKEN` | No | — | Bearer token protecting `/metrics` endpoint (leave empty for public access) |
-
-**Example values** (from `.env.example`):
-```
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
-REDIS_URL="redis://HOST:PORT"
-JWT_ACCESS_SECRET="your-access-secret-min-32-characters-long"
-JWT_REFRESH_SECRET="your-refresh-secret-min-32-characters-long"
-JWT_ACCESS_EXPIRATION="15m"
-JWT_REFRESH_EXPIRATION="7d"
-PORT=3000
-NODE_ENV="development"
-CORS_ORIGINS="*"
-SENTRY_DSN=""
-VITE_SENTRY_DSN=""
-FRONTEND_URL="http://localhost:5173"
-RESEND_API_KEY=""
-EMAIL_FROM="WashFlow <noreply@washflow.solutions>"
-METRICS_TOKEN=""
-```
-<!-- END AUTO-GENERATED -->
+`pnpm dev` (port 5174) · `pnpm build` · `pnpm preview` · `pnpm lint` · `pnpm test:e2e`
+(+ `:ui`, `:report`). There is no unit-test setup here.
 
 ---
 
 ## Testing
 
-### Running Tests
-
 ```bash
-# Backend unit tests
-pnpm test
-
-# Backend unit tests with coverage
-pnpm test:cov
-
-# Backend E2E tests
-pnpm test:e2e
-
-# Frontend unit tests
-cd frontend && pnpm test
-
-# Frontend E2E tests (Playwright)
-cd frontend && pnpm test:e2e
+pnpm test                       # backend unit
+pnpm test:cov                   # backend unit + coverage
+pnpm test:e2e                   # backend E2E (PostgreSQL + Redis required)
+cd frontend && pnpm test        # frontend unit (Vitest)
+cd frontend && pnpm test:e2e    # frontend E2E (Playwright)
 ```
 
-### Writing Tests
+**Backend (Jest + `@nestjs/testing`)** — unit specs live next to their source as `*.spec.ts`;
+wire modules with `Test.createTestingModule()`; mock collaborators with `jest.fn()`; never touch
+a real database in a unit test. E2E specs live in `test/*.e2e-spec.ts` and do use a real
+database. `NODE_ENV=test` disables rate limiting
+(`ThrottlerModule.forRoot([])` in `src/app.module.ts`), which is why E2E runs are not throttled.
 
-**Backend (Jest + NestJS Testing)**
+### Isolated PostgreSQL concurrency checks
 
-- Unit test files live next to their source: `*.spec.ts`
-- Use `Test.createTestingModule()` to wire up NestJS modules
-- Mock dependencies with `jest.fn()` — never use real databases
-- Follow TDD: write the test first, then implement
+`test/repair-concurrency.e2e-spec.ts` is opt-in. With no
+`WASHFLOW_REPAIR_TEST_DATABASE_URL`, all its tests are explicitly skipped; it never falls
+back to `DATABASE_URL` and never imports `.env`. A supplied URL must target
+`127.0.0.1:15433`, a dedicated `washflow_repair_*` database, and have no query/hash overrides.
+The companion Prisma config applies the same guard. Use a new task-owned PostgreSQL 16
+container with loopback publishing and tmpfs storage, synthetic credentials, and no shared
+volume. Never point this suite at existing application data.
 
-**Frontend (Vitest + React Testing Library)**
+After explicitly creating the new empty database and setting that dedicated URL:
 
-- Test files co-located with components: `*.test.tsx`
-- Use `@testing-library/react` for component tests
-- Mock API calls — avoid real network requests in unit tests
+```bash
+pnpm exec prisma generate --config test/repair-prisma.config.ts
+pnpm exec prisma migrate deploy --config test/repair-prisma.config.ts
+pnpm exec jest --config test/jest-e2e.json --runTestsByPath test/repair-concurrency.e2e-spec.ts --runInBand
+```
 
-### Coverage Requirements
+The suite uses real Prisma services/repositories and concurrent PostgreSQL transactions, with
+an event emitter that has no subscribers. It starts no app module, cron, Redis or external
+integration. Each fixture has its own tenant and distinct inputs. Tests wait for two actual
+PostgreSQL lock waiters, assert business rejections and final scoped counts, and cover payment
+caps/exact decimals, create/restore resource reservations, a changed locked post causing raw
+serialization failure, explicit JSON-null resource/tenant guards, and all four quota resources
+across create/create, create/restore and restore/restore races. The entire disposable database belongs
+to the test; clean up only its owned container when evidence inspection finishes.
 
-- **Minimum**: 80% statement coverage
-- All services are at 100% coverage
-- Common infrastructure (guards, filters, interceptors, utils) at 100%
+**Current limitation:** all 14 migrations deploy, but their resulting schema has verified
+pre-existing drift; see [infrastructure.md](context/infrastructure.md#verified-migrationschema-drift).
+The recorded successful runtime run used a separate new empty database synchronized from the
+current Prisma schema with `pnpm exec prisma db push --config test/repair-prisma.config.ts`,
+without reset or data-loss flags. This proves those runtime invariants on the current schema;
+it does not clear migration/deployment readiness. Do not synchronize an existing database as
+a workaround.
+
+### Browser race regressions
+
+The focused public-booking tests intercept synthetic API responses and do not create real
+bookings. Each config writes to its own app's `test-results/booking-selection` subdirectory,
+so reruns preserve other suites' evidence. Start the dashboard on 5179 and widget on 5180 in
+tmux, then run:
+
+```bash
+cd frontend && pnpm exec playwright test --config playwright.booking-selection.config.ts
+cd ../frontend-booking && pnpm exec playwright test --config playwright.booking-selection.config.ts
+```
+
+### Frontend testing
+
+**Frontend (Vitest + Testing Library)** — tests live in `__tests__/` folders beside the code;
+assert on what the user sees; mock the network.
+
+**Playwright** — `frontend/playwright.config.ts` defines setup projects plus role-specific
+projects (`chromium` as admin, `fresh-tenant`, `role-operator`, `role-receptionist`,
+`role-manager`). Credentials come from `frontend/.env.test`, which is **gitignored**: create it
+locally with `PLAYWRIGHT_EMAIL`, `PLAYWRIGHT_PASSWORD` and `PLAYWRIGHT_TENANT_ID`.
+
+**What to test**, in priority order: core and tricky logic first (scheduling, pricing, state
+machines, limits), then a regression test for every bug fixed, then one E2E per critical flow.
+Do not chase a coverage number — one meaningful test on risky code beats ten on trivial glue.
 
 ---
 
-## Code Style
+## Code style
 
-### Linting & Formatting
+ESLint + Prettier + `tsc --noEmit`. Backend lint config is `eslint.config.mjs`
+(typescript-eslint `recommendedTypeChecked` + `eslint-plugin-prettier`, with the `no-unsafe-*`
+family relaxed inside `*.spec.ts` / `test/**`). Prettier config is `.prettierrc`
+(`singleQuote: true`, `trailingComma: "all"`).
 
-The project uses **ESLint** + **Prettier** for consistent style.
+Conventions that matter here:
 
-```bash
-# Fix all lint issues in backend
-pnpm lint
-
-# Format all backend TypeScript files
-pnpm format
-```
-
-Pre-commit: run `pnpm lint && pnpm format` before committing.
-
-### Conventions
-
-- **Immutability**: Always return new objects, never mutate in place
-- **Files**: 200–400 lines typical, 800 max — extract utilities when exceeding
-- **Functions**: Keep under 50 lines
-- **Error handling**: Explicit at every level, user-friendly messages in UI code
-- **Input validation**: All user input validated via class-validator DTOs at the controller layer
-- **No hardcoded secrets**: Use `.env` — never commit secrets
+- **Immutability** — return new objects; never mutate in place.
+- **Files** 200–400 lines typical, 800 hard max; **functions** under ~50 lines.
+- **Repository pattern** — only `*.repository.ts` (and a documented set of services) touch
+  Prisma. Business rules and transactions live in services.
+- **Tenant safety** — go through `tenantPrisma.forTenant(tenantId)`; inside a `$transaction` the
+  tenant filter is manual.
+- **Validation** — `class-validator` DTOs at the controller boundary; Zod for environment only.
+- **Errors** — never swallow; user-facing messages stay friendly, logs carry the detail.
+- **No `console.log`** in committed code; use the Nest/pino logger.
+- **No hardcoded secrets.**
 
 ---
 
-## Pull Request Checklist
+## Pull request checklist
 
-- [ ] Tests pass: `pnpm test`
-- [ ] No lint errors: `pnpm lint`
-- [ ] Backend build succeeds: `pnpm build`
-- [ ] Frontend build succeeds: `cd frontend && pnpm build`
-- [ ] New code has test coverage ≥ 80%
-- [ ] No hardcoded secrets or credentials
-- [ ] PR description explains the **why**, not just the what
+- [ ] `pnpm exec eslint "{src,apps,libs,test}/**/*.ts"` is clean
+- [ ] `pnpm exec tsc -p tsconfig.json --noEmit` is clean
+- [ ] `pnpm test` passes; new logic has a test
+- [ ] `pnpm build` succeeds
+- [ ] `cd frontend && pnpm lint && pnpm test && pnpm build` succeeds (if the UI changed)
+- [ ] Migrations reviewed by hand — backfills before constraints, forward-only
+- [ ] No secrets, no `.env` values, no debug output
+- [ ] Documentation updated per the
+      [update matrix](context/agent-playbook.md#documentation-update-matrix) — including
+      `OVERVIEW.md` for any business-logic or feature change
+- [ ] PR description explains the **why**
 
 ---
 
-## Production Runbook
+## CI
 
-### Deployment
+`.github/workflows/ci.yml` runs on pushes and PRs to `main`, and via `workflow_dispatch` with
+`skip_unit_tests` / `skip_e2e` inputs:
 
-```bash
-# 1. Copy and fill environment
-cp .env.docker.example .env
-
-# 2. Build & start
-docker compose -f docker-compose.prod.yml build
-docker compose -f docker-compose.prod.yml up -d
-
-# 3. Verify
-curl http://localhost:3000/api/v1/health
+```
+backend-lint ─┬─► backend-test ─┬─► backend-e2e ──┐
+              │                 └─► frontend-e2e ─┤
+frontend-lint ┴─► frontend-test ──────────────────┴─► build-and-push (main only) ─► deploy
 ```
 
-Startup order (enforced by Docker healthchecks): PostgreSQL → Redis → Backend (`prisma migrate deploy` + NestJS) → Frontend (nginx).
+Unit and E2E skips are independent: skipping unit tests does not suppress E2E. Explicit job
+conditions allow only skips requested by their matching input; failed/cancelled lint or tests
+and unintended skips block image publishing. Both E2E jobs explicitly enable payments and
+provide all three synthetic sandbox Paddle credentials to satisfy startup validation.
 
-### Health Checks
+Artifacts: `backend-coverage`, `playwright-report`, and `playwright-screenshots` on failure
+(7-day retention). Full job detail, service containers and secrets:
+[`context/infrastructure.md`](context/infrastructure.md#4-cicd--githubworkflowsciyml).
 
-| Endpoint | Auth | Checks |
-|----------|------|--------|
-| `GET /api/v1/health` | Public | PostgreSQL ping, Redis ping |
-| `GET /api/v1/metrics` | Public / Bearer token when `METRICS_TOKEN` is set | Prometheus metrics (request duration, count, Node.js defaults) |
+---
 
-Healthy response returns HTTP 200 with `{ "status": "ok", "info": { "database": { "status": "up" }, "redis": { "status": "up" } } }`.
+## Production runbook
 
-### Prometheus Scrape Config
+### Deploy
+
+Deployment is automated by the `deploy` job (SSH to the host, `docker compose up -d`). Manual
+equivalent:
+
+```bash
+# On the server, in /opt/washflow
+cp .env.docker.example .env      # fill in real values; never commit them
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d --remove-orphans
+docker compose -f docker-compose.prod.yml exec -T backend \
+  wget -qO- http://localhost:3000/api/v1/health
+```
+
+`docker-compose.prod.yml` consumes prebuilt images (`DOCKER_IMAGE`, `DOCKER_IMAGE_FRONTEND`,
+`DOCKER_TAG`); only the `frontend` service also declares a `build` context. Migrations run at
+container start: the `backend` command is
+`sh -c "npx prisma migrate deploy && node dist/main.js"`.
+
+Startup order is enforced by healthchecks: **PostgreSQL + Redis → backend → frontend (nginx)**.
+Production Redis preserves BullMQ/idempotency keys with `noeviction`; at its 1 GB memory
+ceiling writes may fail with OOM. Monitor memory and queue health before exhaustion.
+`METRICS_TOKEN` is passed through Compose and mapped to the guard's `metricsToken` config key.
+
+Seeding is never automatic:
+
+```bash
+docker compose run --rm backend node dist/prisma/seed.js
+```
+
+### Health and metrics
+
+| Endpoint              | Auth               | Checks                                                        |
+| --------------------- | ------------------ | ------------------------------------------------------------- |
+| `GET /api/v1/health`  | Public             | `database` (Prisma ping), `redis`, `queues` (3 BullMQ queues) |
+| `GET /api/v1/metrics` | `MetricsAuthGuard` | Prometheus: request histogram + counter + Node defaults       |
+
+`MetricsAuthGuard` requires `Authorization: Bearer $METRICS_TOKEN` when `METRICS_TOKEN` is set.
+**When it is not set, access is denied in production** and allowed in dev/test.
+
+Healthy response: HTTP 200 with
+`{"status":"ok","info":{"database":{"status":"up"},"redis":{"status":"up"},"queues":{...}}}`.
 
 ```yaml
 scrape_configs:
@@ -271,41 +335,93 @@ scrape_configs:
       - targets: ['backend:3000']
 ```
 
-### Common Issues
+### Common issues
 
-| Issue | Symptom | Fix |
-|-------|---------|-----|
-| Migration failure | Backend restart loop | `docker compose exec backend npx prisma migrate status` — resolve conflicts |
-| Redis connection refused | Health check `redis: down` | Check container logs, verify `REDIS_PASSWORD` matches |
-| Paddle webhooks not processing | Subscription status stale | Verify `PADDLE_WEBHOOK_SECRET`; inspect Redis keys `paddle:webhook:*` |
-| Frontend blank page | nginx 200 but empty | Check build args (`VITE_SENTRY_DSN`), browser console for JS errors |
+| Issue                       | Symptom                                                | Fix                                                                                                                        |
+| --------------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| Env validation failure      | Process exits with a Zod error list                    | Compare names against `src/config/env.validation.ts`                                                                       |
+| CORS misconfiguration       | `CORS_ORIGINS must not be "*" in production. Exiting.` | Set explicit origins                                                                                                       |
+| Migration failure           | Backend restart loop                                   | `docker compose exec backend npx prisma migrate status`                                                                    |
+| Redis connection refused    | Health `redis: down`                                   | Check container logs; verify `REDIS_PASSWORD` matches `REDIS_URL`                                                          |
+| Queues unhealthy            | Health `queues: down`                                  | BullMQ shares `REDIS_URL` — same root cause as above                                                                       |
+| Metrics 403 in production   | Scrape fails                                           | Set `METRICS_TOKEN` and configure the scraper's bearer credentials                                                         |
+| Paddle webhooks not applied | Subscription state stale                               | Verify `PADDLE_WEBHOOK_SECRET`; inspect `redis-cli --scan --pattern 'paddle:webhook:*'`                                    |
+| Paddle mutations 503        | Checkout/cancel rejected                               | `PAYMENTS_ENABLED` must be `true`                                                                                          |
+| Frontend blank page         | nginx 200 with an empty body                           | Check the browser console and the image tag; CI builds the frontend image with `VITE_PADDLE_SANDBOX` as its only build arg |
+
+More symptoms and read-only diagnostics:
+[`context/infrastructure.md`](context/infrastructure.md#9-safe-verification-and-troubleshooting).
 
 ### Rollback
 
-```bash
-# Tag before deploy
-docker tag washflow/app:latest washflow/app:rollback
+Both services are pinned by the **same** `DOCKER_TAG` in `/opt/washflow/.env`
+(`backend: ${DOCKER_IMAGE}:${DOCKER_TAG}`, `frontend: ${DOCKER_IMAGE_FRONTEND}:${DOCKER_TAG}`),
+and the deploy job rewrites that file on every deploy. Roll back by pointing `DOCKER_TAG` at a
+known-good **immutable** tag — the commit sha pushed by `build-and-push` — and recreating both
+services:
 
-# Restore if needed
-docker tag washflow/app:rollback washflow/app:latest
-docker compose -f docker-compose.prod.yml up -d --no-deps backend frontend
+```bash
+# On the server, in /opt/washflow (the deploy job installs the compose file as
+# docker-compose.yml there; add -f docker-compose.prod.yml if you kept the original name)
+
+# 0. Record the current values — DOCKER_IMAGE, DOCKER_IMAGE_FRONTEND, DOCKER_TAG
+grep '^DOCKER_' .env
+
+# 1. Verify BOTH images exist under the target tag; they are separate repositories,
+#    and a rollback that only has one of them will half-recreate the stack
+docker pull "<DOCKER_IMAGE>:<sha>"
+docker pull "<DOCKER_IMAGE_FRONTEND>:<sha>"
+
+# 2. Pin the tag, then recreate backend + frontend
+sed -i 's/^DOCKER_TAG=.*/DOCKER_TAG=<sha>/' .env
+docker compose up -d --no-deps backend frontend
 ```
 
-Database migrations are forward-only — write a new revert migration instead of using `prisma migrate reset`.
+Notes:
 
-### Key Configuration
+- **Do not roll back by re-tagging `:latest` locally.** Compose resolves the image from
+  `DOCKER_TAG`, so a local re-tag changes nothing unless `DOCKER_TAG` is literally `latest` —
+  and `:latest` is overwritten by the next deploy anyway.
+- `build-and-push` pushes both images with a sha tag **and** `latest`
+  (`docker/metadata-action`: `type=sha,prefix=` + `type=raw,value=latest`), so a matching sha
+  normally exists for both — but confirm it in step 1 rather than assuming.
+- Undo the rollback the same way: put the previous `DOCKER_TAG` back, or redeploy from CI.
+- The backend runs `npx prisma migrate deploy` at container start. Rolling the image back does
+  **not** roll migrations back.
 
-| Setting | Production | Development |
-|---------|-----------|-------------|
-| Sentry `sendDefaultPii` | `false` | `true` |
-| Sentry `tracesSampleRate` | 5% (override via `SENTRY_TRACES_SAMPLE_RATE`) | 100% |
-| HTTP request timeout | 30s (`server.setTimeout`) | 30s |
+Database migrations are **forward-only** — write a new corrective migration rather than running
+`prisma migrate reset` against real data.
 
-### Alerting Recommendations
+### Configuration differences
 
-| Alert | Condition | Severity |
-|-------|-----------|----------|
-| Health check failing | `/api/v1/health` non-200 > 1 min | Critical |
-| High error rate | 5xx > 5% of total requests | High |
-| High latency | p95 > 2s | Medium |
-| Container restarts | > 3 restarts in 10 min | High |
+| Setting                   | Production                                          | Development                                |
+| ------------------------- | --------------------------------------------------- | ------------------------------------------ |
+| Sentry `sendDefaultPii`   | `false`                                             | `false` (same)                             |
+| Sentry `tracesSampleRate` | `0.05` unless `SENTRY_TRACES_SAMPLE_RATE` is set    | `1.0`                                      |
+| Pino level / transport    | `info`; `pino-loki` + stdout when Loki vars are set | `debug` + `pino-pretty`                    |
+| Swagger `/api/docs`       | disabled                                            | enabled                                    |
+| Rate limiting             | enabled (`short` 10/1 s, `long` 100/60 s)           | enabled; **disabled** when `NODE_ENV=test` |
+| HTTP request timeout      | 30 s (`server.setTimeout`)                          | 30 s                                       |
+
+### Alerting suggestions
+
+| Alert                | Condition                            | Severity |
+| -------------------- | ------------------------------------ | -------- |
+| Health check failing | `/api/v1/health` non-200 for > 1 min | Critical |
+| High error rate      | 5xx > 5% of requests                 | High     |
+| High latency         | p95 > 2 s                            | Medium   |
+| Container restarts   | > 3 restarts in 10 min               | High     |
+
+Backups, TLS termination and secret management are **not configured in this repository** — see
+[`context/infrastructure.md`](context/infrastructure.md#8-known-unknowns).
+
+---
+
+## Git workflow
+
+- Short-lived branches off `main` with descriptive names (`feat/checkout-retry`).
+- Conventional commit subjects: `feat|fix|refactor|docs|test|chore|perf|ci: <description>`;
+  the body explains the _why_.
+- Small, coherent commits — one logical change each.
+- Review your own diff (`git diff main...HEAD`) before pushing.
+- **Commit and push only when asked.** If you are on `main`, branch first.

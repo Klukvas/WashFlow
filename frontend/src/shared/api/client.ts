@@ -2,9 +2,20 @@ import axios, {
   type AxiosError,
   type AxiosRequestConfig,
   type InternalAxiosRequestConfig,
+  CanceledError,
 } from 'axios';
 import * as Sentry from '@sentry/react';
-import { useAuthStore, getAccessToken } from '@/shared/stores/auth.store';
+import {
+  useAuthStore,
+  getAccessToken,
+  getAuthSessionVersion,
+  runAuthCookieRequest,
+  acquireAuthCookieLease,
+  beginAuthTransition,
+  finishAuthTransition,
+  isAuthTransitionPending,
+  applyAuthCookieResponse,
+} from '@/shared/stores/auth.store';
 import { router } from '@/app/router';
 import type {
   ApiError,
@@ -20,25 +31,71 @@ export const apiClient = axios.create({
   },
 });
 
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (error: unknown) => void;
-}> = [];
+type SessionRequestConfig = AxiosRequestConfig & {
+  _retry?: boolean;
+  _authSessionVersion?: number;
+  _authCookieLease?: () => void;
+  _authTransitionVersion?: number;
+};
 
-function processQueue(error: unknown, token: string | null) {
-  failedQueue.forEach(({ resolve, reject }) => {
-    if (error) {
-      reject(error);
-    } else {
-      resolve(token!);
+let activeRefresh: { version: number; promise: Promise<string> } | null = null;
+
+function refreshAccessToken(version: number): Promise<string> {
+  if (activeRefresh?.version === version) return activeRefresh.promise;
+
+  const promise = (async () => {
+    try {
+      return await runAuthCookieRequest(async () => {
+        if (version !== getAuthSessionVersion() || isAuthTransitionPending())
+          throw new CanceledError('Session changed');
+        const { data } = await axios.post(
+          '/api/v1/auth/refresh',
+          {},
+          { withCredentials: true },
+        );
+        applyAuthCookieResponse(data.data, version);
+        return data.data.accessToken as string;
+      });
+    } catch (error) {
+      // A failed refresh from the previous account must not log out its successor.
+      if (version === getAuthSessionVersion()) {
+        const logout = useAuthStore.getState().logout();
+        const loggedOutVersion = getAuthSessionVersion();
+        await logout;
+        if (loggedOutVersion === getAuthSessionVersion()) {
+          router.navigate('/login', { replace: true });
+        }
+      }
+      throw error;
     }
+  })().finally(() => {
+    if (activeRefresh?.promise === promise) activeRefresh = null;
   });
-  failedQueue = [];
+  activeRefresh = { version, promise };
+  return promise;
 }
 
 apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  async (config: InternalAxiosRequestConfig) => {
+    const sessionConfig = config as InternalAxiosRequestConfig &
+      SessionRequestConfig;
+    if (/\/auth\/(login|register)$/.test(config.url ?? '')) {
+      const version = beginAuthTransition();
+      sessionConfig._authTransitionVersion = version;
+      sessionConfig._authSessionVersion = version;
+      const release = await acquireAuthCookieLease();
+      sessionConfig._authCookieLease = release;
+      if (version !== getAuthSessionVersion()) {
+        releaseAuthCookieLease(sessionConfig);
+        throw new CanceledError('Session changed');
+      }
+    } else if (isAuthTransitionPending()) {
+      throw new CanceledError('Session changed');
+    }
+    sessionConfig._authSessionVersion ??= getAuthSessionVersion();
+    if (sessionConfig._authSessionVersion !== getAuthSessionVersion()) {
+      throw new CanceledError('Session changed');
+    }
     const accessToken = getAccessToken();
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
@@ -49,11 +106,45 @@ apiClient.interceptors.request.use(
 );
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const config = response.config as SessionRequestConfig | undefined;
+    if (config?._authTransitionVersion !== undefined) {
+      try {
+        applyAuthCookieResponse(
+          response.data.data,
+          config._authTransitionVersion,
+        );
+        config._authSessionVersion = getAuthSessionVersion();
+      } finally {
+        releaseAuthCookieLease(config);
+      }
+    }
+    const version = (response.config as SessionRequestConfig | undefined)
+      ?._authSessionVersion;
+    if (version !== undefined && version !== getAuthSessionVersion()) {
+      throw new CanceledError('Session changed');
+    }
+    return response;
+  },
   async (error: AxiosError<ApiError>) => {
-    const originalRequest = error.config as AxiosRequestConfig & {
-      _retry?: boolean;
-    };
+    const originalRequest = error.config as SessionRequestConfig | undefined;
+    if (!originalRequest) return Promise.reject(error);
+    const transitionVersion = originalRequest._authTransitionVersion;
+    releaseAuthCookieLease(originalRequest);
+    if (
+      transitionVersion !== undefined &&
+      transitionVersion === getAuthSessionVersion()
+    ) {
+      // Release first: logout uses the same queue and must never await its own lease.
+      const logout = useAuthStore.getState().logout();
+      originalRequest._authSessionVersion = getAuthSessionVersion();
+      await logout;
+    }
+    const version =
+      originalRequest._authSessionVersion ?? getAuthSessionVersion();
+    if (version !== getAuthSessionVersion()) {
+      return Promise.reject(new CanceledError('Session changed'));
+    }
 
     // Skip token refresh for auth endpoints — login/register 401s should
     // propagate directly so the UI can show the error message.
@@ -66,51 +157,16 @@ apiClient.interceptors.response.use(
       !originalRequest._retry &&
       !isAuthEndpoint
     ) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({
-            resolve: (token: string) => {
-              originalRequest.headers = {
-                ...originalRequest.headers,
-                Authorization: `Bearer ${token}`,
-              };
-              resolve(apiClient(originalRequest));
-            },
-            reject,
-          });
-        });
-      }
-
       originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        // The refresh token is sent automatically as an HttpOnly cookie.
-        // No need to read it from the store or send it in the request body.
-        const { data } = await axios.post(
-          '/api/v1/auth/refresh',
-          {},
-          { withCredentials: true },
-        );
-
-        const { accessToken: newAccessToken, user } = data.data;
-        useAuthStore.getState().setAuth(newAccessToken, user);
-
-        processQueue(null, newAccessToken);
-        isRefreshing = false;
-
-        originalRequest.headers = {
-          ...originalRequest.headers,
-          Authorization: `Bearer ${newAccessToken}`,
-        };
-        return apiClient(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        isRefreshing = false;
-        await useAuthStore.getState().logout();
-        router.navigate('/login', { replace: true });
-        return Promise.reject(refreshError);
+      const accessToken = await refreshAccessToken(version);
+      if (version !== getAuthSessionVersion()) {
+        throw new CanceledError('Session changed');
       }
+      originalRequest.headers = {
+        ...originalRequest.headers,
+        Authorization: `Bearer ${accessToken}`,
+      };
+      return apiClient(originalRequest);
     }
 
     if (error.response && error.response.status >= 500) {
@@ -137,6 +193,13 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+function releaseAuthCookieLease(config: SessionRequestConfig): void {
+  if (config._authTransitionVersion !== undefined)
+    finishAuthTransition(config._authTransitionVersion);
+  config._authCookieLease?.();
+  config._authCookieLease = undefined;
+}
 
 export function withIdempotencyKey(
   config?: AxiosRequestConfig,

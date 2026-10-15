@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   NotFoundException,
@@ -7,6 +8,8 @@ import {
 import { ServicesService } from './services.service';
 import { ServicesRepository } from './services.repository';
 import { SubscriptionLimitsService } from '../subscriptions/subscription-limits.service';
+
+const quotaTx = {} as Prisma.TransactionClient;
 
 describe('ServicesService', () => {
   let service: ServicesService;
@@ -40,7 +43,15 @@ describe('ServicesService', () => {
     };
 
     limits = {
-      checkLimit: jest.fn().mockResolvedValue(undefined),
+      withResourceLimit: jest
+        .fn()
+        .mockImplementation(
+          async (
+            _tenantId: string,
+            _resource: string,
+            operation: (tx: Prisma.TransactionClient) => Promise<unknown>,
+          ) => operation(quotaTx),
+        ),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -134,12 +145,16 @@ describe('ServicesService', () => {
         price: 15.99,
       };
       await service.create(tenantId, dto as any);
-      expect(limits.checkLimit).toHaveBeenCalledWith(tenantId, 'services');
-      expect(repo.create).toHaveBeenCalledWith(tenantId, { ...dto });
+      expect(limits.withResourceLimit).toHaveBeenCalledWith(
+        tenantId,
+        'services',
+        expect.any(Function),
+      );
+      expect(repo.create).toHaveBeenCalledWith(tenantId, { ...dto }, quotaTx);
     });
 
     it('should throw ForbiddenException when services limit reached', async () => {
-      limits.checkLimit.mockRejectedValue(
+      limits.withResourceLimit.mockRejectedValue(
         new ForbiddenException(
           'Subscription limit reached: maximum 20 services allowed',
         ),
@@ -162,7 +177,7 @@ describe('ServicesService', () => {
         price: 15.99,
       };
       const result = await service.create(tenantId, dto as any);
-      expect(repo.create).toHaveBeenCalledWith(tenantId, { ...dto });
+      expect(repo.create).toHaveBeenCalledWith(tenantId, { ...dto }, quotaTx);
       expect(result).toEqual(mockService);
     });
 
@@ -184,7 +199,7 @@ describe('ServicesService', () => {
         sortOrder: 5,
       };
       await service.create(tenantId, dto as any);
-      expect(repo.create).toHaveBeenCalledWith(tenantId, { ...dto });
+      expect(repo.create).toHaveBeenCalledWith(tenantId, { ...dto }, quotaTx);
     });
   });
 
@@ -269,8 +284,9 @@ describe('ServicesService', () => {
       expect(repo.findByIdIncludeDeleted).toHaveBeenCalledWith(
         tenantId,
         serviceId,
+        quotaTx,
       );
-      expect(repo.restore).toHaveBeenCalledWith(tenantId, serviceId);
+      expect(repo.restore).toHaveBeenCalledWith(tenantId, serviceId, quotaTx);
     });
 
     it('should return the restored service', async () => {
@@ -333,7 +349,11 @@ describe('ServicesService', () => {
         deletedAt: new Date(),
       });
       await service.restore(tenantId, serviceId);
-      expect(limits.checkLimit).toHaveBeenCalledWith(tenantId, 'services');
+      expect(limits.withResourceLimit).toHaveBeenCalledWith(
+        tenantId,
+        'services',
+        expect.any(Function),
+      );
     });
 
     it('should throw ForbiddenException when services limit reached on restore', async () => {
@@ -341,7 +361,7 @@ describe('ServicesService', () => {
         ...mockService,
         deletedAt: new Date(),
       });
-      limits.checkLimit.mockRejectedValue(
+      limits.withResourceLimit.mockRejectedValue(
         new ForbiddenException(
           'Subscription limit reached: maximum 20 services allowed',
         ),

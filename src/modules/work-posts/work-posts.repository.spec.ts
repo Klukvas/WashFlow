@@ -18,6 +18,7 @@ describe('WorkPostsRepository', () => {
   };
 
   const tenantClient = {
+    branch: { findFirst: jest.fn() },
     workPost: {
       findMany: jest.fn(),
       findFirst: jest.fn(),
@@ -102,6 +103,21 @@ describe('WorkPostsRepository', () => {
     });
   });
 
+  describe('findActiveBranch', () => {
+    it('looks up the active branch through the tenant-scoped client', async () => {
+      tenantClient.branch.findFirst.mockResolvedValue({ id: branchId });
+
+      await expect(repo.findActiveBranch(tenantId, branchId)).resolves.toEqual({
+        id: branchId,
+      });
+      expect(tenantPrisma.forTenant).toHaveBeenCalledWith(tenantId);
+      expect(tenantClient.branch.findFirst).toHaveBeenCalledWith({
+        where: { id: branchId, isActive: true },
+        select: { id: true },
+      });
+    });
+  });
+
   describe('create', () => {
     it('creates work post and includes branch relation', async () => {
       const data = { name: 'Post B', branchId };
@@ -120,6 +136,20 @@ describe('WorkPostsRepository', () => {
       expect(tenantClient.workPost.update).toHaveBeenCalledWith({
         where: { id: workPostId },
         data,
+        include: { branch: true },
+      });
+    });
+  });
+
+  describe('restore', () => {
+    it('clears deletedAt through the tenant-scoped client and includes the branch', async () => {
+      await expect(repo.restore(tenantId, workPostId)).resolves.toEqual(
+        mockWorkPost,
+      );
+      expect(tenantPrisma.forTenant).toHaveBeenCalledWith(tenantId);
+      expect(tenantClient.workPost.update).toHaveBeenCalledWith({
+        where: { id: workPostId },
+        data: { deletedAt: null },
         include: { branch: true },
       });
     });

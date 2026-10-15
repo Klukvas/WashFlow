@@ -4,12 +4,12 @@ import { useParams } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useBookingSelection } from '../utils/booking-selection';
 import { Check, Calendar, Wrench, User, CalendarPlus } from 'lucide-react';
-import type { Order } from '@/shared/types/models';
+import type { BookingConfirmation } from '../types';
 import {
   usePublicServices,
   usePublicBranches,
-  usePublicAvailability,
   useCreateBooking,
 } from '../hooks/usePublicBooking';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
@@ -52,7 +52,8 @@ export function PublicBookingPage() {
   const { slug } = useParams<{ slug: string }>();
   const [step, setStep] = useState(0);
   const [selectedDate, setSelectedDate] = useState('');
-  const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
+  const [confirmedOrder, setConfirmedOrder] =
+    useState<BookingConfirmation | null>(null);
 
   const tenantSlug = slug ?? '';
 
@@ -74,14 +75,17 @@ export function PublicBookingPage() {
     watch,
     trigger,
     handleSubmit,
+    getValues,
     formState: { errors },
   } = useForm<BookingForm>({
     resolver: zodResolver(bookingSchema),
     defaultValues: { serviceIds: [] },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- React Hook Form watch() is incompatible with React Compiler memoization
   const branchId = watch('branchId');
   const selectedServiceIds = watch('serviceIds');
+  const scheduledStart = watch('scheduledStart');
 
   const totalDuration = (services ?? [])
     .filter((s) => selectedServiceIds.includes(s.id))
@@ -91,11 +95,21 @@ export function PublicBookingPage() {
     .filter((s) => selectedServiceIds.includes(s.id))
     .reduce((sum, s) => sum + Number(s.price), 0);
 
-  const { data: rawSlots } = usePublicAvailability(tenantSlug, {
-    branchId,
-    date: selectedDate,
-    durationMinutes: totalDuration || undefined,
+  const { hasSelectedSlot, clearSelectedSlot, selectSlot, hasCurrentSelection, rawSlots, slotsFetching } = useBookingSelection({
+    tenant: tenantSlug, date: selectedDate, services: services ?? [],
+    durationMinutes: totalDuration || undefined, getValues,
+    setScheduledStart: (start) => setValue('scheduledStart', start, { shouldValidate: true }),
   });
+
+  function selectDate(date: string) {
+    if (date !== selectedDate) clearSelectedSlot();
+    setSelectedDate(date);
+  }
+
+  function proceedWithSlot(nextStep: number) {
+    if (hasCurrentSelection()) setStep(nextStep);
+    else { clearSelectedSlot(); setStep(1); }
+  }
 
   // Deduplicate slots by start time — public booking auto-assigns work post
   const slots = rawSlots
@@ -111,6 +125,7 @@ export function PublicBookingPage() {
     : undefined;
 
   function toggleService(id: string) {
+    clearSelectedSlot();
     const current = selectedServiceIds;
     setValue(
       'serviceIds',
@@ -120,6 +135,11 @@ export function PublicBookingPage() {
   }
 
   const onSubmit = (data: BookingForm) => {
+    if (!hasCurrentSelection(data)) {
+      clearSelectedSlot();
+      setStep(1);
+      return;
+    }
     book(
       {
         ...data,
@@ -314,6 +334,13 @@ export function PublicBookingPage() {
         ))}
       </div>
 
+      {step >= 2 && !hasSelectedSlot && (
+        <div role="alert" className="mb-4 rounded-md bg-muted p-4">
+          <p>{t('selectTimeAgain')}</p>
+          <Button variant="outline" onClick={() => setStep(1)}>{t('chooseDateAndTime')}</Button>
+        </div>
+      )}
+
       <Card>
         <CardContent className="p-6">
           {/* Step 0: Branch + Services */}
@@ -328,11 +355,12 @@ export function PublicBookingPage() {
                   }))}
                   placeholder={t('chooseLocation')}
                   value={branchId ?? ''}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    clearSelectedSlot();
                     setValue('branchId', e.target.value, {
                       shouldValidate: true,
-                    })
-                  }
+                    });
+                  }}
                 />
               </div>
               <div>
@@ -397,33 +425,28 @@ export function PublicBookingPage() {
               </CardHeader>
               <CalendarGrid
                 value={selectedDate}
-                onChange={setSelectedDate}
+                onChange={selectDate}
                 min={new Date().toISOString().split('T')[0]}
                 className="mx-auto w-full max-w-sm border-0 p-0"
               />
-              {selectedDate && slots && slots.length > 0 && (
+              {selectedDate && !slotsFetching && slots && slots.length > 0 && (
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                   {slots.map((slot) => (
                     <button
                       key={slot.start}
                       className={cn(
                         'rounded-md border px-3 py-2 text-center text-sm hover:bg-accent',
-                        // eslint-disable-next-line react-hooks/incompatible-library -- React Hook Form watch() is incompatible with React Compiler memoization
-                        watch('scheduledStart') === slot.start &&
+                        hasSelectedSlot && scheduledStart === slot.start &&
                           'border-primary bg-primary/10 font-semibold',
                       )}
-                      onClick={() =>
-                        setValue('scheduledStart', slot.start, {
-                          shouldValidate: true,
-                        })
-                      }
+                      onClick={() => selectSlot(slot.start)}
                     >
                       {formatTime(slot.start)}
                     </button>
                   ))}
                 </div>
               )}
-              {selectedDate && slots && slots.length === 0 && (
+              {selectedDate && !slotsFetching && slots && slots.length === 0 && (
                 <p className="text-center text-muted-foreground">
                   {t('noSlots')}
                 </p>
@@ -437,8 +460,8 @@ export function PublicBookingPage() {
                   {t('backButton')}
                 </Button>
                 <Button
-                  onClick={() => setStep(2)}
-                  disabled={!watch('scheduledStart')}
+                  onClick={() => proceedWithSlot(2)}
+                  disabled={!hasSelectedSlot}
                   className="flex-1"
                 >
                   {t('continueButton')}
@@ -532,7 +555,7 @@ export function PublicBookingPage() {
                       'phone',
                       'licensePlate',
                     ]);
-                    if (valid) setStep(3);
+                    if (valid) proceedWithSlot(3);
                   }}
                   className="flex-1"
                 >
@@ -561,8 +584,8 @@ export function PublicBookingPage() {
                   </span>
                   <span className="font-medium">
                     {selectedDate} {t('at')}{' '}
-                    {watch('scheduledStart')
-                      ? formatTime(watch('scheduledStart'))
+                    {scheduledStart
+                      ? formatTime(scheduledStart)
                       : ''}
                   </span>
                 </div>
@@ -610,6 +633,7 @@ export function PublicBookingPage() {
                 </Button>
                 <Button
                   onClick={handleSubmit(onSubmit)}
+                  disabled={!hasSelectedSlot}
                   loading={isPending}
                   className="flex-1"
                 >

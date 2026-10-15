@@ -102,7 +102,7 @@ export const envSchema = z
       data.PADDLE_API_KEY,
       data.PADDLE_CLIENT_TOKEN,
       data.PADDLE_WEBHOOK_SECRET,
-    ];
+    ].map((value) => value?.trim());
     const someSet = paddleFields.some(Boolean);
     const allSet = paddleFields.every(Boolean);
     if (someSet && !allSet) {
@@ -110,6 +110,14 @@ export const envSchema = z
         code: 'custom',
         message:
           'PADDLE_API_KEY, PADDLE_CLIENT_TOKEN, and PADDLE_WEBHOOK_SECRET must all be set together or not at all',
+      });
+    }
+    if (data.PAYMENTS_ENABLED && !allSet) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['PAYMENTS_ENABLED'],
+        message:
+          'PADDLE_API_KEY, PADDLE_CLIENT_TOKEN, and PADDLE_WEBHOOK_SECRET must all be nonblank when PAYMENTS_ENABLED is true',
       });
     }
   });

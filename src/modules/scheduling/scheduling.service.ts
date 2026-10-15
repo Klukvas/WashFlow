@@ -10,6 +10,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { WorkforceRepository } from '../workforce/workforce.repository';
 import { resolveBookingSettings } from '../../common/utils/booking-settings.util';
+import { workingWindowForInterval } from '../../common/utils/working-window.util';
 import {
   TimeSlot,
   CheckAvailabilityParams,
@@ -143,8 +144,8 @@ export class SchedulingService {
           active: true,
           workStartTime: { not: null },
           workEndTime: { not: null },
-          user: { deletedAt: null },
-          branch: { deletedAt: null },
+          user: { tenantId, isActive: true, deletedAt: null },
+          branch: { id: branchId, tenantId, isActive: true, deletedAt: null },
         },
         select: { id: true, workStartTime: true, workEndTime: true },
       });
@@ -175,41 +176,28 @@ export class SchedulingService {
           : [];
 
       // 3. Compute per-slot availability in memory
-      // Helper: format a UTC Date as HH:MM in the branch timezone
-      const toLocalHHMM = (d: Date) => {
-        const raw = new Intl.DateTimeFormat('en-GB', {
-          timeZone: timezone,
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
-        }).format(d);
-        // V8 can return "24:00" for midnight — normalise to "00:00"
-        return raw === '24:00' ? '00:00' : raw;
-      };
-
       employeeAvailabilityBySlot = new Map();
       let slotIdx = 0;
       let cursor = new Date(dayStart);
       while (cursor.getTime() + slotDuration * 60000 <= dayEnd.getTime()) {
         const slotEnd = new Date(cursor.getTime() + slotDuration * 60000);
-        const slotStartHH = toLocalHHMM(cursor);
-        const slotEndHH = toLocalHHMM(slotEnd);
+        const window = workingWindowForInterval(cursor, slotEnd, timezone);
         const bufferedStart = new Date(cursor.getTime() - bufferTime * 60000);
         const bufferedEnd = new Date(slotEnd.getTime() + bufferTime * 60000);
 
-        const slotStartMinutes = this.parseTimeToMinutes(slotStartHH);
-        const slotEndMinutes = this.parseTimeToMinutes(slotEndHH);
-
         const available = candidates
           .filter((c) => {
+            if (!window) return false;
             if (
               !c.workStartTime ||
-              this.parseTimeToMinutes(c.workStartTime) > slotStartMinutes
+              this.parseTimeToMinutes(c.workStartTime) >
+                this.parseTimeToMinutes(window.startTime)
             )
               return false;
             if (
               !c.workEndTime ||
-              this.parseTimeToMinutes(c.workEndTime) < slotEndMinutes
+              this.parseTimeToMinutes(c.workEndTime) <
+                this.parseTimeToMinutes(window.endTime)
             )
               return false;
             const hasConflict = activeOrders.some(
@@ -356,6 +344,8 @@ export class SchedulingService {
     const bufferedEnd = new Date(
       scheduledEnd.getTime() + bufferMinutes * 60000,
     );
+
+    await this.schedulingRepo.lockWorkPost(tx, tenantId, workPostId);
 
     await this.schedulingRepo.lockOverlappingSlots(
       tx,

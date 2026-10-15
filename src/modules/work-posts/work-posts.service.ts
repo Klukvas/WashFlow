@@ -72,12 +72,24 @@ export class WorkPostsService {
         'Cannot create work posts for a different branch',
       );
     }
-    await this.limits.checkLimit(tenantId, 'workPosts');
+    const branch = await this.workPostsRepo.findActiveBranch(
+      tenantId,
+      dto.branchId,
+    );
+    if (!branch) {
+      throw new BadRequestException('Branch not found or inactive');
+    }
     await this.ensureUniqueNameInBranch(tenantId, dto.branchId, dto.name);
-    return this.workPostsRepo.create(tenantId, {
-      name: dto.name,
-      branchId: dto.branchId,
-    });
+    return this.limits.withResourceLimit(tenantId, 'workPosts', (tx) =>
+      this.workPostsRepo.create(
+        tenantId,
+        {
+          name: dto.name,
+          branchId: dto.branchId,
+        },
+        tx,
+      ),
+    );
   }
 
   async update(
@@ -117,22 +129,21 @@ export class WorkPostsService {
     id: string,
     userBranchId: string | null = null,
   ) {
-    // Find the deleted work post first (before restoring)
-    const workPost = await this.workPostsRepo.findByIdIncludeDeleted(
-      tenantId,
-      id,
-    );
-    if (!workPost) throw new NotFoundException('Work post not found');
-    if (!workPost.deletedAt)
-      throw new BadRequestException('Work post is not deleted');
-    // Check branch permission before restoring
-    if (userBranchId !== null && workPost.branchId !== userBranchId) {
-      throw new ForbiddenException(
-        'Cannot restore work posts from a different branch',
+    return this.limits.withResourceLimit(tenantId, 'workPosts', async (tx) => {
+      const workPost = await this.workPostsRepo.findByIdIncludeDeleted(
+        tenantId,
+        id,
+        tx,
       );
-    }
-    // Check subscription limit before restoring
-    await this.limits.checkLimit(tenantId, 'workPosts');
-    return this.workPostsRepo.restore(tenantId, id);
+      if (!workPost) throw new NotFoundException('Work post not found');
+      if (!workPost.deletedAt)
+        throw new BadRequestException('Work post is not deleted');
+      if (userBranchId !== null && workPost.branchId !== userBranchId) {
+        throw new ForbiddenException(
+          'Cannot restore work posts from a different branch',
+        );
+      }
+      return this.workPostsRepo.restore(tenantId, id, tx);
+    });
   }
 }

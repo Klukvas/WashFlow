@@ -17,13 +17,48 @@ describe('configuration factory', () => {
 
   beforeEach(() => {
     originalEnv = { ...process.env };
-    // Set all valid env vars
-    Object.assign(process.env, VALID_ENV);
+    process.env = { ...VALID_ENV };
   });
 
   afterEach(() => {
     process.env = originalEnv;
   });
+
+  describe.each(['development', 'production', 'test'])(
+    '%s payment configuration',
+    (nodeEnv) => {
+      it.each([
+        { flag: undefined, expected: false },
+        { flag: 'false', expected: false },
+        { flag: 'true', expected: true },
+      ])('maps PAYMENTS_ENABLED=$flag to $expected', ({ flag, expected }) => {
+        process.env = {
+          ...VALID_ENV,
+          NODE_ENV: nodeEnv,
+          ...(flag === undefined ? {} : { PAYMENTS_ENABLED: flag }),
+          ...(expected
+            ? {
+                PADDLE_API_KEY: 'synthetic-api-key',
+                PADDLE_CLIENT_TOKEN: 'synthetic-client-token',
+                PADDLE_WEBHOOK_SECRET: 'synthetic-webhook-secret',
+              }
+            : {}),
+        };
+
+        expect(configuration().features.paymentsEnabled).toBe(expected);
+      });
+
+      it('fails configuration before enabled payments can start without credentials', () => {
+        process.env = {
+          ...VALID_ENV,
+          NODE_ENV: nodeEnv,
+          PAYMENTS_ENABLED: 'true',
+        };
+
+        expect(() => configuration()).toThrow('PAYMENTS_ENABLED');
+      });
+    },
+  );
 
   describe('success path', () => {
     it('returns a config object with port', () => {

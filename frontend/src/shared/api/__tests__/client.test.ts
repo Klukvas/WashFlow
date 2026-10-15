@@ -8,6 +8,13 @@ const mockGetState = vi.fn();
 vi.mock('@/shared/stores/auth.store', () => ({
   useAuthStore: { getState: () => mockGetState() },
   getAccessToken: () => mockGetAccessToken(),
+  getAuthSessionVersion: () => 0,
+  runAuthCookieRequest: <T>(operation: () => Promise<T>) => operation(),
+  acquireAuthCookieLease: async () => () => undefined,
+  beginAuthTransition: () => 0,
+  finishAuthTransition: () => undefined,
+  isAuthTransitionPending: () => false,
+  applyAuthCookieResponse: () => undefined,
 }));
 
 describe('client module', () => {
@@ -152,7 +159,7 @@ describe('client module', () => {
         headers: new axios.AxiosHeaders(),
       } as InternalAxiosRequestConfig;
 
-      const result = requestInterceptor.fulfilled(config);
+      const result = await requestInterceptor.fulfilled(config);
       expect(result.headers.Authorization).toBe('Bearer test-token-123');
     });
 
@@ -177,7 +184,7 @@ describe('client module', () => {
         headers: new axios.AxiosHeaders(),
       } as InternalAxiosRequestConfig;
 
-      const result = requestInterceptor.fulfilled(config);
+      const result = await requestInterceptor.fulfilled(config);
       expect(result.headers.Authorization).toBeUndefined();
     });
 

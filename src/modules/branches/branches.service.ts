@@ -38,8 +38,9 @@ export class BranchesService {
   }
 
   async create(tenantId: string, dto: CreateBranchDto) {
-    await this.limits.checkLimit(tenantId, 'branches');
-    return this.branchesRepo.create(tenantId, { ...dto });
+    return this.limits.withResourceLimit(tenantId, 'branches', (tx) =>
+      this.branchesRepo.create(tenantId, { ...dto }, tx),
+    );
   }
 
   async update(tenantId: string, id: string, dto: UpdateBranchDto) {
@@ -56,12 +57,17 @@ export class BranchesService {
   }
 
   async restore(tenantId: string, id: string) {
-    const branch = await this.branchesRepo.findByIdIncludeDeleted(tenantId, id);
-    if (!branch) throw new NotFoundException('Branch not found');
-    if (!branch.deletedAt)
-      throw new BadRequestException('Branch is not deleted');
-    await this.limits.checkLimit(tenantId, 'branches');
-    return this.branchesRepo.restore(tenantId, id);
+    return this.limits.withResourceLimit(tenantId, 'branches', async (tx) => {
+      const branch = await this.branchesRepo.findByIdIncludeDeleted(
+        tenantId,
+        id,
+        tx,
+      );
+      if (!branch) throw new NotFoundException('Branch not found');
+      if (!branch.deletedAt)
+        throw new BadRequestException('Branch is not deleted');
+      return this.branchesRepo.restore(tenantId, id, tx);
+    });
   }
 
   async getBookingSettings(tenantId: string, branchId: string) {

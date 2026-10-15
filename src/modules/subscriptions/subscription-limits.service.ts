@@ -1,5 +1,9 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
-import { SubscriptionsRepository } from './subscriptions.repository';
+import { Prisma } from '@prisma/client';
+import {
+  SubscriptionsRepository,
+  ResourceLimitResult,
+} from './subscriptions.repository';
 
 type Resource = 'users' | 'branches' | 'workPosts' | 'services';
 
@@ -14,17 +18,30 @@ const RESOURCE_LABELS: Record<Resource, string> = {
 export class SubscriptionLimitsService {
   constructor(private readonly subscriptionsRepo: SubscriptionsRepository) {}
 
-  /**
-   * Atomically checks whether the tenant can create one more resource.
-   * Uses Serializable transaction to prevent TOCTOU races.
-   * No subscription row → no limits enforced (backward compat).
-   */
+  /** Preview only; creation/restoration must run inside withResourceLimit. */
   async checkLimit(tenantId: string, resource: Resource): Promise<void> {
-    const result = await this.subscriptionsRepo.checkLimitAtomic(
-      tenantId,
+    this.assertAllowed(
+      await this.subscriptionsRepo.checkLimitAtomic(tenantId, resource),
       resource,
     );
+  }
 
+  async withResourceLimit<T>(
+    tenantId: string,
+    resource: Resource,
+    operation: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    return this.subscriptionsRepo.withResourceLimit(
+      tenantId,
+      resource,
+      (tx, result) => {
+        this.assertAllowed(result, resource);
+        return operation(tx);
+      },
+    );
+  }
+
+  private assertAllowed(result: ResourceLimitResult, resource: Resource): void {
     if (result.trialExpired) {
       throw new ForbiddenException('Trial has expired');
     }

@@ -109,6 +109,21 @@ export class OrdersRepository {
     });
   }
 
+  async restoreInTransaction(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    id: string,
+    branchId: string,
+    includeRelations: boolean,
+  ) {
+    // Plain transaction clients need explicit tenant and current deleted-state scope.
+    return tx.order.update({
+      where: { id, tenantId, branchId, deletedAt: { not: null } },
+      data: { deletedAt: null },
+      ...(includeRelations ? { include: this.defaultInclude } : {}),
+    });
+  }
+
   async restore(tenantId: string, id: string) {
     return this.db(tenantId).order.update({
       where: { id } as Prisma.OrderWhereUniqueInput,

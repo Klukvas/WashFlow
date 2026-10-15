@@ -30,22 +30,41 @@ const makePayment = (overrides: Record<string, unknown> = {}) => ({
 
 describe('PaymentsService', () => {
   let service: PaymentsService;
-  let paymentsRepo: { findByOrderId: jest.Mock; create: jest.Mock };
+  let paymentsRepo: {
+    findByOrderId: jest.Mock;
+    createTx: jest.Mock;
+    findByOrderIdTx: jest.Mock;
+    withLockedOrder: jest.Mock;
+  };
+  const transaction = {} as Parameters<
+    Parameters<PaymentsRepository['withLockedOrder']>[2]
+  >[0];
   let tenantPrisma: { forTenant: jest.Mock };
   let orderFindFirst: jest.Mock;
   let paymentFindMany: jest.Mock;
   let eventDispatcher: { dispatch: jest.Mock };
 
   beforeEach(async () => {
-    paymentsRepo = {
-      findByOrderId: jest.fn(),
-      create: jest.fn(),
-    };
-
     orderFindFirst = jest
       .fn()
       .mockResolvedValue({ id: ORDER_ID, status: 'PENDING', totalPrice: 1000 });
     paymentFindMany = jest.fn().mockResolvedValue([]);
+    paymentsRepo = {
+      findByOrderId: jest.fn(),
+      createTx: jest.fn(),
+      findByOrderIdTx: paymentFindMany,
+      withLockedOrder: jest.fn(
+        async (
+          _tenantId: string,
+          _orderId: string,
+          callback: Parameters<PaymentsRepository['withLockedOrder']>[2],
+        ) =>
+          callback(
+            transaction,
+            await orderFindFirst({ where: { id: _orderId } }),
+          ),
+      ),
+    };
     tenantPrisma = {
       forTenant: jest.fn().mockReturnValue({
         order: { findFirst: orderFindFirst },
@@ -133,7 +152,7 @@ describe('PaymentsService', () => {
     it('creates a payment via the repository and returns it', async () => {
       const dto = makePaymentDto();
       const payment = makePayment();
-      paymentsRepo.create.mockResolvedValue(payment);
+      paymentsRepo.createTx.mockResolvedValue(payment);
 
       const result = await service.create(
         TENANT_ID,
@@ -148,23 +167,27 @@ describe('PaymentsService', () => {
     it('passes the correct payload to the repository including status PAID', async () => {
       const dto = makePaymentDto();
       const payment = makePayment();
-      paymentsRepo.create.mockResolvedValue(payment);
+      paymentsRepo.createTx.mockResolvedValue(payment);
 
       await service.create(TENANT_ID, ORDER_ID, dto as any, USER_ID);
 
-      expect(paymentsRepo.create).toHaveBeenCalledWith(TENANT_ID, {
-        amount: dto.amount,
-        method: dto.method,
-        reference: dto.reference,
-        status: 'PAID',
-        orderId: ORDER_ID,
-      });
+      expect(paymentsRepo.createTx).toHaveBeenCalledWith(
+        transaction,
+        TENANT_ID,
+        {
+          amount: dto.amount,
+          method: dto.method,
+          reference: dto.reference,
+          status: 'PAID',
+          orderId: ORDER_ID,
+        },
+      );
     });
 
     it('dispatches a PaymentReceivedEvent after a successful create', async () => {
       const dto = makePaymentDto();
       const payment = makePayment();
-      paymentsRepo.create.mockResolvedValue(payment);
+      paymentsRepo.createTx.mockResolvedValue(payment);
 
       await service.create(TENANT_ID, ORDER_ID, dto as any, USER_ID);
 
@@ -174,7 +197,7 @@ describe('PaymentsService', () => {
     it('dispatches an event with eventType PAYMENT_RECEIVED', async () => {
       const dto = makePaymentDto();
       const payment = makePayment();
-      paymentsRepo.create.mockResolvedValue(payment);
+      paymentsRepo.createTx.mockResolvedValue(payment);
 
       await service.create(TENANT_ID, ORDER_ID, dto as any, USER_ID);
 
@@ -185,7 +208,7 @@ describe('PaymentsService', () => {
     it('dispatches an event carrying tenantId, paymentId, orderId and amount', async () => {
       const dto = makePaymentDto();
       const payment = makePayment({ id: 'payment-99' });
-      paymentsRepo.create.mockResolvedValue(payment);
+      paymentsRepo.createTx.mockResolvedValue(payment);
 
       await service.create(TENANT_ID, ORDER_ID, dto as any, USER_ID);
 
@@ -200,7 +223,7 @@ describe('PaymentsService', () => {
     });
 
     it('does not dispatch an event when the repository throws', async () => {
-      paymentsRepo.create.mockRejectedValue(new Error('Insert failed'));
+      paymentsRepo.createTx.mockRejectedValue(new Error('Insert failed'));
 
       await expect(
         service.create(TENANT_ID, ORDER_ID, makePaymentDto() as any, USER_ID),
@@ -210,7 +233,7 @@ describe('PaymentsService', () => {
     });
 
     it('propagates repository errors', async () => {
-      paymentsRepo.create.mockRejectedValue(new Error('Unique constraint'));
+      paymentsRepo.createTx.mockRejectedValue(new Error('Unique constraint'));
 
       await expect(
         service.create(TENANT_ID, ORDER_ID, makePaymentDto() as any, USER_ID),
@@ -220,7 +243,7 @@ describe('PaymentsService', () => {
     it('does not mutate the incoming DTO', async () => {
       const dto = makePaymentDto();
       const frozen = Object.freeze({ ...dto });
-      paymentsRepo.create.mockResolvedValue(makePayment());
+      paymentsRepo.createTx.mockResolvedValue(makePayment());
 
       await expect(
         service.create(TENANT_ID, ORDER_ID, frozen as any, USER_ID),
@@ -234,7 +257,11 @@ describe('PaymentsService', () => {
         service.create(TENANT_ID, ORDER_ID, makePaymentDto() as any, USER_ID),
       ).rejects.toThrow(NotFoundException);
 
-      expect(tenantPrisma.forTenant).toHaveBeenCalledWith(TENANT_ID);
+      expect(paymentsRepo.withLockedOrder).toHaveBeenCalledWith(
+        TENANT_ID,
+        ORDER_ID,
+        expect.any(Function),
+      );
       expect(orderFindFirst).toHaveBeenCalledWith({
         where: { id: ORDER_ID },
       });
@@ -247,7 +274,7 @@ describe('PaymentsService', () => {
         service.create(TENANT_ID, ORDER_ID, makePaymentDto() as any, USER_ID),
       ).rejects.toThrow(NotFoundException);
 
-      expect(paymentsRepo.create).not.toHaveBeenCalled();
+      expect(paymentsRepo.createTx).not.toHaveBeenCalled();
       expect(eventDispatcher.dispatch).not.toHaveBeenCalled();
     });
   });

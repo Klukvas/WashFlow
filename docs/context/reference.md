@@ -1,213 +1,417 @@
-# Reference
+# API & Seed Reference
 
-Env vars, database schema, full API surface, and seed data. Part of the
-[context set](./README.md) · source of truth: [`OVERVIEW.md`](../../OVERVIEW.md).
+Verified inventory of every HTTP route, read from `@Controller` / `@Get` / `@Post` / `@Patch` /
+`@Put` / `@Delete` decorators in `src/`, plus the demo data produced by `prisma/seed.ts`.
 
-## Environment Variables
+**Entry point:** [README.md](./README.md) · **Module ownership:** [modules.md](./modules.md) ·
+**Env vars:** [infrastructure.md](./infrastructure.md#3-environment-variables) ·
+**Schema:** [data-model.md](./data-model.md)
 
-Validated at startup with Zod — fails fast with clear errors.
+---
 
-| Variable | Req | Default | Description |
-|----------|-----|---------|-------------|
-| `DATABASE_URL` | Yes | — | PostgreSQL connection string |
-| `REDIS_URL` | Yes | — | Redis connection string |
-| `JWT_ACCESS_SECRET` | Yes | — | Access token secret (min 32 chars) |
-| `JWT_REFRESH_SECRET` | Yes | — | Refresh token secret (min 32 chars) |
-| `JWT_ACCESS_EXPIRATION` | No | `15m` | Access token TTL |
-| `JWT_REFRESH_EXPIRATION` | No | `7d` | Refresh token TTL |
-| `PORT` | No | `3000` | Server port |
-| `NODE_ENV` | No | `development` | Environment |
-| `CORS_ORIGINS` | No | `*` | Comma-separated origins |
-| `PADDLE_API_KEY` | No | — | Paddle API key (billing) |
-| `PADDLE_CLIENT_TOKEN` | No | — | Paddle client-side token (checkout) |
-| `PADDLE_WEBHOOK_SECRET` | No | — | Paddle webhook HMAC secret |
-| `PADDLE_SANDBOX` | No | `true` | Use Paddle sandbox |
-| `PADDLE_PRICE_IDS` | No | — | JSON map of price IDs (overrides defaults) |
-| `PADDLE_ADDON_PRICE_IDS` | No | — | JSON map of addon price IDs |
-| `PAYMENTS_ENABLED` | No | `false` | Feature flag — enable Paddle payment mutations |
-| `RESEND_API_KEY` | No | — | Resend API key (transactional email) |
-| `EMAIL_FROM` | No | `WashFlow <noreply@washflow.solutions>` | Sender address |
-| `FRONTEND_URL` | No | `http://localhost:5173` | Frontend base URL (reset links) |
-| `CLEANUP_RETENTION_DAYS` | No | `30` | Days before soft-deleted rows are hard-deleted |
-| `SENTRY_DSN` / `VITE_SENTRY_DSN` | No | — | Sentry DSN (backend / frontend) |
-| `SENTRY_TRACES_SAMPLE_RATE` | No | — | Performance trace sampling (0–1) |
-| `METRICS_TOKEN` | No | — | Bearer token protecting `/metrics` (empty = open) |
-| `GRAFANA_LOKI_HOST` / `_USERNAME` / `_PASSWORD` | No | — | Grafana Cloud Loki push credentials |
+## Conventions
 
-## Database Schema
+- Global prefix **`/api/v1`** — every path below is relative to it.
+- Every route requires a Bearer access token unless marked **Public**.
+- **Perm** = the string in `@Permissions(...)`. `isSuperAdmin` bypasses all of them.
+  Routes with a blank Perm still require a valid JWT.
+- **Rate** shows a route-level `@Throttle` override; otherwise the global `short` (10/1 s) and
+  `long` (100/60 s) throttlers apply. `NODE_ENV=test` disables throttling entirely.
+- Successful responses are wrapped by `TransformInterceptor` — see
+  [architecture.md](./architecture.md#response-envelope).
+- List endpoints extend `PaginationDto`: `page` (≥1, default 1), `limit` (1–100, default 20),
+  `sortBy` (allow-listed), `sortOrder` (`asc`/`desc`, default `asc`), `includeDeleted`.
 
-**20 models, 8 enums.** All UUIDs + timestamps. Soft-delete on 9 models with auto-filtering.
+**Totals: 24 controller classes, 113 routes, 17 of them `@Public()`.**
 
-### Enums
+| Area           |  Routes | Public |
+| -------------- | ------: | -----: |
+| auth           |       7 |      5 |
+| tenants        |       4 |      0 |
+| users          |       7 |      0 |
+| roles          |       7 |      0 |
+| permissions    |       2 |      0 |
+| branches       |       8 |      0 |
+| work-posts     |       6 |      0 |
+| services       |       6 |      0 |
+| clients        |       7 |      0 |
+| vehicles       |       7 |      0 |
+| workforce      |       5 |      0 |
+| orders         |       7 |      0 |
+| payments       |       2 |      0 |
+| analytics      |      11 |      0 |
+| audit          |       1 |      0 |
+| subscriptions  |      14 |      0 |
+| paddle webhook |       1 |      1 |
+| public booking |       8 |      8 |
+| support        |       1 |      1 |
+| health         |       1 |      1 |
+| metrics        |       1 |      1 |
+| **Total**      | **113** | **17** |
 
-| Enum | Values |
-|------|--------|
-| `OrderStatus` | BOOKED, BOOKED_PENDING_CONFIRMATION, IN_PROGRESS, COMPLETED, CANCELLED, NO_SHOW |
-| `OrderSource` | INTERNAL, WEB, WIDGET, API |
-| `PaymentStatus` | PENDING, PAID, PARTIALLY_PAID, REFUNDED, FAILED |
-| `PaymentMethod` | CASH, CARD, ONLINE, OTHER |
-| `AuditAction` | CREATE, UPDATE, DELETE, STATUS_CHANGE, MERGE |
-| `PlanTier` | TRIAL, STARTER, BUSINESS, ENTERPRISE |
-| `BillingInterval` | MONTHLY, YEARLY |
-| `SubscriptionStatus` | TRIALING, ACTIVE, PAST_DUE, PAUSED, CANCELLED |
+---
 
-### Models
+## Auth — `AuthController` (`/auth`)
 
-| Model | Key Details |
-|-------|-------------|
-| **Tenant** | Unique slug, settings JSON, 1:1 BookingSettings |
-| **BookingSettings** | Slot duration, buffer, working hours/days, online-booking toggle |
-| **Branch** | Per-tenant, has many WorkPosts, soft-delete |
-| **User** | Globally unique email, soft-delete, optional Role + Branch; `failedLoginAttempts` + `accountLockedUntil` |
-| **Role** | Unique name per tenant, M:N Permissions, soft-delete |
-| **RolePermission** | Join table Role ↔ Permission |
-| **Permission** | Global (no tenantId), seeded `module.action` pairs |
-| **Client** | Unique phone per tenant, soft-delete |
-| **Vehicle** | Linked to Client; make (req), licensePlate (opt), `photoUrl` (opt), soft-delete |
-| **Service** | Name, duration, price (decimal), sortOrder, soft-delete |
-| **WorkPost** | Bay per Branch |
-| **EmployeeProfile** | Links User↔Branch; `isWorker`, `efficiencyCoefficient`, `active`, `workStartTime`/`workEndTime`; unique per userId |
-| **Order** | Status state machine, scheduling window, all relations; optional `assignedEmployeeId` |
-| **OrderService** | Price snapshot at booking time |
-| **Payment** | Amount, method, status, linked to Order |
-| **AuditLog** | Entity type/id, action, old/new values, performer |
-| **Subscription** | 1:1 Tenant; plan/status/interval; nullable limits; `isTrial` + `trialEndsAt`; Paddle fields; `cancelledAt`/`cancelEffectiveAt` |
-| **SubscriptionAddon** | Belongs to Subscription; `resource` + `quantity`; unique per (subscriptionId, resource) |
-| **PasswordResetToken** | userId, unique token, 1h expiry, `usedAt` tracking |
-| **IdempotencyKey** | Tenant-scoped, unique `(tenantId, key)`, TTL-based expiry |
+| Method | Path                    | Auth   | Status | Rate   | Notes                                                              |
+| ------ | ----------------------- | ------ | ------ | ------ | ------------------------------------------------------------------ |
+| POST   | `/auth/login`           | Public | 200    | 5/min  | Returns access token + user; sets the `refresh_token` cookie       |
+| POST   | `/auth/register`        | Public | 201    | 3/min  | Creates tenant + Admin role + user + 30-day trial; auto-login      |
+| POST   | `/auth/refresh`         | Public | 200    | 10/min | Reads the refresh token **from the cookie** — no request body      |
+| POST   | `/auth/logout`          | JWT    | 204    | —      | Increments `tokenVersion`, clears the cookie                       |
+| PATCH  | `/auth/change-password` | JWT    | 204    | —      | Verifies the current password; rejects reuse; bumps `tokenVersion` |
+| POST   | `/auth/forgot-password` | Public | 200    | 3/min  | Always returns the same message                                    |
+| POST   | `/auth/reset-password`  | Public | 200    | 5/min  | Token is matched by SHA-256 hash; invalidates all sessions         |
 
-**Key indexes**: Order `(tenantId, status)` and `(tenantId, workPostId, scheduledStart,
-scheduledEnd)`; all models indexed on `tenantId`; global unique `users(email)`; partial
-uniques (`WHERE deletedAt IS NULL`) on `clients(tenantId, phone)`,
-`vehicles(tenantId, licensePlate)`, `roles(tenantId, name)`.
+The refresh cookie is `httpOnly`, `sameSite: strict`, `path=/api/v1/auth`, `secure` in
+production, `maxAge` 7 days.
 
-## API Reference
+## Tenants — `TenantsController` (`/tenants`)
 
-All endpoints are prefixed with `/api/v1` and JWT-protected unless marked Public.
-105 endpoints (92 protected, 13 public) across 22 controllers.
+| Method | Path           | Guard / Perm           | Notes                                                      |
+| ------ | -------------- | ---------------------- | ---------------------------------------------------------- |
+| GET    | `/tenants`     | `SuperAdminGuard`      | All tenants                                                |
+| GET    | `/tenants/:id` | `tenants.read`         | Non-super-admins may only read their own tenant (403 else) |
+| POST   | `/tenants`     | `SuperAdminGuard`, 201 |                                                            |
+| PATCH  | `/tenants/:id` | `tenants.update`       |                                                            |
 
-### Auth
+No delete and no restore.
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/auth/login` | Public | Returns access + refresh tokens |
-| POST | `/auth/register` | Public | Self-registration: tenant + trial + admin role + user (3/min) |
-| POST | `/auth/refresh` | Public | Refresh tokens |
-| POST | `/auth/forgot-password` | Public | Request reset email (3/min); silent for unknown emails |
-| POST | `/auth/reset-password` | Public | Reset with token (5/min); invalidates all sessions |
-| POST | `/auth/logout` | JWT | Increments tokenVersion, clears refresh cookie |
-| PATCH | `/auth/change-password` | JWT | Change own password (verifies current) |
+## Users — `UsersController` (`/users`)
 
-### CRUD resources
+| Method | Path                        | Perm           | Notes                                     |
+| ------ | --------------------------- | -------------- | ----------------------------------------- |
+| GET    | `/users`                    | `users.read`   | Paginated, branch-scoped                  |
+| GET    | `/users/:id`                | `users.read`   |                                           |
+| POST   | `/users`                    | `users.create` | Subscription limit checked                |
+| PATCH  | `/users/:id`                | `users.update` | Role and branch validated against tenant  |
+| PATCH  | `/users/:id/reset-password` | `users.update` | 204; admin resets another user's password |
+| DELETE | `/users/:id`                | `users.delete` | Soft delete                               |
+| PATCH  | `/users/:id/restore`        | `users.update` | Re-checks the subscription limit          |
 
-Standard pattern per resource: `GET /` · `GET /:id` · `POST /` · `PATCH /:id` ·
-`DELETE /:id` (soft) · `PATCH /:id/restore`.
+## Roles — `RolesController` (`/roles`)
 
-| Resource | Permission | Notes |
-|----------|------------|-------|
-| `/tenants` | `tenants.*` | No delete/restore |
-| `/users` | `users.*` | + `PATCH /:id/reset-password` (admin resets any user) |
-| `/roles` | `roles.*` | + `POST /:id/permissions` |
-| `/branches` | `branches.*` | + `GET\|PATCH /:id/booking-settings` |
-| `/clients` | `clients.*` | Searchable; + `POST /merge` |
-| `/vehicles` | `vehicles.*` | Filter by clientId; + `POST /:id/photo` (5MB, image/*) |
-| `/services` | `services.*` | |
-| `/work-posts` | `work-posts.*` | Requires `?branchId` |
+| Method | Path                     | Perm           |
+| ------ | ------------------------ | -------------- |
+| GET    | `/roles`                 | `roles.read`   |
+| GET    | `/roles/:id`             | `roles.read`   |
+| POST   | `/roles`                 | `roles.create` |
+| PATCH  | `/roles/:id`             | `roles.update` |
+| DELETE | `/roles/:id`             | `roles.delete` |
+| PATCH  | `/roles/:id/restore`     | `roles.update` |
+| POST   | `/roles/:id/permissions` | `roles.update` |
 
-### Orders & Payments
+## Permissions — `PermissionsController` (`/permissions`)
 
-| Method | Path | Permission | Description |
-|--------|------|------------|-------------|
-| GET | `/orders` | orders.read | List (filter: status, date, branch) |
-| GET | `/orders/availability` | scheduling.read | Available time slots |
-| GET | `/orders/:id` | orders.read | Details |
-| POST | `/orders` | orders.create | Create (idempotent via `Idempotency-Key`) |
-| PATCH | `/orders/:id/status` | orders.update | Status transition |
-| DELETE | `/orders/:id` | orders.delete | Soft delete |
-| PATCH | `/orders/:id/restore` | orders.update | Restore |
-| GET | `/orders/:orderId/payments` | payments.read | List for order |
-| POST | `/orders/:orderId/payments` | payments.create | Record (idempotent) |
+| Method | Path                   | Perm         | Notes                            |
+| ------ | ---------------------- | ------------ | -------------------------------- |
+| GET    | `/permissions`         | `roles.read` | Whole global catalogue (47 rows) |
+| GET    | `/permissions/:module` | `roles.read` | Filtered by module name          |
 
-### Analytics
+All 47 seeded permissions are mirrored in `frontend/src/shared/constants/permissions.ts`, but
+only **43 distinct strings** actually appear in a `@Permissions(...)` decorator. Four are
+seeded and assignable yet gate nothing today: `payments.update`, `payments.delete`,
+`tenants.create`, `tenants.delete` (tenant create/delete are guarded by `SuperAdminGuard`
+instead, and there is no tenant delete route at all).
 
-All require `analytics.view`. Params: `dateFrom`, `dateTo`, `branchId` (optional).
+## Branches — `BranchesController` (`/branches`)
 
-| Path | Description |
-|------|-------------|
-| `/analytics/dashboard` | Summary stats (orders, revenue, clients, completion rate) |
-| `/analytics/revenue` | Revenue breakdown by date range |
-| `/analytics/services` | Most popular services by order count |
-| `/analytics/kpi` | Today's KPIs: revenue, orders, avg duration, cancel rate, active clients, occupancy |
-| `/analytics/live` | Real-time: in-progress, waiting, free posts, overdue |
-| `/analytics/branches` | Per-branch revenue, orders, avg check, load rate |
-| `/analytics/employees` | Per-employee orders, revenue, cancel rate |
-| `/analytics/alerts` | Anomalies: high cancel rate, revenue drop, booking decline |
-| `/analytics/online-booking` | Order source breakdown (INTERNAL/WEB/WIDGET/API) |
-| `/analytics/export/orders` | CSV export of orders |
-| `/analytics/export/clients` | CSV export of clients |
+| Method | Path                             | Perm              |
+| ------ | -------------------------------- | ----------------- |
+| GET    | `/branches`                      | `branches.read`   |
+| GET    | `/branches/:id`                  | `branches.read`   |
+| POST   | `/branches`                      | `branches.create` |
+| PATCH  | `/branches/:id`                  | `branches.update` |
+| DELETE | `/branches/:id`                  | `branches.delete` |
+| PATCH  | `/branches/:id/restore`          | `branches.update` |
+| GET    | `/branches/:id/booking-settings` | `branches.read`   |
+| PATCH  | `/branches/:id/booking-settings` | `branches.update` |
 
-### Subscriptions & Billing
+## Work posts — `WorkPostsController` (`/work-posts`)
 
-| Method | Path | Permission | Description |
-|--------|------|------------|-------------|
-| GET | `/subscription/usage` | tenants.read | Own limits + usage + tier + addons |
-| GET | `/subscription/plans` | tenants.read | Plan catalog (tiers, prices, addons) |
-| POST | `/subscription/checkout` | tenants.update | Paddle checkout → transactionId + clientToken |
-| POST | `/subscription/change-plan` | tenants.update | Change plan tier via Paddle |
-| POST | `/subscription/addons` | tenants.update | Manage add-on quantities |
-| POST | `/subscription/preview` | tenants.read | Preview price change |
-| POST | `/subscription/cancel` | tenants.update | Cancel (access until period end) |
-| POST | `/webhooks/paddle` | Public | Paddle webhook (signature-verified) |
-| GET/PUT/DELETE | `/tenants/:id/subscription` | SuperAdmin | Get / create-update / remove tenant subscription |
+| Method | Path                      | Perm                | Notes                                                |
+| ------ | ------------------------- | ------------------- | ---------------------------------------------------- |
+| GET    | `/work-posts`             | `work-posts.read`   | Optional `?branchId`; branch-scoped users are pinned |
+| GET    | `/work-posts/:id`         | `work-posts.read`   |                                                      |
+| POST   | `/work-posts`             | `work-posts.create` | Subscription limit checked                           |
+| PATCH  | `/work-posts/:id`         | `work-posts.update` |                                                      |
+| DELETE | `/work-posts/:id`         | `work-posts.delete` | **204**, soft delete                                 |
+| PATCH  | `/work-posts/:id/restore` | `work-posts.update` |                                                      |
 
-### Workforce, Audit & Support
+## Services — `ServicesController` (`/services`)
 
-| Method | Path | Permission | Description |
-|--------|------|------------|-------------|
-| GET | `/workforce/profiles` | workforce.read | List profiles (paginated) |
-| GET | `/workforce/profiles/:id` | workforce.read | Single profile |
-| POST | `/workforce/profiles` | workforce.create | Create (one per user) |
-| PATCH | `/workforce/profiles/:id` | workforce.update | Update profile |
-| DELETE | `/workforce/profiles/:id` | workforce.delete | Delete (must be inactive) |
-| GET | `/audit-logs` | audit.* | Filter by entity, action, date range |
-| POST | `/support` | Public | Send support request (3/min); auth optional |
+| Method | Path                    | Perm              |
+| ------ | ----------------------- | ----------------- |
+| GET    | `/services`             | `services.read`   |
+| GET    | `/services/:id`         | `services.read`   |
+| POST   | `/services`             | `services.create` |
+| PATCH  | `/services/:id`         | `services.update` |
+| DELETE | `/services/:id`         | `services.delete` |
+| PATCH  | `/services/:id/restore` | `services.update` |
 
-### Public Booking
+## Clients — `ClientsController` (`/clients`)
 
-| Method | Path | Limit | Description |
-|--------|------|-------|-------------|
-| GET | `/public/booking/:slug/availability` | 10/min | Time slots (slug-based) |
-| GET | `/public/booking/:slug/services` | 10/min | Active services |
-| GET | `/public/booking/:slug/branches` | 10/min | Active branches |
-| POST | `/public/booking/:slug/book` | 3/min | Create booking (idempotent) |
-| GET | `/public/widget/services\|branches\|availability` | 10/min | Widget (header `x-carwash-tenant-id`) |
-| POST | `/public/widget/book` | 3/min | Create booking (idempotent) |
+| Method | Path                   | Perm             | Notes                              |
+| ------ | ---------------------- | ---------------- | ---------------------------------- |
+| POST   | `/clients/merge`       | `clients.update` | Declared **before** `/clients/:id` |
+| GET    | `/clients`             | `clients.read`   | `?search=` over name and phone     |
+| GET    | `/clients/:id`         | `clients.read`   |                                    |
+| POST   | `/clients`             | `clients.create` |                                    |
+| PATCH  | `/clients/:id`         | `clients.update` |                                    |
+| DELETE | `/clients/:id`         | `clients.delete` | Emits `client.deleted`             |
+| PATCH  | `/clients/:id/restore` | `clients.update` |                                    |
 
-### WebSocket
+## Vehicles — `VehiclesController` (`/vehicles`)
 
-Namespace `/events`, JWT auth on handshake, rooms `tenant:{id}` / `branch:{id}`; events
-`order.created`, `order.status_changed`, `order.cancelled`.
+| Method | Path                    | Perm              | Notes                                                                                                                                                                     |
+| ------ | ----------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/vehicles`             | `vehicles.read`   | `VehicleQueryDto` (e.g. filter by client)                                                                                                                                 |
+| GET    | `/vehicles/:id`         | `vehicles.read`   |                                                                                                                                                                           |
+| POST   | `/vehicles`             | `vehicles.create` |                                                                                                                                                                           |
+| PATCH  | `/vehicles/:id`         | `vehicles.update` |                                                                                                                                                                           |
+| DELETE | `/vehicles/:id`         | `vehicles.delete` |                                                                                                                                                                           |
+| PATCH  | `/vehicles/:id/restore` | `vehicles.update` |                                                                                                                                                                           |
+| POST   | `/vehicles/:id/photo`   | `vehicles.update` | `multipart/form-data`, field `file`; ≤5 MB; mimetype `image/*` **and** extension in `.jpg .jpeg .png .webp .gif`; stored under `./uploads/vehicles`, served at `/uploads` |
 
-## Seed Data
+## Workforce — `EmployeeProfileController` (`/workforce/profiles`)
 
-`prisma/seed.ts` builds a demo environment simulating **1 year of operations**
-(`npx prisma db seed`; idempotent — skips if data exists).
+| Method | Path                      | Perm               |
+| ------ | ------------------------- | ------------------ |
+| GET    | `/workforce/profiles`     | `workforce.read`   |
+| GET    | `/workforce/profiles/:id` | `workforce.read`   |
+| POST   | `/workforce/profiles`     | `workforce.create` |
+| PATCH  | `/workforce/profiles/:id` | `workforce.update` |
+| DELETE | `/workforce/profiles/:id` | `workforce.delete` |
 
-| Entity | Count | Details |
-|--------|-------|---------|
-| Tenant | 1 | `WashFlow Demo` (slug: `demo`) |
-| Permissions | 47 | `module.action` pairs across 14 modules |
-| Branches | 3 | Центральний (4 posts), Лівобережний (3), Подільський (4) |
-| Services | 8 | Express wash (15 min / 250 UAH) → Ceramic coating (120 min / 3500 UAH) |
-| Roles | 4 | Admin + Manager + Operator + Receptionist |
-| Staff | 18 | 6 + 5 + 7 per branch |
-| Clients | 250 | Ukrainian names/phones, 60% with email |
-| Vehicles | ~400 | 1–3 per client, 10 makes, Ukrainian plates |
-| Orders | ~2,600 | Day-by-day slot filling, zero conflicts |
-| Payments | ~1,800 | COMPLETED orders: 40% CASH / 50% CARD / 10% ONLINE |
-| Audit Logs | ~4,800 | CREATE + STATUS_CHANGE entries |
+No restore route.
 
-**Order generation**: today − 365 days → today (skips Sundays); seasonal demand
-(Jan 0.6× → Jul 1.5× → Dec 0.55×); per-post `nextAvailableTime` tracking (08:00–19:00)
-guarantees zero conflicts; status mix (past ~70% COMPLETED / 12% CANCELLED / 5% NO_SHOW,
-future BOOKED); sources 60% INTERNAL / 20% WEB / 15% WIDGET / 5% API.
+## Orders — `OrdersController` (`/orders`)
+
+| Method | Path                   | Perm              | Notes                                                                                                          |
+| ------ | ---------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------- |
+| GET    | `/orders`              | `orders.read`     | `OrderQueryDto`: `status`, `branchId`, `clientId`, `dateFrom`, `dateTo` + pagination                           |
+| GET    | `/orders/availability` | `scheduling.read` | Query: `branchId` (UUID, required), `date`, `durationMinutes` (default 30), `workPostId`, `assignedEmployeeId` |
+| GET    | `/orders/:id`          | `orders.read`     |                                                                                                                |
+| POST   | `/orders`              | `orders.create`   | **201**; honours the `idempotency-key` header (service-level idempotency)                                      |
+| PATCH  | `/orders/:id/status`   | `orders.update`   | Validated against the state machine                                                                            |
+| DELETE | `/orders/:id`          | `orders.delete`   | Soft delete                                                                                                    |
+| PATCH  | `/orders/:id/restore`  | `orders.update`   | Re-validates scheduling conflicts for non-terminal orders                                                      |
+
+`/orders/availability` is declared before `/orders/:id` so it is not swallowed by the param route.
+Order detail/status/delete/restore apply the authenticated user's branch scope as well as
+its tenant. Create/restore validate active same-tenant/same-branch resource assignments and
+reserve the post before the employee within the transaction.
+
+## Payments — `PaymentsController` (`/orders/:orderId/payments`)
+
+| Method | Path                        | Perm              | Rate  | Notes                                                    |
+| ------ | --------------------------- | ----------------- | ----- | -------------------------------------------------------- |
+| GET    | `/orders/:orderId/payments` | `payments.read`   | —     |                                                          |
+| POST   | `/orders/:orderId/payments` | `payments.create` | 5/min | Uses `IdempotencyInterceptor` (`idempotency-key` header) |
+
+Payment creation locks the tenant-scoped order and performs Decimal sum/limit validation
+and insertion in one `ReadCommitted` transaction. Overpayment is a business `400`, including
+concurrent requests. The HTTP idempotency header does not replace this lock.
+
+## Analytics — `AnalyticsController` (`/analytics`)
+
+All require `analytics.view`. Common query params: `dateFrom`, `dateTo`, optional `branchId`.
+
+| Path                        | Returns                                                                                 |
+| --------------------------- | --------------------------------------------------------------------------------------- |
+| `/analytics/dashboard`      | Summary: orders, revenue, clients, completion rate                                      |
+| `/analytics/revenue`        | Revenue over the date range                                                             |
+| `/analytics/services`       | Most popular services by order count                                                    |
+| `/analytics/kpi`            | Today's KPIs: revenue, orders, average duration, cancel rate, active clients, occupancy |
+| `/analytics/live`           | Live operations: in-progress, waiting, free posts, overdue                              |
+| `/analytics/branches`       | Per-branch revenue, orders, average check, load rate                                    |
+| `/analytics/employees`      | Per-employee orders, revenue, cancel rate                                               |
+| `/analytics/alerts`         | Anomalies: high cancel rate, revenue drop, booking decline                              |
+| `/analytics/online-booking` | Order-source breakdown (`INTERNAL`/`WEB`/`WIDGET`/`API`)                                |
+| `/analytics/export/orders`  | CSV of orders (streamed)                                                                |
+| `/analytics/export/clients` | CSV of clients (streamed)                                                               |
+
+The two export routes have no caller in the operator dashboard.
+
+## Audit — `AuditController` (`/audit-logs`)
+
+| Method | Path          | Perm         | Notes                                             |
+| ------ | ------------- | ------------ | ------------------------------------------------- |
+| GET    | `/audit-logs` | `audit.read` | `AuditQueryDto` filters; branch-scoped; paginated |
+
+## Subscriptions
+
+### `SubscriptionStatusController` (`/subscription`)
+
+| Method | Path                   | Perm | Notes                                                                                                    |
+| ------ | ---------------------- | ---- | -------------------------------------------------------------------------------------------------------- |
+| GET    | `/subscription/status` | —    | JWT only, no permission. Returns `{ isTrial, trialEndsAt, paymentsEnabled }` for the frontend trial gate |
+
+### `SubscriptionUsageController` (`/subscription`) — `PermissionsGuard`
+
+| Method | Path                         | Perm             | Extra guard            | Status |
+| ------ | ---------------------------- | ---------------- | ---------------------- | ------ |
+| GET    | `/subscription/usage`        | `tenants.read`   | —                      | 200    |
+| GET    | `/subscription/billing`      | `tenants.read`   | —                      | 200    |
+| GET    | `/subscription/transactions` | `tenants.read`   | —                      | 200    |
+| GET    | `/subscription/plans`        | `tenants.read`   | —                      | 200    |
+| POST   | `/subscription/checkout`     | `tenants.update` | `PaymentsEnabledGuard` | 200    |
+| POST   | `/subscription/change-plan`  | `tenants.update` | `PaymentsEnabledGuard` | 200    |
+| POST   | `/subscription/addons`       | `tenants.update` | `PaymentsEnabledGuard` | 200    |
+| POST   | `/subscription/preview`      | `tenants.read`   | —                      | 200    |
+| POST   | `/subscription/cancel`       | `tenants.update` | `PaymentsEnabledGuard` | 200    |
+| POST   | `/subscription/reactivate`   | `tenants.update` | `PaymentsEnabledGuard` | 200    |
+
+`PaymentsEnabledGuard` returns **503** when `PAYMENTS_ENABLED` is not `true`. Payments default
+to false, including production Compose; explicitly enabling them requires all three nonblank
+Paddle credentials at startup, in every environment.
+
+### `SubscriptionAdminController` (`/tenants/:tenantId/subscription`) — `SuperAdminGuard`
+
+| Method | Path                              | Status |
+| ------ | --------------------------------- | ------ |
+| GET    | `/tenants/:tenantId/subscription` | 200    |
+| PUT    | `/tenants/:tenantId/subscription` | 200    |
+| DELETE | `/tenants/:tenantId/subscription` | 204    |
+
+### `PaddleWebhookController`
+
+| Method | Path               | Auth   | Status | Notes                                                                                                       |
+| ------ | ------------------ | ------ | ------ | ----------------------------------------------------------------------------------------------------------- |
+| POST   | `/webhooks/paddle` | Public | 200    | `@SkipThrottle()`. Requires `Paddle-Signature` + raw body; HMAC-SHA256 verified; Redis `SET NX` idempotency |
+
+## Support — `SupportController` (`/support`)
+
+| Method | Path       | Auth   | Rate  | Notes                                                                          |
+| ------ | ---------- | ------ | ----- | ------------------------------------------------------------------------------ |
+| POST   | `/support` | Public | 3/min | Body: `subject`, `message`, optional `email`. Works authenticated or anonymous |
+
+## Public booking
+
+### Slug-based — `PublicBookingController` (`/public/booking`), whole controller `@Public()`
+
+| Method | Path                                       | Declared rate | Notes                                |
+| ------ | ------------------------------------------ | ------------- | ------------------------------------ |
+| GET    | `/public/booking/:tenantSlug/availability` | 20/min        | Slug format validated before lookup  |
+| GET    | `/public/booking/:tenantSlug/services`     | 20/min        | Active services only                 |
+| GET    | `/public/booking/:tenantSlug/branches`     | 20/min        | Active branches only                 |
+| POST   | `/public/booking/:tenantSlug/book`         | 5/min         | Honours the `idempotency-key` header |
+
+Both `book` endpoints return an explicit `BookingConfirmationDto` inside the normal response
+envelope: `id`, `branchId`, ISO `scheduledStart` / `scheduledEnd`, numeric `totalPrice`, public
+branch `id/name/address/phone`, service line snapshots, and submitted client/vehicle display
+fields. `client` has only `firstName`, nullable `lastName`, `phone`; `vehicle` has only
+`licensePlate`, nullable `make` / `model`. Those identity fields are echoed from the current
+request even when CRM records match a phone/plate. Stored email/notes, client/vehicle ids,
+staff data, tenant ids and full relations are excluded, including on idempotency replay.
+
+### Header-based — `PublicBookingHeaderController` (`/public/widget`), whole controller `@Public()`
+
+| Method | Path                          | Declared rate | Notes                                 |
+| ------ | ----------------------------- | ------------- | ------------------------------------- |
+| GET    | `/public/widget/services`     | 20/min        | Requires `x-carwash-tenant-id` (UUID) |
+| GET    | `/public/widget/branches`     | 20/min        |                                       |
+| GET    | `/public/widget/availability` | 20/min        |                                       |
+| POST   | `/public/widget/book`         | 5/min         | Honours the `idempotency-key` header  |
+
+> These eight routes declare `@Throttle({ default: … })`, but the application registers only
+> `short` and `long` throttlers. Treat the numbers above as _declared_, not verified-effective —
+> see [architecture.md](./architecture.md#guards-in-order).
+
+## Operational
+
+| Method | Path       | Auth                        | Notes                                                                          |
+| ------ | ---------- | --------------------------- | ------------------------------------------------------------------------------ |
+| GET    | `/health`  | Public                      | Terminus: `database` (Prisma ping), `redis`, `queues` (3 BullMQ queues)        |
+| GET    | `/metrics` | Public + `MetricsAuthGuard` | `@SkipThrottle()`. Bearer `METRICS_TOKEN`; **denied in production when unset** |
+
+Swagger UI is mounted at **`/api/docs`** (not under the `api/v1` prefix) and only when
+`NODE_ENV !== 'production'`.
+
+---
+
+## WebSocket
+
+Namespace **`/events`**.
+
+| Aspect                            | Detail                                                                                   |
+| --------------------------------- | ---------------------------------------------------------------------------------------- |
+| Handshake                         | `auth.token` or `Authorization: Bearer <access token>`; non-`access` tokens are rejected |
+| Rooms                             | Auto-join `tenant:{tenantId}`; server-side emits may target `branch:{branchId}`          |
+| Server → client                   | `order.created`, `order.status_changed`, `order.cancelled`                               |
+| Client listeners in the dashboard | the three above plus `payment.received` and `booking.confirmed` (no backend emitter yet) |
+| Expiry                            | A 60 s sweep disconnects clients whose access token has expired                          |
+| CORS                              | From `CORS_ORIGINS`; empty/`*` means allow-all in dev and **deny** in production         |
+
+---
+
+## Standard headers
+
+| Header                  | Direction | Used by                                                                     |
+| ----------------------- | --------- | --------------------------------------------------------------------------- |
+| `Authorization`         | in        | Bearer access token; also the `/metrics` token                              |
+| `Cookie: refresh_token` | in        | `POST /auth/refresh`, `POST /auth/logout` (httpOnly, set by the server)     |
+| `idempotency-key`       | in        | `POST /orders`, `POST /orders/:id/payments`, both public `book` routes      |
+| `x-carwash-tenant-id`   | in        | `/public/widget/*` — tenant UUID                                            |
+| `x-tenant-id`           | in        | Super-admin tenant override (validated UUID, must exist)                    |
+| `Paddle-Signature`      | in        | `POST /webhooks/paddle`                                                     |
+| `x-correlation-id`      | in/out    | Echoed or generated by `CorrelationIdMiddleware`; appears in every log line |
+
+All of `Content-Type`, `Authorization`, `x-carwash-tenant-id` and `idempotency-key` are in the
+CORS `allowedHeaders` list in `src/main.ts`.
+
+---
+
+## Seed data — `prisma/seed.ts`
+
+`npx prisma db seed` (or `pnpm seed`). Idempotent: it upserts the demo tenant and skips work that
+already exists. Generates roughly one year of operations.
+
+| Entity          | Volume | Detail                                                                                                                                                                 |
+| --------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tenant          | 1      | `WashFlow Demo`, slug `demo`, fixed id `00000000-0000-4000-8000-000000000001`                                                                                          |
+| Permissions     | 47     | `module.action` across 14 modules (also created by migration `20260401000000`)                                                                                         |
+| BookingSettings | 1 + 3  | One tenant-level row plus one per branch (07:00–21:00/15 min, 08:00–20:00/15 min, 09:00–19:00/20 min; buffer 10 min, `maxAdvanceBookingDays` 30, `workingDays [1..6]`) |
+| Branches        | 3      | Центральний філіал (4 posts), Лівобережний філіал (3), Подільський філіал (4) — Kyiv addresses                                                                         |
+| Work posts      | 11     | `Пост 1..n` per branch                                                                                                                                                 |
+| Services        | 8      | Express wash → ceramic coating                                                                                                                                         |
+| Roles           | 4      | `Admin` (all permissions) plus three Ukrainian-named staff roles: `Менеджер`, `Оператор`, `Рецепціоніст`                                                               |
+| Staff users     | 18     | Transliterated Ukrainian names; first per branch is Manager, rest Operator/Receptionist                                                                                |
+| Clients         | 250    | Ukrainian names and phone numbers                                                                                                                                      |
+| Vehicles        | ~400   | 1–3 per client                                                                                                                                                         |
+| Orders          | ~2,500 | Day-by-day slot filling with per-post cursors, so no conflicts are generated                                                                                           |
+| Payments        | ~1,800 | For completed orders                                                                                                                                                   |
+| Audit logs      | ~4,800 | CREATE and STATUS_CHANGE entries                                                                                                                                       |
+
+Order generation spans `today − 1 year → today`, applies monthly seasonal weights
+(`SEASONAL_WEIGHTS`) on top of `BASE_ORDERS_PER_BRANCH`, and mixes statuses and sources.
+
+### Demo credentials
+
+These are seeded demo values, already published in `README.md` and `OVERVIEW.md`.
+
+| Account     | Email                 | Password      | Notes                                                |
+| ----------- | --------------------- | ------------- | ---------------------------------------------------- |
+| Super admin | `admin@washflow.com`  | `admin123`    | `isSuperAdmin: true`                                 |
+| Staff       | `<name>@washflow.com` | `password123` | Role-scoped; e.g. `oleksandr.marchenko@washflow.com` |
+
+Email is globally unique, so the login form needs no tenant selector.
+
+```sql
+-- List seeded staff with their role and branch
+SELECT u.email, r.name AS role, b.name AS branch
+FROM users u
+LEFT JOIN roles r ON u."roleId" = r.id
+LEFT JOIN branches b ON u."branchId" = b.id
+WHERE u."isSuperAdmin" = false
+ORDER BY b.name, r.name;
+```
+
+Playwright reads its login from `frontend/.env.test`, which defines `PLAYWRIGHT_EMAIL`,
+`PLAYWRIGHT_PASSWORD` and `PLAYWRIGHT_TENANT_ID`. **That file is gitignored**
+(`frontend/.gitignore`), so create it locally before running the E2E suite.
+
+---
+
+Related: [modules.md](./modules.md) · [business-logic.md](./business-logic.md) ·
+[frontend.md](./frontend.md) · [data-model.md](./data-model.md)

@@ -11,6 +11,7 @@ import { ServicesRepository } from '../services/services.repository';
 import { EventDispatcherService } from '../../common/events/event-dispatcher.service';
 import { IdempotencyService } from '../idempotency/idempotency.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { OrderCreatedEvent } from './events/order-created.event';
 import { OrderStatusChangedEvent } from './events/order-status-changed.event';
 import { OrderCancelledEvent } from './events/order-cancelled.event';
@@ -96,6 +97,8 @@ describe('OrdersService', () => {
     vehicle: { findFirst: jest.Mock };
   };
   let mockTx: {
+    $queryRaw: jest.Mock;
+    bookingSettings: { findUnique: jest.Mock; findFirst: jest.Mock };
     order: {
       create: jest.Mock;
       findFirst: jest.Mock;
@@ -103,7 +106,8 @@ describe('OrdersService', () => {
       count: jest.Mock;
     };
     employeeProfile: { count: jest.Mock; findFirst: jest.Mock };
-    workPost: { findMany: jest.Mock };
+    branch: { findFirst: jest.Mock };
+    workPost: { findMany: jest.Mock; findFirst: jest.Mock };
   };
   let ordersRepo: {
     findAll: jest.Mock;
@@ -112,6 +116,7 @@ describe('OrdersService', () => {
     updateStatus: jest.Mock;
     softDelete: jest.Mock;
     restore: jest.Mock;
+    restoreInTransaction: OrdersRepository['restoreInTransaction'];
   };
   let schedulingService: {
     reserveSlot: jest.Mock;
@@ -127,6 +132,11 @@ describe('OrdersService', () => {
 
   beforeEach(async () => {
     mockTx = {
+      $queryRaw: jest.fn().mockResolvedValue([]),
+      bookingSettings: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
       order: {
         create: jest.fn(),
         findFirst: jest.fn().mockResolvedValue(makeOrder()),
@@ -137,7 +147,11 @@ describe('OrdersService', () => {
         count: jest.fn().mockResolvedValue(0), // zero profiles → skip auto-assign
         findFirst: jest.fn().mockResolvedValue(null),
       },
-      workPost: { findMany: jest.fn().mockResolvedValue([]) },
+      branch: { findFirst: jest.fn().mockResolvedValue({ id: BRANCH_ID }) },
+      workPost: {
+        findFirst: jest.fn().mockResolvedValue({ id: WORK_POST_ID }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
     };
 
     const defaultBookingSettings = {
@@ -181,7 +195,13 @@ describe('OrdersService', () => {
       },
     };
 
+    const transactionalOrdersRepo = new OrdersRepository(
+      {} as TenantPrismaService,
+    );
     ordersRepo = {
+      restoreInTransaction: transactionalOrdersRepo.restoreInTransaction.bind(
+        transactionalOrdersRepo,
+      ),
       findAll: jest.fn().mockResolvedValue({ items: [], total: 0 }),
       findById: jest.fn(),
       findByIdIncludeDeleted: jest.fn(),
@@ -1048,244 +1068,94 @@ describe('OrdersService', () => {
   // =========================================================================
 
   describe('restore', () => {
-    it('restores a soft-deleted order with scheduled time via transaction', async () => {
-      // makeOrder() has status: 'BOOKED' and workPostId/scheduledStart/End set,
-      // so the service enters the $transaction path using tx.order.count + tx.order.update
-      const deletedOrder = makeOrder({ deletedAt: new Date('2026-01-01') });
-      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
-      mockTx.order.count.mockResolvedValue(0); // no conflicts
-      const restored = makeOrder({ deletedAt: null });
+    beforeEach(() => {
+      mockTx.order.findFirst.mockResolvedValue(
+        makeOrder({ deletedAt: new Date() }),
+      );
+    });
+
+    it('restores a soft-deleted order through the shared reservation transaction', async () => {
+      const restored = makeOrder();
       mockTx.order.update.mockResolvedValue(restored);
-
-      const result = await service.restore(TENANT_ID, ORDER_ID);
-
-      expect(result).toEqual(restored);
-      expect(prisma.$transaction).toHaveBeenCalled();
-    });
-
-    it('calls findByIdIncludeDeleted to look up the order', async () => {
-      const deletedOrder = makeOrder({ deletedAt: new Date() });
-      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
-      mockTx.order.count.mockResolvedValue(0);
-      mockTx.order.update.mockResolvedValue(makeOrder());
-
-      await service.restore(TENANT_ID, ORDER_ID);
-
-      expect(ordersRepo.findByIdIncludeDeleted).toHaveBeenCalledWith(
-        TENANT_ID,
-        ORDER_ID,
+      await expect(service.restore(TENANT_ID, ORDER_ID)).resolves.toEqual(
+        restored,
       );
-    });
-
-    it('throws NotFoundException when order does not exist at all', async () => {
-      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(null);
-
-      await expect(service.restore(TENANT_ID, ORDER_ID)).rejects.toThrow(
-        new NotFoundException('Order not found'),
+      expect(schedulingService.reserveSlot).toHaveBeenCalledWith(
+        mockTx,
+        expect.objectContaining({
+          tenantId: TENANT_ID,
+          workPostId: WORK_POST_ID,
+        }),
       );
-    });
-
-    it('throws NotFoundException when order belongs to a different branch', async () => {
-      const deletedOrder = makeOrder({
-        branchId: 'other-branch',
-        deletedAt: new Date(),
+      expect(mockTx.order.update).toHaveBeenCalledWith({
+        where: {
+          id: ORDER_ID,
+          tenantId: TENANT_ID,
+          branchId: BRANCH_ID,
+          deletedAt: { not: null },
+        },
+        data: { deletedAt: null },
       });
-      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
-
-      await expect(
-        service.restore(TENANT_ID, ORDER_ID, BRANCH_ID),
-      ).rejects.toThrow(new NotFoundException('Order not found'));
     });
 
-    it('does not throw on branch check when branchId is null (tenant-level access)', async () => {
-      const deletedOrder = makeOrder({
-        branchId: BRANCH_ID,
-        deletedAt: new Date(),
+    it('loads the current order with tenant and branch scope inside the transaction', async () => {
+      await service.restore(TENANT_ID, ORDER_ID, BRANCH_ID);
+      expect(mockTx.order.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: ORDER_ID,
+          tenantId: TENANT_ID,
+          branchId: BRANCH_ID,
+        },
       });
-      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
-      mockTx.order.count.mockResolvedValue(0);
-      mockTx.order.update.mockResolvedValue(makeOrder());
-
-      await expect(
-        service.restore(TENANT_ID, ORDER_ID, null),
-      ).resolves.not.toThrow();
+      expect(ordersRepo.findByIdIncludeDeleted).not.toHaveBeenCalled();
     });
 
-    it('does not throw on branch check when branchId matches', async () => {
-      const deletedOrder = makeOrder({
-        branchId: BRANCH_ID,
-        deletedAt: new Date(),
-      });
-      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
-      mockTx.order.count.mockResolvedValue(0);
-      mockTx.order.update.mockResolvedValue(makeOrder());
-
-      await expect(
-        service.restore(TENANT_ID, ORDER_ID, BRANCH_ID),
-      ).resolves.not.toThrow();
-    });
-
-    it('throws BadRequestException when order exists but is not deleted', async () => {
-      const activeOrder = makeOrder({ deletedAt: null });
-      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(activeOrder);
-
-      await expect(service.restore(TENANT_ID, ORDER_ID)).rejects.toThrow(
-        new BadRequestException('Order is not deleted'),
-      );
-    });
-
-    it('does not call restore repository when order is not deleted', async () => {
-      const activeOrder = makeOrder({ deletedAt: null });
-      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(activeOrder);
-
-      await expect(service.restore(TENANT_ID, ORDER_ID)).rejects.toThrow();
-
-      expect(ordersRepo.restore).not.toHaveBeenCalled();
-    });
-
-    it('does not call restore repository when order is not found', async () => {
-      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(null);
-
-      await expect(service.restore(TENANT_ID, ORDER_ID)).rejects.toThrow();
-
-      expect(ordersRepo.restore).not.toHaveBeenCalled();
-    });
-
-    it('throws NotFoundException (not BadRequestException) for branch mismatch before checking deletedAt', async () => {
-      // Order is in wrong branch AND is soft-deleted; branch check should surface first
-      const deletedOrder = makeOrder({
-        branchId: 'wrong-branch',
-        deletedAt: new Date(),
-      });
-      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
-
+    it('throws NotFoundException when no order matches the transaction scope', async () => {
+      mockTx.order.findFirst.mockResolvedValue(null);
       await expect(
         service.restore(TENANT_ID, ORDER_ID, BRANCH_ID),
       ).rejects.toThrow(NotFoundException);
+      expect(mockTx.order.update).not.toHaveBeenCalled();
     });
 
-    it('validates no overlap for non-terminal status orders via tx.order.count', async () => {
-      const deletedOrder = makeOrder({
-        status: 'BOOKED',
-        deletedAt: new Date(),
-        workPostId: WORK_POST_ID,
-        scheduledStart: new Date('2026-03-01T10:00:00Z'),
-        scheduledEnd: new Date('2026-03-01T11:00:00Z'),
-      });
-      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
-      mockTx.order.count.mockResolvedValue(0); // no conflicts
-      mockTx.order.update.mockResolvedValue(makeOrder());
-
-      await service.restore(TENANT_ID, ORDER_ID);
-
-      expect(mockTx.order.count).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            tenantId: TENANT_ID,
-            workPostId: WORK_POST_ID,
-          }),
-        }),
-      );
-    });
-
-    it('throws ConflictException when the time slot is occupied during restore', async () => {
-      const deletedOrder = makeOrder({
-        status: 'BOOKED',
-        deletedAt: new Date(),
-        workPostId: WORK_POST_ID,
-        scheduledStart: new Date('2026-03-01T10:00:00Z'),
-        scheduledEnd: new Date('2026-03-01T11:00:00Z'),
-      });
-      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
-      mockTx.order.count.mockResolvedValue(1); // conflict exists
-
+    it('throws BadRequestException when the current order is already restored', async () => {
+      mockTx.order.findFirst.mockResolvedValue(makeOrder());
       await expect(service.restore(TENANT_ID, ORDER_ID)).rejects.toThrow(
-        new ConflictException(
-          'Cannot restore: the time slot is now occupied by another order',
-        ),
+        'Order is not deleted',
       );
+      expect(mockTx.order.update).not.toHaveBeenCalled();
     });
 
-    it('does not call repo.restore when overlap validation fails', async () => {
-      const deletedOrder = makeOrder({
-        status: 'BOOKED',
-        deletedAt: new Date(),
-        workPostId: WORK_POST_ID,
-        scheduledStart: new Date('2026-03-01T10:00:00Z'),
-        scheduledEnd: new Date('2026-03-01T11:00:00Z'),
-      });
-      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
-      mockTx.order.count.mockResolvedValue(1); // conflict exists
-
+    it('rejects an occupied slot without updating the order', async () => {
+      schedulingService.reserveSlot.mockRejectedValue(
+        new ConflictException('occupied'),
+      );
       await expect(service.restore(TENANT_ID, ORDER_ID)).rejects.toThrow(
         ConflictException,
       );
-      expect(ordersRepo.restore).not.toHaveBeenCalled();
+      expect(mockTx.order.update).not.toHaveBeenCalled();
     });
 
-    it('skips $transaction and calls repo.restore for COMPLETED orders', async () => {
-      const deletedOrder = makeOrder({
-        status: 'COMPLETED',
-        deletedAt: new Date(),
-        workPostId: WORK_POST_ID,
-        scheduledStart: new Date('2026-03-01T10:00:00Z'),
-        scheduledEnd: new Date('2026-03-01T11:00:00Z'),
-      });
-      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
-      ordersRepo.restore.mockResolvedValue(makeOrder());
+    it.each(['COMPLETED', 'CANCELLED', 'NO_SHOW'])(
+      'restores terminal %s without claiming occupancy',
+      async (status) => {
+        mockTx.order.findFirst.mockResolvedValue(
+          makeOrder({ status, deletedAt: new Date() }),
+        );
+        await service.restore(TENANT_ID, ORDER_ID);
+        expect(schedulingService.reserveSlot).not.toHaveBeenCalled();
+        expect(mockTx.employeeProfile.findFirst).not.toHaveBeenCalled();
+        expect(mockTx.order.update).toHaveBeenCalled();
+      },
+    );
 
+    it('preserves a legacy null post without auto-assigning a replacement', async () => {
+      mockTx.order.findFirst.mockResolvedValue(
+        makeOrder({ workPostId: null, deletedAt: new Date() }),
+      );
       await service.restore(TENANT_ID, ORDER_ID);
-
-      expect(mockTx.order.count).not.toHaveBeenCalled();
-      expect(ordersRepo.restore).toHaveBeenCalled();
-    });
-
-    it('skips overlap check and calls repo.restore for CANCELLED orders', async () => {
-      const deletedOrder = makeOrder({
-        status: 'CANCELLED',
-        deletedAt: new Date(),
-        workPostId: WORK_POST_ID,
-        scheduledStart: new Date('2026-03-01T10:00:00Z'),
-        scheduledEnd: new Date('2026-03-01T11:00:00Z'),
-      });
-      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
-      ordersRepo.restore.mockResolvedValue(makeOrder());
-
-      await service.restore(TENANT_ID, ORDER_ID);
-
-      expect(mockTx.order.count).not.toHaveBeenCalled();
-    });
-
-    it('skips overlap check and calls repo.restore for NO_SHOW orders', async () => {
-      const deletedOrder = makeOrder({
-        status: 'NO_SHOW',
-        deletedAt: new Date(),
-        workPostId: WORK_POST_ID,
-        scheduledStart: new Date('2026-03-01T10:00:00Z'),
-        scheduledEnd: new Date('2026-03-01T11:00:00Z'),
-      });
-      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
-      ordersRepo.restore.mockResolvedValue(makeOrder());
-
-      await service.restore(TENANT_ID, ORDER_ID);
-
-      expect(mockTx.order.count).not.toHaveBeenCalled();
-    });
-
-    it('skips overlap check and calls repo.restore when workPostId is null', async () => {
-      const deletedOrder = makeOrder({
-        status: 'BOOKED',
-        deletedAt: new Date(),
-        workPostId: null,
-        scheduledStart: new Date('2026-03-01T10:00:00Z'),
-        scheduledEnd: new Date('2026-03-01T11:00:00Z'),
-      });
-      ordersRepo.findByIdIncludeDeleted.mockResolvedValue(deletedOrder);
-      ordersRepo.restore.mockResolvedValue(makeOrder());
-
-      await service.restore(TENANT_ID, ORDER_ID);
-
-      expect(mockTx.order.count).not.toHaveBeenCalled();
+      expect(schedulingService.reserveSlot).not.toHaveBeenCalled();
+      expect(mockTx.workPost.findMany).not.toHaveBeenCalled();
     });
   });
 
@@ -1372,6 +1242,7 @@ describe('OrdersService', () => {
       mockTx.order.create.mockResolvedValue(
         makeOrder({ assignedEmployeeId: 'emp-1' }),
       );
+      mockTx.employeeProfile.findFirst.mockResolvedValue({ id: 'emp-1' });
       const dto = makeCreateDto({ assignedEmployeeId: 'emp-1' });
 
       await service.create(TENANT_ID, dto, USER_ID);

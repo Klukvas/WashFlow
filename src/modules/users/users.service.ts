@@ -65,8 +65,6 @@ export class UsersService {
   }
 
   async create(tenantId: string, dto: CreateUserDto) {
-    await this.limits.checkLimit(tenantId, 'users');
-
     if (dto.roleId) {
       await this.validateRoleBelongsToTenant(tenantId, dto.roleId);
     }
@@ -78,10 +76,16 @@ export class UsersService {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...rest } = dto;
 
-    return this.usersRepo.create(tenantId, {
-      ...rest,
-      passwordHash,
-    });
+    return this.limits.withResourceLimit(tenantId, 'users', (tx) =>
+      this.usersRepo.create(
+        tenantId,
+        {
+          ...rest,
+          passwordHash,
+        },
+        tx,
+      ),
+    );
   }
 
   async update(tenantId: string, id: string, dto: UpdateUserDto) {
@@ -125,10 +129,15 @@ export class UsersService {
   }
 
   async restore(tenantId: string, id: string) {
-    const user = await this.usersRepo.findByIdIncludeDeleted(tenantId, id);
-    if (!user) throw new NotFoundException('User not found');
-    if (!user.deletedAt) throw new BadRequestException('User is not deleted');
-    await this.limits.checkLimit(tenantId, 'users');
-    return this.usersRepo.restore(tenantId, id);
+    return this.limits.withResourceLimit(tenantId, 'users', async (tx) => {
+      const user = await this.usersRepo.findByIdIncludeDeleted(
+        tenantId,
+        id,
+        tx,
+      );
+      if (!user) throw new NotFoundException('User not found');
+      if (!user.deletedAt) throw new BadRequestException('User is not deleted');
+      return this.usersRepo.restore(tenantId, id, tx);
+    });
   }
 }

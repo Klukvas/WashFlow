@@ -22,7 +22,7 @@ services:
       --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       --appendonly yes
       --maxmemory 1gb
-      --maxmemory-policy allkeys-lru
+      --maxmemory-policy noeviction
     volumes:
       - redis_data:/data
     healthcheck:
@@ -47,6 +47,7 @@ services:
       JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-15m}
       JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-7d}
       SENTRY_DSN: ${SENTRY_DSN:-}
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
       GRAFANA_LOKI_HOST: ${GRAFANA_LOKI_HOST:-}
       GRAFANA_LOKI_USERNAME: ${GRAFANA_LOKI_USERNAME:-}
       GRAFANA_LOKI_PASSWORD: ${GRAFANA_LOKI_PASSWORD:-}
@@ -58,7 +59,7 @@ services:
       PADDLE_SANDBOX: 'false'
       PADDLE_PRICE_IDS: ${PADDLE_PRICE_IDS:-}
       PADDLE_ADDON_PRICE_IDS: ${PADDLE_ADDON_PRICE_IDS:-}
-      PAYMENTS_ENABLED: 'true'
+      PAYMENTS_ENABLED: ${PAYMENTS_ENABLED:-false}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_SUPPORT_CHAT_ID: ${TELEGRAM_SUPPORT_CHAT_ID:-}
     volumes:

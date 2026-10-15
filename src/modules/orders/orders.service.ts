@@ -20,6 +20,8 @@ import { OrderCancelledEvent } from './events/order-cancelled.event';
 import { VALID_STATUS_TRANSITIONS } from './types/order.types';
 import { paginatedResponse } from '../../common/utils/pagination.util';
 import { resolveBookingSettings } from '../../common/utils/booking-settings.util';
+import { reserveEmployee } from './employee-eligibility.util';
+import { runReservationTransaction } from './reservation-transaction.util';
 
 const MS_PER_DAY = 86_400_000;
 
@@ -76,17 +78,6 @@ export class OrdersService {
       dto.vehicleId,
     );
 
-    if (dto.assignedEmployeeId) {
-      const profile = await this.prisma.employeeProfile.findFirst({
-        where: { id: dto.assignedEmployeeId, tenantId },
-      });
-      if (!profile) {
-        throw new BadRequestException(
-          'Assigned employee profile not found in this tenant',
-        );
-      }
-    }
-
     const { services, totalPrice, totalDuration } =
       await this.resolveServicesAndPricing(tenantId, dto.serviceIds);
 
@@ -112,110 +103,101 @@ export class OrdersService {
       source === 'WEB' ? 'BOOKED_PENDING_CONFIRMATION' : 'BOOKED';
     const bufferMinutes = bookingSettings.bufferTimeMinutes;
 
-    const order = await this.prisma.$transaction(
-      async (tx) => {
-        if (idempotencyKey) {
-          const cached = await this.idempotencyService.checkTx(
-            tx,
-            tenantId,
-            idempotencyKey,
-          );
-          if (cached.hit) {
-            return cached.cachedResponse!.body as Awaited<
-              ReturnType<typeof tx.order.create>
-            >;
-          }
-          const acquired = await this.idempotencyService.acquireLockTx(tx, {
-            tenantId,
-            key: idempotencyKey,
-            method: 'POST',
-            path: '/orders',
-          });
-          if (!acquired) {
-            throw new ConflictException('Request is being processed');
-          }
+    const order = await runReservationTransaction(this.prisma, async (tx) => {
+      if (idempotencyKey) {
+        const cached = await this.idempotencyService.checkTx(
+          tx,
+          tenantId,
+          idempotencyKey,
+        );
+        if (cached.hit) {
+          return cached.cachedResponse!.body as Awaited<
+            ReturnType<typeof tx.order.create>
+          >;
         }
+        const acquired = await this.idempotencyService.acquireLockTx(tx, {
+          tenantId,
+          key: idempotencyKey,
+          method: 'POST',
+          path: '/orders',
+        });
+        if (!acquired) {
+          throw new ConflictException('Request is being processed');
+        }
+      }
 
-        const workPostId = await this.resolveWorkPost(tx, {
+      const { workPostId, assignedEmployeeId } = await this.reserveResources(
+        tx,
+        {
           tenantId,
           branchId: dto.branchId,
-          workPostId: dto.workPostId,
+          // Optional JSON nulls mean automatic assignment on create. Only
+          // restoration may preserve a legacy unassigned resource as null.
+          workPostId: dto.workPostId ?? undefined,
+          assignedEmployeeId: dto.assignedEmployeeId ?? undefined,
           scheduledStart,
           scheduledEnd,
           bufferMinutes,
-        });
+        },
+      );
 
-        const assignedEmployeeId = await this.resolveEmployee(tx, {
+      const created = await tx.order.create({
+        data: {
           tenantId,
           branchId: dto.branchId,
-          assignedEmployeeId: dto.assignedEmployeeId,
+          clientId: dto.clientId,
+          vehicleId: dto.vehicleId,
+          workPostId,
+          assignedEmployeeId,
+          createdById: userId,
+          status,
+          source,
           scheduledStart,
           scheduledEnd,
-          bufferMinutes,
-        });
-
-        const created = await tx.order.create({
-          data: {
-            tenantId,
-            branchId: dto.branchId,
-            clientId: dto.clientId,
-            vehicleId: dto.vehicleId,
-            workPostId,
-            assignedEmployeeId,
-            createdById: userId,
-            status,
-            source,
-            scheduledStart,
-            scheduledEnd,
-            totalPrice,
-            notes: dto.notes,
-            services: {
-              create: services.map((s) => ({
-                tenantId,
-                serviceId: s.id,
-                price: s.price,
-                quantity: 1,
-              })),
-            },
+          totalPrice,
+          notes: dto.notes,
+          services: {
+            create: services.map((s) => ({
+              tenantId,
+              serviceId: s.id,
+              price: s.price,
+              quantity: 1,
+            })),
           },
-          include: {
-            services: { include: { service: true } },
-            client: true,
-            vehicle: true,
-            branch: true,
-            workPost: true,
-            assignedEmployee: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    firstName: true,
-                    lastName: true,
-                    email: true,
-                  },
+        },
+        include: {
+          services: { include: { service: true } },
+          client: true,
+          vehicle: true,
+          branch: true,
+          workPost: true,
+          assignedEmployee: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
                 },
               },
             },
           },
-        });
+        },
+      });
 
-        if (idempotencyKey) {
-          await this.idempotencyService.saveResultTx(
-            tx,
-            tenantId,
-            idempotencyKey,
-            201,
-            created,
-          );
-        }
+      if (idempotencyKey) {
+        await this.idempotencyService.saveResultTx(
+          tx,
+          tenantId,
+          idempotencyKey,
+          201,
+          created,
+        );
+      }
 
-        return created;
-      },
-      {
-        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-        timeout: 10000,
-      },
-    );
+      return created;
+    });
 
     this.eventDispatcher.dispatch(
       new OrderCreatedEvent(tenantId, {
@@ -307,64 +289,54 @@ export class OrdersService {
   }
 
   async restore(tenantId: string, id: string, branchId: string | null = null) {
-    const order = await this.ordersRepo.findByIdIncludeDeleted(tenantId, id);
-    if (!order) throw new NotFoundException('Order not found');
-    if (branchId !== null && order.branchId !== branchId) {
-      throw new NotFoundException('Order not found');
-    }
-    if (!order.deletedAt) throw new BadRequestException('Order is not deleted');
-
-    const terminalStatuses = Object.entries(VALID_STATUS_TRANSITIONS)
-      .filter(([, v]) => v.length === 0)
-      .map(([k]) => k);
-    const needsOverlapCheck =
-      order.workPostId &&
-      order.scheduledStart &&
-      order.scheduledEnd &&
-      !terminalStatuses.includes(order.status);
-
-    if (needsOverlapCheck) {
-      const bookingSettings = await resolveBookingSettings(
-        this.prisma,
-        tenantId,
-        order.branchId,
-      );
-
-      return this.prisma.$transaction(async (tx) => {
-        const { bufferTimeMinutes } = bookingSettings;
-        const bufferedStart = new Date(
-          order.scheduledStart.getTime() - bufferTimeMinutes * 60000,
-        );
-        const bufferedEnd = new Date(
-          order.scheduledEnd.getTime() + bufferTimeMinutes * 60000,
-        );
-
-        const conflicts = await tx.order.count({
-          where: {
-            tenantId,
-            workPostId: order.workPostId!,
-            id: { not: id },
-            deletedAt: null,
-            status: { notIn: ['CANCELLED', 'NO_SHOW', 'COMPLETED'] },
-            scheduledStart: { lt: bufferedEnd },
-            scheduledEnd: { gt: bufferedStart },
-          },
-        });
-
-        if (conflicts > 0) {
-          throw new ConflictException(
-            'Cannot restore: the time slot is now occupied by another order',
-          );
-        }
-
-        return tx.order.update({
-          where: { id } as Prisma.OrderWhereUniqueInput,
-          data: { deletedAt: null },
-        });
+    return runReservationTransaction(this.prisma, async (tx) => {
+      // Transaction clients bypass tenant and soft-delete filtering. Re-read on
+      // each retry so no decision relies on an order fetched before the transaction.
+      const order = await tx.order.findFirst({
+        where: { id, tenantId, ...(branchId !== null ? { branchId } : {}) },
       });
-    }
+      if (!order) throw new NotFoundException('Order not found');
+      if (!order.deletedAt)
+        throw new BadRequestException('Order is not deleted');
 
-    return this.ordersRepo.restore(tenantId, id);
+      const isTerminal = VALID_STATUS_TRANSITIONS[order.status].length === 0;
+      const branch = await tx.branch.findFirst({
+        where: {
+          id: order.branchId,
+          tenantId,
+          ...(!isTerminal ? { isActive: true, deletedAt: null } : {}),
+        },
+        select: { id: true },
+      });
+      if (!branch)
+        throw new BadRequestException('Branch not found or inactive');
+
+      if (!isTerminal) {
+        const settings = await resolveBookingSettings(
+          tx,
+          tenantId,
+          order.branchId,
+        );
+        await this.reserveResources(tx, {
+          tenantId,
+          branchId: order.branchId,
+          // Preserve legacy unassigned resources: restoring must not invent assignments.
+          workPostId: order.workPostId,
+          assignedEmployeeId: order.assignedEmployeeId,
+          scheduledStart: order.scheduledStart,
+          scheduledEnd: order.scheduledEnd,
+          bufferMinutes: settings.bufferTimeMinutes,
+        });
+      }
+
+      return this.ordersRepo.restoreInTransaction(
+        tx,
+        tenantId,
+        id,
+        order.branchId,
+        isTerminal || order.workPostId === null,
+      );
+    });
   }
 
   // ─── Private Helpers ────────────────────────────────────────────────────────
@@ -444,6 +416,36 @@ export class OrdersService {
     }
   }
 
+  private async reserveResources(
+    tx: Prisma.TransactionClient,
+    params: {
+      tenantId: string;
+      branchId: string;
+      workPostId?: string | null;
+      assignedEmployeeId?: string | null;
+      scheduledStart: Date;
+      scheduledEnd: Date;
+      bufferMinutes: number;
+    },
+  ) {
+    // All callers lock posts before employees; null preserves a legacy assignment.
+    const workPostId =
+      params.workPostId === null
+        ? null
+        : await this.resolveWorkPost(tx, {
+            ...params,
+            workPostId: params.workPostId,
+          });
+    const assignedEmployeeId =
+      params.assignedEmployeeId === null
+        ? null
+        : await reserveEmployee(tx, {
+            ...params,
+            assignedEmployeeId: params.assignedEmployeeId,
+          });
+    return { workPostId, assignedEmployeeId };
+  }
+
   private async resolveWorkPost(
     tx: Prisma.TransactionClient,
     params: {
@@ -464,7 +466,33 @@ export class OrdersService {
       bufferMinutes,
     } = params;
 
+    // Transaction clients bypass tenant and soft-delete filtering.
+    const branch = await tx.branch.findFirst({
+      where: { id: branchId, tenantId, isActive: true, deletedAt: null },
+      select: { id: true },
+    });
+    if (!branch) {
+      throw new BadRequestException('Branch not found or inactive');
+    }
+
+    const workPostWhere = {
+      tenantId,
+      branchId,
+      isActive: true,
+      deletedAt: null,
+    };
+
     if (workPostId) {
+      const workPost = await tx.workPost.findFirst({
+        where: { id: workPostId, ...workPostWhere },
+        select: { id: true },
+      });
+      if (!workPost) {
+        throw new BadRequestException(
+          'Work post not found or inactive in this branch',
+        );
+      }
+
       await this.schedulingService.reserveSlot(tx, {
         tenantId,
         workPostId,
@@ -476,7 +504,8 @@ export class OrdersService {
     }
 
     const workPosts = await tx.workPost.findMany({
-      where: { tenantId, branchId, isActive: true, deletedAt: null },
+      where: workPostWhere,
+      orderBy: { id: 'asc' },
     });
 
     for (const wp of workPosts) {
@@ -498,81 +527,5 @@ export class OrdersService {
     throw new BadRequestException(
       'No available work posts for the requested time',
     );
-  }
-
-  private async resolveEmployee(
-    tx: Prisma.TransactionClient,
-    params: {
-      tenantId: string;
-      branchId: string;
-      assignedEmployeeId?: string;
-      scheduledStart: Date;
-      scheduledEnd: Date;
-      bufferMinutes: number;
-    },
-  ): Promise<string | undefined> {
-    const {
-      tenantId,
-      branchId,
-      assignedEmployeeId,
-      scheduledStart,
-      scheduledEnd,
-      bufferMinutes,
-    } = params;
-
-    if (assignedEmployeeId) return assignedEmployeeId;
-
-    const totalProfiles = await tx.employeeProfile.count({
-      where: {
-        tenantId,
-        branchId,
-        active: true,
-        workStartTime: { not: null },
-      },
-    });
-
-    if (totalProfiles === 0) return undefined;
-
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const startHH = `${pad(scheduledStart.getUTCHours())}:${pad(scheduledStart.getUTCMinutes())}`;
-    const endHH = `${pad(scheduledEnd.getUTCHours())}:${pad(scheduledEnd.getUTCMinutes())}`;
-
-    const bufferedStart = new Date(
-      scheduledStart.getTime() - bufferMinutes * 60000,
-    );
-    const bufferedEnd = new Date(
-      scheduledEnd.getTime() + bufferMinutes * 60000,
-    );
-
-    const availableEmployee = await tx.employeeProfile.findFirst({
-      where: {
-        tenantId,
-        branchId,
-        isWorker: true,
-        active: true,
-        deletedAt: null,
-        workStartTime: { lte: startHH },
-        workEndTime: { gte: endHH },
-        user: { deletedAt: null },
-        branch: { deletedAt: null },
-        orders: {
-          none: {
-            status: { notIn: ['CANCELLED', 'NO_SHOW', 'COMPLETED'] },
-            scheduledStart: { lt: bufferedEnd },
-            scheduledEnd: { gt: bufferedStart },
-            deletedAt: null,
-          },
-        },
-      },
-      select: { id: true },
-    });
-
-    if (!availableEmployee) {
-      throw new BadRequestException(
-        'No available employees for the requested time',
-      );
-    }
-
-    return availableEmployee.id;
   }
 }
