@@ -42,11 +42,14 @@ declare global {
 
 async function openHarness(
   page: Page,
+  baseURL: string | undefined,
   handle: (route: Route, path: string) => Promise<void>,
 ) {
+  if (!baseURL) throw new Error('Cookie harness requires a Playwright baseURL');
+  const origin = new URL(baseURL).origin;
   await page.route('**/*', async (route) => {
     const url = new URL(route.request().url());
-    if (url.origin !== 'http://127.0.0.1:5179') return route.abort();
+    if (url.origin !== origin) return route.abort();
     if (url.pathname.startsWith('/api/')) return handle(route, url.pathname);
     if (url.pathname === '/')
       return route.fulfill({
@@ -127,6 +130,7 @@ async function expectCookie(page: Page, owner: string | null) {
   else
     expect(cookie).toMatchObject({
       value: owner,
+      domain: new URL(page.url()).hostname,
       httpOnly: true,
       path: '/api/v1/auth',
     });
@@ -138,13 +142,13 @@ async function expectCookie(page: Page, owner: string | null) {
 for (const method of ['login', 'register'] as const) {
   test(`late old 401 during ${method} cannot overwrite B's HttpOnly cookie`, async ({
     page,
-    context,
+    baseURL,
   }) => {
     const orders = gate();
     const login = gate();
     const refresh = gate();
     const sent: string[] = [];
-    await openHarness(page, async (route, path) => {
+    await openHarness(page, baseURL, async (route, path) => {
       sent.push(path);
       if (path === '/api/v1/orders') {
         await orders.promise;
@@ -190,13 +194,7 @@ for (const method of ['login', 'register'] as const) {
     expect(await page.evaluate(() => window.cookieTest.orders)).toBe(
       'ERR_CANCELED',
     );
-    const cookies = await context.cookies();
-    expect(
-      cookies.find((cookie) => cookie.name === 'refresh_token'),
-    ).toMatchObject({ value: 'b', httpOnly: true, path: '/api/v1/auth' });
-    expect(await page.evaluate(() => document.cookie)).not.toContain(
-      'refresh_token',
-    );
+    await expectCookie(page, 'b');
     expect(
       await page.evaluate(
         () => window.cookieTest.auth.useAuthStore.getState().user?.id,
@@ -209,10 +207,11 @@ for (const method of ['login', 'register'] as const) {
 for (const kind of ['boot', 'refresh', 'logout'] as const) {
   test(`login follows the old ${kind} HTTP cookie response`, async ({
     page,
+    baseURL,
   }) => {
     const oldResponse = gate();
     const sent: string[] = [];
-    await openHarness(page, async (route, path) => {
+    await openHarness(page, baseURL, async (route, path) => {
       sent.push(path);
       if (path.endsWith('/orders'))
         return route.fulfill({ status: 401, json: {} });
@@ -277,10 +276,11 @@ for (const kind of ['boot', 'refresh', 'logout'] as const) {
 for (const method of ['login', 'register'] as const) {
   test(`logout during ${method} follows its response and clears B's HttpOnly cookie`, async ({
     page,
+    baseURL,
   }) => {
     const response = gate();
     const sent: string[] = [];
-    await openHarness(page, async (route, path) => {
+    await openHarness(page, baseURL, async (route, path) => {
       sent.push(path);
       if (path.endsWith(`/auth/${method}`)) {
         await response.promise;
@@ -324,10 +324,11 @@ for (const method of ['login', 'register'] as const) {
 
   test(`parallel ${method} and successor auth accept only the last cookie owner`, async ({
     page,
+    baseURL,
   }) => {
     const first = gate();
     const sent: string[] = [];
-    await openHarness(page, async (route, path) => {
+    await openHarness(page, baseURL, async (route, path) => {
       sent.push(path);
       if (!path.endsWith('/auth/login') && !path.endsWith('/auth/register'))
         throw new Error(`Unexpected API request: ${path}`);
@@ -360,10 +361,12 @@ for (const method of ['login', 'register'] as const) {
 
 test('login failure clears the old cookie and a subsequent login can proceed', async ({
   page,
+  baseURL,
 }) => {
   let attempts = 0;
   const sent: string[] = [];
-  await openHarness(page, async (route, path) => {
+  await openHarness(page, baseURL, async (route, path) => {
+    if (path === '/api/v1/auth/seed') return respondAuth(route, 'a');
     sent.push(path);
     if (path.endsWith('/auth/login')) {
       if (++attempts === 1)
@@ -386,7 +389,6 @@ test('login failure clears the old cookie and a subsequent login can proceed', a
     throw new Error(`Unexpected API request: ${path}`);
   });
   // Seed via an HTTP response rather than document.cookie/context.addCookies.
-  await page.route('**/api/v1/auth/seed', (route) => respondAuth(route, 'a'));
   await page.evaluate(
     async ({ token, userA }) => {
       await fetch('/api/v1/auth/seed');

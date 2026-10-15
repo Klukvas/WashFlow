@@ -339,8 +339,10 @@ For real payment/reservation/quota races, use only the opt-in isolated PostgreSQ
 explicit `WASHFLOW_REPAIR_TEST_DATABASE_URL`; never application `DATABASE_URL`.
 [CONTRIBUTING](../CONTRIBUTING.md#isolated-postgresql-concurrency-checks) describes strict URL
 guards, new disposable database setup, actual lock-waiter checks, commands and cleanup.
-Migration deployment currently has separately verified schema drift, so the recorded runtime
-proof is against a second schema-derived empty database, not migration readiness.
+The 15-migration chain has an empty schema diff. Run the concurrency suite against that
+migration-built database. The separate guarded migration-upgrade suite checks synthetic
+existing data, UTC conversion and atomic failure handling; the workflow also documents the
+maintenance-window and historical-timezone checks needed before production deployment.
 
 For public wizard context races, use each frontend's
 `playwright.booking-selection.config.ts` against its already-started synthetic-test server

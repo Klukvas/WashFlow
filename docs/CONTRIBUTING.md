@@ -186,13 +186,33 @@ serialization failure, explicit JSON-null resource/tenant guards, and all four q
 across create/create, create/restore and restore/restore races. The entire disposable database belongs
 to the test; clean up only its owned container when evidence inspection finishes.
 
-**Current limitation:** all 14 migrations deploy, but their resulting schema has verified
-pre-existing drift; see [infrastructure.md](context/infrastructure.md#verified-migrationschema-drift).
-The recorded successful runtime run used a separate new empty database synchronized from the
-current Prisma schema with `pnpm exec prisma db push --config test/repair-prisma.config.ts`,
-without reset or data-loss flags. This proves those runtime invariants on the current schema;
-it does not clear migration/deployment readiness. Do not synchronize an existing database as
-a workaround.
+The 15-migration chain now matches the Prisma schema, including the retained trial partial
+index. Verify the deployed schema before running the concurrency suite:
+
+```bash
+pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script --exit-code --config test/repair-prisma.config.ts
+```
+
+Expected: `-- This is an empty migration.` and exit 0. The concurrency suite can therefore run
+against the migration-built database; no `db push` workaround is needed. Existing databases
+must use the forward migration, with the maintenance/UTC assumptions described in
+[infrastructure.md](context/infrastructure.md#verified-migrationschema-drift).
+
+The separate upgrade regression suite accepts only `WASHFLOW_MIGRATION_TEST_DATABASE_URL`
+pointing to a task-owned `washflow_repair_migration_*` database on `127.0.0.1:15433`, without
+query/hash overrides. It never imports `.env` or falls back to `DATABASE_URL`; with no URL all
+five tests are skipped. Create that **new empty database** in the same disposable PostgreSQL
+16 container, then run:
+
+```bash
+pnpm exec jest --config test/jest-e2e.json --runTestsByPath test/migration-drift.e2e-spec.ts --runInBand
+```
+
+It creates a unique schema per test, applies the checked-in SQL and synthetic fixtures, and
+removes only those owned schemas. This is a developer verification command that writes only
+to the disposable database; a read-only reviewer should inspect its recorded evidence or run
+non-mutating checks. It tests the old-chain upgrade, existing data and timezone preservation,
+ordinary Prisma operations, index retention and atomic photo-column conflict handling.
 
 ### Browser race regressions
 
@@ -275,6 +295,8 @@ Unit and E2E skips are independent: skipping unit tests does not suppress E2E. E
 conditions allow only skips requested by their matching input; failed/cancelled lint or tests
 and unintended skips block image publishing. Both E2E jobs explicitly enable payments and
 provide all three synthetic sandbox Paddle credentials to satisfy startup validation.
+Both E2E jobs initialize their fresh PostgreSQL service databases with
+`pnpm exec prisma migrate deploy`, exercising the checked-in migration chain before tests.
 
 Artifacts: `backend-coverage`, `playwright-report`, and `playwright-screenshots` on failure
 (7-day retention). Full job detail, service containers and secrets:

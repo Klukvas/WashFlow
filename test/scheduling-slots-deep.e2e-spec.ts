@@ -3,6 +3,7 @@ import { App } from 'supertest/types';
 import { INestApplication } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import { createTestApp, cleanupTenant, TestSetup } from './helpers/test-app';
 
 /**
@@ -27,6 +28,7 @@ const SLUG = 'e2e-slots-deep';
 describe('Scheduling Slots Deep Coverage (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
+  let scopedPrisma: ReturnType<TenantPrismaService['forTenant']>;
   let accessToken: string;
   let tenantId: string;
   let branchId: string;
@@ -49,6 +51,7 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
     prisma = setup.prisma;
     accessToken = setup.accessToken;
     tenantId = setup.testTenant.id;
+    scopedPrisma = app.get(TenantPrismaService).forTenant(tenantId);
     branchId = setup.testBranch.id;
 
     // Allow enough advance booking for ~34 calendar days (29 non-Sunday days)
@@ -185,6 +188,34 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
     const d = new Date(date);
     d.setUTCHours(hours, minutes, 0, 0);
     return d.toISOString();
+  }
+
+  async function expectPendingPublicBooking(confirmation: {
+    id: string;
+  }): Promise<void> {
+    const persistedOrder = await scopedPrisma.order.findFirst({
+      where: { id: confirmation.id },
+      select: { status: true, source: true },
+    });
+    expect(persistedOrder).toEqual({
+      status: 'BOOKED_PENDING_CONFIRMATION',
+      source: 'WEB',
+    });
+
+    // Internal order state and identifiers must stay out of the public DTO.
+    expect(Object.keys(confirmation).sort()).toEqual(
+      [
+        'id',
+        'branchId',
+        'scheduledStart',
+        'scheduledEnd',
+        'totalPrice',
+        'branch',
+        'client',
+        'vehicle',
+        'services',
+      ].sort(),
+    );
   }
 
   function order(overrides: Record<string, unknown> = {}) {
@@ -906,7 +937,7 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
         })
         .expect(201);
 
-      expect(bookRes.body.data.status).toBe('BOOKED_PENDING_CONFIRMATION');
+      await expectPendingPublicBooking(bookRes.body.data);
 
       // Same slot → blocked
       await order({
@@ -1513,7 +1544,7 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
         .expect(201);
 
       const orderId = bookRes.body.data.id;
-      expect(bookRes.body.data.status).toBe('BOOKED_PENDING_CONFIRMATION');
+      await expectPendingPublicBooking(bookRes.body.data);
 
       // Confirm → BOOKED
       await patchStatus(orderId, 'BOOKED').expect(200);
@@ -1540,7 +1571,7 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
         })
         .expect(201);
 
-      expect(bookRes.body.data.status).toBe('BOOKED_PENDING_CONFIRMATION');
+      await expectPendingPublicBooking(bookRes.body.data);
 
       // Cancel
       await patchStatus(bookRes.body.data.id, 'CANCELLED', {
@@ -1697,18 +1728,14 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
   // ═══════════════════════════════════════════════════════
   //  FLOW 40: Explicit assignedEmployeeId with busy worker
   //
-  //  When a user manually specifies assignedEmployeeId for
-  //  a worker who already has a conflicting order, the
-  //  system creates the order without employee validation
-  //  (orders.service.ts line 187 skips auto-assign block).
-  //  This documents the current behavior — explicit worker
-  //  assignment bypasses availability checks.
+  //  Explicit assignment enforces the same employee availability
+  //  rules as automatic assignment, even on different work posts.
   // ═══════════════════════════════════════════════════════
 
   describe('Flow 40: Explicit assignedEmployeeId with busy worker', () => {
     const day = nextWeekday(26);
 
-    it('explicit assignment of busy worker succeeds (no employee validation)', async () => {
+    it('rejects a busy worker without changing orders and accepts a free worker', async () => {
       // Book worker1 at 10:00 on post1
       const res1 = await order({
         workPostId: post1Id,
@@ -1718,20 +1745,55 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
 
       expect(res1.body.data.assignedEmployeeId).toBe(worker1Id);
 
-      // Explicitly assign worker1 at 10:00 on post2 (worker busy, different post)
-      // The system does NOT validate employee availability for explicit assignments
-      const res2 = await order({
+      const orderCountBefore = await scopedPrisma.order.count();
+      const assignmentBefore = await scopedPrisma.order.findFirst({
+        where: { id: res1.body.data.id },
+        select: { assignedEmployeeId: true, workPostId: true, status: true },
+      });
+      expect(assignmentBefore).toEqual({
+        assignedEmployeeId: worker1Id,
+        workPostId: post1Id,
+        status: 'BOOKED',
+      });
+
+      // A different post does not make a busy employee eligible.
+      const rejected = await order({
         workPostId: post2Id,
         assignedEmployeeId: worker1Id,
         scheduledStart: atUTC(day, 10),
-      }).expect(201);
+      }).expect(400);
+      expect(rejected.body.message).toBe(
+        'Assigned employee is not available for the requested time in this branch',
+      );
+      expect(await scopedPrisma.order.count()).toBe(orderCountBefore);
+      expect(
+        await scopedPrisma.order.findFirst({
+          where: { id: res1.body.data.id },
+          select: { assignedEmployeeId: true, workPostId: true, status: true },
+        }),
+      ).toEqual(assignmentBefore);
 
-      // Worker1 is double-assigned — this is the current behavior
-      expect(res2.body.data.assignedEmployeeId).toBe(worker1Id);
+      // The same post and interval remain bookable with an eligible worker.
+      const accepted = await order({
+        workPostId: post2Id,
+        assignedEmployeeId: worker2Id,
+        scheduledStart: atUTC(day, 10),
+      }).expect(201);
+      expect(accepted.body.data.assignedEmployeeId).toBe(worker2Id);
+      expect(await scopedPrisma.order.count()).toBe(orderCountBefore + 1);
+      expect(
+        await scopedPrisma.order.findFirst({
+          where: { id: accepted.body.data.id },
+          select: { assignedEmployeeId: true, workPostId: true, status: true },
+        }),
+      ).toEqual({
+        assignedEmployeeId: worker2Id,
+        workPostId: post2Id,
+        status: 'BOOKED',
+      });
     });
 
-    it('auto-assign at same time correctly skips the busy worker', async () => {
-      // worker1 has 2 orders at 10:00 (from prev test), worker2 may be free
+    it('auto-assignment still succeeds at a free time', async () => {
       // Auto-assign at 12:00 (clean slot) — should pick any free worker
       const res = await order({
         workPostId: post1Id,

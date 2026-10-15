@@ -501,7 +501,7 @@ integration('repair concurrency — isolated real PostgreSQL', () => {
       const name = `Resource ${randomUUID()}`;
       switch (resource) {
         case 'branches':
-          return branches.create(tenantId, { name });
+          return branches.create(tenantId, { name, timezone: 'UTC' });
         case 'workPosts':
           return workPosts.create(tenantId, {
             name,

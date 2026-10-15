@@ -333,8 +333,9 @@ Availability queries exclude `CANCELLED`, `NO_SHOW` and `COMPLETED`.
 
 Line item and **price snapshot**: `orderId` (cascade delete), `serviceId`, `price Decimal`,
 `quantity` (default 1), plus `tenantId` (backfilled in `20260304000000_fix_schema_drift`).
-Indexes: `[orderId]`, `[serviceId]`, `[tenantId]` (the last one added by that migration's raw
-SQL, so it is not visible in `schema.prisma`). No timestamps, no soft delete.
+Indexes: `[orderId]`, `[serviceId]`, `[tenantId]`. The tenant index originated in raw SQL
+and is now declared in `schema.prisma`; the two relation indexes are installed by
+`20261015000000_reconcile_schema_drift`. No timestamps, no soft delete.
 
 ### `Payment` — `payments`
 
@@ -413,18 +414,22 @@ Facts worth knowing before you write a migration.
 
 | #   | Fact                                                                                                                                  | Consequence                                                                                                                |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **No partial unique indexes.** No `WHERE deleted_at IS NULL` index exists in any migration.                                           | Soft-deleted `User` / `EmployeeProfile` rows still occupy their unique values.                                             |
+| 1   | **No partial unique indexes.** The non-unique subscription trial-expiry index is partial; no soft-delete partial unique index exists. | Soft-deleted `User` / `EmployeeProfile` rows still occupy their unique values.                                             |
 | 2   | `PasswordResetToken.userId` has no FK and no Prisma relation.                                                                         | Orphan tokens are possible; joins must be done manually.                                                                   |
 | 3   | `SubscriptionAddon` and `PasswordResetToken` have no `tenantId`.                                                                      | They are unreachable through `forTenant()`; always scope via the parent.                                                   |
 | 4   | `Tenant` is not in `BYPASS_TENANT_MODELS` yet has no `tenantId` column.                                                               | Never query `Tenant` through the extended client.                                                                          |
 | 5   | `IdempotencyKey.tenantId` is a plain string, sometimes `slug:<tenantSlug>`.                                                           | Do not add an FK without handling the slug form.                                                                           |
 | 6   | `Client.phone`, `Vehicle.licensePlate`, `Role.name` are indexed but **not unique**.                                                   | Uniqueness is a service-level convention only; duplicates are possible.                                                    |
-| 7   | `order_services.tenantId` and its index were added by raw SQL in `20260304000000_fix_schema_drift`.                                   | Regenerating from the schema alone would lose the index — check that migration.                                            |
+| 7   | `order_services.tenantId` and its index originated in raw SQL in `20260304000000_fix_schema_drift`; the index is now declared.        | The reconciliation migration preserves it; it is now declared in the schema.                                               |
 | 8   | `Branch.timezone` is honoured by `SchedulingService.checkAvailability` but **not** by `OrdersService` validation, which is UTC-based. | Availability and creation can disagree for non-UTC branches.                                                               |
 | 9   | `EmployeeProfile.efficiencyCoefficient` is stored but not used in capacity calculation.                                               | Reserved field.                                                                                                            |
 | 10  | `Tenant.settings Json?` is never read in `src/`.                                                                                      | Reserved field.                                                                                                            |
 | 11  | `docker-entrypoint.sh` runs `prisma db push --accept-data-loss`; the Compose files instead run `prisma migrate deploy`.               | The entrypoint is not referenced by any Compose service — see [infrastructure.md](./infrastructure.md#images-and-startup). |
 | 12  | `booking_settings(tenantId, branchId)` is unique, but `branchId` is nullable and PostgreSQL treats `NULL`s as distinct.               | Multiple tenant-level (`branchId = NULL`) rows are permitted by the database; the singleton is convention only.            |
+
+The existing `subscriptions_trialEndsAt_idx` uses `WHERE "isTrial" = true AND "trialEndsAt"
+IS NOT NULL`. The schema declares the predicate through Prisma 7.4's `partialIndexes` preview
+feature, so both migration-built and schema-derived databases preserve this partial index.
 
 ### Migration checklist for this repo
 
@@ -457,8 +462,9 @@ a migration that only works against a freshly seeded database is not finished:
 20260315000000_add_subscription_billing      Paddle fields + subscription_addons
 20260315100000_add_account_lockout_fields    failed_login_attempts, account_locked_until
 20260315150000_add_password_reset_token      password_reset_tokens
-20260315200000_add_vehicle_photo_url         vehicles.photoUrl
+20260315200000_add_vehicle_photo_url         vehicles.photo_url (renamed forward to photoUrl)
 20260401000000_seed_permissions              47 permissions + backfill Admin role grants
+20261015000000_reconcile_schema_drift         timezone, photo column rename, 35 UTC timestamp conversions, 7 indexes, limit defaults
 ```
 
 ---

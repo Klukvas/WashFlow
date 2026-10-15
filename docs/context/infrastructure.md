@@ -270,7 +270,7 @@ flowchart TB
   FL["frontend-lint<br/>pnpm install · pnpm lint (frontend/)"]
   BT["backend-test<br/>pnpm test:cov<br/>artifact: backend-coverage (7d)"]
   FT["frontend-test<br/>pnpm test (Vitest)"]
-  BE["backend-e2e<br/>services: postgres:16-alpine, redis:7-alpine<br/>db push --force-reset · db seed · pnpm test:e2e --runInBand --forceExit"]
+  BE["backend-e2e<br/>services: postgres:16-alpine, redis:7-alpine<br/>migrate deploy · db seed · pnpm test:e2e --runInBand --forceExit"]
   FE["frontend-e2e<br/>services: postgres, redis · PORT 3003<br/>build backend · playwright install chromium<br/>start backend · wait · npx playwright test<br/>artifacts: playwright-report (7d), screenshots on failure"]
   BP["build-and-push<br/>only on refs/heads/main<br/>buildx · docker hub login<br/>push washflow + washflow-frontend<br/>tags: sha, latest · GHA cache"]
   DP["deploy<br/>only on main and build success<br/>environment: production<br/>ssh to Hetzner host"]
@@ -442,7 +442,7 @@ format, computes `createHmac('sha256', PADDLE_WEBHOOK_SECRET)` and compares with
 | ---------------------- | ----------------------------------------------------------------------------------------------------- |
 | Schema migrations      | `prisma migrate deploy` at container start (both Compose files). Forward-only.                        |
 | Local schema iteration | `npx prisma migrate dev`                                                                              |
-| CI database            | `npx prisma db push --force-reset` (E2E jobs only — never against real data)                          |
+| CI database            | `pnpm exec prisma migrate deploy` on fresh PostgreSQL service databases (both E2E jobs)                          |
 | Seeding                | `npx prisma db seed` → `ts-node prisma/seed.ts`; idempotent, fixed demo tenant id                     |
 | Reset (local only)     | `pnpm db:reset` = `npx prisma migrate reset` — **destructive**                                        |
 | Soft-delete retention  | `CleanupService` daily at 02:00, `CLEANUP_RETENTION_DAYS` (default 30), one FK-ordered `$transaction` |
@@ -453,21 +453,43 @@ format, computes `createHmac('sha256', PADDLE_WEBHOOK_SECRET)` and compares with
 
 ### Verified migration/schema drift
 
-A clean PostgreSQL 16 database built with all 14 checked-in migrations does not fully match
-`prisma/schema.prisma`. A read-only `prisma migrate diff --from-config-datasource --to-schema
-prisma/schema.prisma --script --config test/repair-prisma.config.ts` against the isolated
-migration-built repair database showed missing `branches.timezone`, `vehicles.photo_url`
-versus schema `photoUrl`, timestamp/timestamptz differences, and index/default differences.
-The missing columns prevent ordinary Prisma reads/creates on that database. Successful
-`migrate deploy` alone therefore does not prove deployment readiness; schema repair requires
-a separately reviewed forward migration. No production migration or data was changed by the
-repair verification.
+The first 14 migrations had verified drift from `prisma/schema.prisma`: missing
+`branches.timezone`, `vehicles.photo_url` versus `photoUrl`, 35 legacy timestamp columns,
+seven missing indexes and four obsolete subscription-limit defaults. Forward migration
+`20261015000000_reconcile_schema_drift` repairs that drift without editing migration history.
+A new PostgreSQL 16 database built with all 15 migrations now produces an empty
+`prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script
+--exit-code --config test/repair-prisma.config.ts` (exit 0).
 
-The repair concurrency suite was exercised against a **second, new empty database** populated
-from the current schema with `prisma db push` (no reset or data-loss flag). Its runtime
-payment/reservation/quota evidence is schema-derived, not proof that the checked-in migrations
-produce that schema. The migration-built database was kept separate for evidence.
-See [the isolated test workflow](../CONTRIBUTING.md#isolated-postgresql-concurrency-checks).
+The migration renames the existing photo column, defaults existing/new branches to
+`Europe/Kyiv` when adding the missing column, and preserves an already-present timezone.
+If both photo spellings exist, it aborts before changing anything; reconcile that ambiguity
+before retrying. It converts only the 35 listed `timestamp without time zone` columns using
+explicit `AT TIME ZONE 'UTC'`, preserving the instants the current Prisma PostgreSQL adapter
+returns for legacy timestamps. Already-`timestamptz` columns are untouched. Historical writer
+and session timezone conventions in production have not been inspected; confirm that UTC
+interpretation against a backup before applying to real data.
+
+Existing subscription limit values are unchanged; omitted future limits become `NULL`, as
+in the schema. The tenant index on `order_services` and the partial trial-expiry index on
+`subscriptions` are preserved and declared in the schema. Prisma 7.4's `partialIndexes`
+preview feature represents the existing predicate; no dependency upgrade is needed.
+
+This is an atomic maintenance migration with a 10-second lock-acquisition timeout. Timestamp
+table rewrites and index builds take write locks, so plan a maintenance window appropriate
+to database size. A lock timeout rolls the transaction back; investigate contention before
+retrying. `migrate deploy` records failures: inspect the failed migration and database first,
+then use Prisma's documented failed-migration recovery process; do not reset or `db push`
+an existing database.
+
+`test/migration-drift.e2e-spec.ts` reproduces the missing-column failure on the old chain and
+checks upgrades of a synthetic graph spanning all 20 tables in Los Angeles and Tokyo sessions.
+It compares all row values with timestamps normalized to epochs, including milliseconds,
+already-zoned microseconds, DST-boundary values, NULLs, money, tenant/FK references, enums and
+photo contents. It also checks the default timezone/limits, custom timezone retention,
+partial-index predicate, already-corrected column shapes and atomic rejection of ambiguous
+photo columns. See [the isolated test workflow](../CONTRIBUTING.md#isolated-postgresql-concurrency-checks).
+No production database or data was modified by these checks.
 
 ---
 

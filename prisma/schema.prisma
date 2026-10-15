@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["partialIndexes"]
   output   = "../node_modules/.prisma/client"
 }
 
@@ -353,6 +354,7 @@ model OrderService {
 
   @@index([orderId])
   @@index([serviceId])
+  @@index([tenantId])
   @@map("order_services")
 }
 
@@ -460,6 +462,7 @@ model Subscription {
 
   addons SubscriptionAddon[]
 
+  @@index([trialEndsAt], where: raw("((\"isTrial\" = true) AND (\"trialEndsAt\" IS NOT NULL))"))
   @@map("subscriptions")
 }
 

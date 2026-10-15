@@ -3,6 +3,7 @@ import { App } from 'supertest/types';
 import { INestApplication } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import { createTestApp, cleanupTenant, TestSetup } from './helpers/test-app';
 
 /**
@@ -18,6 +19,7 @@ const SLUG = 'e2e-scheduling-flows';
 describe('Scheduling Flows (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
+  let scopedPrisma: ReturnType<TenantPrismaService['forTenant']>;
   let accessToken: string;
   let tenantId: string;
   let branchId: string;
@@ -40,6 +42,7 @@ describe('Scheduling Flows (e2e)', () => {
     prisma = setup.prisma;
     accessToken = setup.accessToken;
     tenantId = setup.testTenant.id;
+    scopedPrisma = app.get(TenantPrismaService).forTenant(tenantId);
     branchId = setup.testBranch.id;
 
     // ── Create two work posts ──────────────────────────
@@ -150,6 +153,34 @@ describe('Scheduling Flows (e2e)', () => {
     const d = new Date(date);
     d.setUTCHours(hours, minutes, 0, 0);
     return d.toISOString();
+  }
+
+  async function expectPendingPublicBooking(confirmation: {
+    id: string;
+  }): Promise<void> {
+    const persistedOrder = await scopedPrisma.order.findFirst({
+      where: { id: confirmation.id },
+      select: { status: true, source: true },
+    });
+    expect(persistedOrder).toEqual({
+      status: 'BOOKED_PENDING_CONFIRMATION',
+      source: 'WEB',
+    });
+
+    // Internal order state and identifiers must stay out of the public DTO.
+    expect(Object.keys(confirmation).sort()).toEqual(
+      [
+        'id',
+        'branchId',
+        'scheduledStart',
+        'scheduledEnd',
+        'totalPrice',
+        'branch',
+        'client',
+        'vehicle',
+        'services',
+      ].sort(),
+    );
   }
 
   function createOrder(overrides: Record<string, unknown> = {}) {
@@ -717,8 +748,7 @@ describe('Scheduling Flows (e2e)', () => {
         })
         .expect(201);
 
-      expect(bookRes.body.data.status).toBe('BOOKED_PENDING_CONFIRMATION');
-      expect(bookRes.body.data.source).toBe('WEB');
+      await expectPendingPublicBooking(bookRes.body.data);
 
       // Step 3: Same slot again → conflict (409, not raw 400)
       const conflictRes = await request(app.getHttpServer())

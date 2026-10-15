@@ -137,7 +137,7 @@ WashFlow/
 │   └── modules/             24 feature modules — see modules.md
 ├── prisma/
 │   ├── schema.prisma        20 models, 8 enums
-│   ├── migrations/          14 migrations + migration_lock.toml
+│   ├── migrations/          15 migrations + migration_lock.toml
 │   └── seed.ts              demo tenant with ~1 year of generated operations
 ├── test/                    backend E2E (`*.e2e-spec.ts`, jest-e2e.json)
 ├── frontend/                operator dashboard (React 19 + Vite + Tailwind 4), nginx Dockerfile, Playwright E2E
