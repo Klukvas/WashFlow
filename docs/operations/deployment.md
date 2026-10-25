@@ -142,7 +142,7 @@ Python version even when the deployment's Python 3.11 prerequisite fails.
 
 Output contains numeric versions, selected app running/health/image IDs, and allowlisted
 file-presence/private-path/hash-match booleans for the failed release
-`b672d6b9dc2f0c07ed3eea6efb753c0afb5f9eb6-40234261128-1`. Configuration bytes may be hashed
+`209758a00089c0e48d26dd01c7c8e96868d440cd-40237451282-1`. Configuration bytes may be hashed
 internally against its recorded preflight hashes; contents, hashes, paths from untrusted JSON,
 environment values, host/user metadata and subprocess stderr are never forwarded. Unknown
 JSON fields and arbitrary strings are discarded or rejected by a second local projection.
@@ -153,6 +153,13 @@ Frontend diagnostics also expose at most five recent health exit codes and exact
 failure classes, a boolean matching the known localhost-wget test, and bounded GET outcomes
 for only `http://localhost:80/` and `http://127.0.0.1:80/`. Raw health output, configured commands,
 response bodies and stderr are discarded; these probes do not change the healthcheck or restart apps.
+
+Capacity diagnostics add only CPU count, sysconf free-memory bytes, selected `/proc/meminfo`
+MemTotal/MemFree/MemAvailable bytes, and deployment-filesystem total/free/available bytes.
+Only bounded nonnegative integer byte values (up to 1 EiB) and CPU counts 1–65536 are emitted;
+missing, malformed, duplicate or out-of-range fields become null. Raw meminfo and errors are
+withheld. Whether sysconf free memory versus MemAvailable explains the capacity refusal is a
+hypothesis pending production numbers; the deployment guard and 256 MiB reserve remain unchanged.
 
 Transport failures now expose only static `stage` (`validation`, `bootstrap`, `remote`) and
 allowlisted `reason` codes. Diagnostic access failures distinguish validation, SSH command and

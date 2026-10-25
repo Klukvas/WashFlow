@@ -104,6 +104,54 @@ class DiagnosticTests(unittest.TestCase):
         with patch('diagnose.subprocess.run', side_effect=subprocess.TimeoutExpired(['fixture'], 8, stderr=SENTINEL)):
             self.assertEqual(diagnose.http_get(container, diagnose.GET_URLS[0]), 'unavailable')
 
+    def test_meminfo_only_selected_valid_unique_kib_fields(self):
+        parsed = diagnose.parse_meminfo(b'MemTotal: 16384 kB\nMemFree:\t256 kB\nMemAvailable: 4096 kB\nPrivate: secret\n')
+        self.assertEqual(parsed, {'memory_total_bytes': 16384*1024, 'memory_free_bytes': 256*1024,
+                                  'memory_available_bytes': 4096*1024})
+        unknown = {key: None for key in diagnose.MEMINFO_KEYS.values()}
+        self.assertEqual(diagnose.parse_meminfo(b''), unknown)
+        self.assertEqual(diagnose.parse_meminfo(b'\xff'), unknown)
+        self.assertEqual(diagnose.parse_meminfo(b'x'*65537), unknown)
+        for entry in [b'-1 kB', b'12 MB', b'1.5 kB', b'12', b'text kB', b'9'*100+b' kB',
+                      str(diagnose.MAX_BYTES//1024+1).encode()+b' kB']:
+            with self.subTest(entry=entry):
+                self.assertIsNone(diagnose.parse_meminfo(b'MemTotal: '+entry+b'\n')['memory_total_bytes'])
+        for duplicate in [b'MemFree: 2 kB\n', b'MemFree: malformed\n']:
+            self.assertIsNone(diagnose.parse_meminfo(b'MemFree: 1 kB\n'+duplicate)['memory_free_bytes'])
+
+    def test_capacity_fixed_platform_reads_and_null_when_unavailable(self):
+        disk = argparse.Namespace(f_blocks=100, f_bfree=30, f_bavail=20, f_frsize=4096)
+        with patch('diagnose.os.cpu_count', return_value=2), patch('diagnose.os.sysconf', side_effect=[10,4096]), \
+             patch('diagnose.Path.open', return_value=io.BytesIO(b'MemTotal: 100 kB\nMemFree: 4 kB\nMemAvailable: 40 kB\n')) as opened, \
+             patch('diagnose.os.statvfs', return_value=disk) as stat:
+            value = diagnose.host_capacity(self.root)
+        opened.assert_called_once_with('rb')
+        stat.assert_called_once_with(self.root)
+        self.assertEqual(value, {'cpu_count': 2, 'sysconf_free_bytes': 40960,
+            'memory_total_bytes': 102400, 'memory_free_bytes': 4096, 'memory_available_bytes': 40960,
+            'disk_total_bytes': 409600, 'disk_free_bytes': 122880, 'disk_available_bytes': 81920})
+        with patch('diagnose.os.cpu_count', return_value=None), patch('diagnose.os.sysconf', side_effect=ValueError(SENTINEL)), \
+             patch('diagnose.Path.open', side_effect=OSError(SENTINEL)), patch('diagnose.os.statvfs', side_effect=OSError(SENTINEL)):
+            self.assertEqual(diagnose.host_capacity(self.root), diagnose.filter_capacity({}))
+
+    def test_capacity_projection_bounds_and_unknown_strings_never_leak(self):
+        data = {name: 1024 for name in diagnose.CAPACITY_BYTES}
+        data.update({'cpu_count': 2, 'private': SENTINEL})
+        report = self.report()
+        report['capacity'] = data
+        self.assertEqual(diagnose.filter_report(report)['capacity'], {k:v for k,v in data.items() if k != 'private'})
+        for invalid in [None, -1, True, 0.5, SENTINEL, diagnose.MAX_BYTES+1]:
+            for name in diagnose.CAPACITY_BYTES:
+                bad = {**data, name: invalid}
+                self.assertIsNone(diagnose.filter_capacity(bad)[name])
+        for invalid in [0, -1, True, 1.5, SENTINEL, 65537]:
+            self.assertIsNone(diagnose.filter_capacity({'cpu_count':invalid})['cpu_count'])
+        self.assertIsNone(diagnose.bounded_bytes(diagnose.MAX_BYTES, 1024))
+        self.assertIsNone(diagnose.bounded_bytes(1, 0))
+        self.assertEqual(diagnose.filter_capacity({'cpu_count':65536})['cpu_count'], 65536)
+        self.assertNotIn(SENTINEL, json.dumps(diagnose.filter_capacity(SENTINEL)))
+        self.assertEqual(diagnose.FAILED_RELEASE, '209758a00089c0e48d26dd01c7c8e96868d440cd-40237451282-1')
+
     def test_python_old_version_still_reports_known_bootstrap_refusal(self):
         with patch('diagnose.sys.version_info', (3, 8, 10)):
             value = self.report()

@@ -12,7 +12,7 @@ import subprocess
 import sys
 from typing import Any, Optional
 
-FAILED_RELEASE = 'b672d6b9dc2f0c07ed3eea6efb753c0afb5f9eb6-40234261128-1'
+FAILED_RELEASE = '209758a00089c0e48d26dd01c7c8e96868d440cd-40237451282-1'
 FILES = ('payload.json', 'expected.json', 'preflight.json', 'images.json', 'rollback.json',
          'backup/database.dump', 'backup/uploads.tar', 'backup/manifest.json', 'result.json')
 HEALTH = ('healthy', 'unhealthy', 'starting', 'none', 'unknown')
@@ -21,6 +21,11 @@ META = '{"running":{{json .State.Running}},"health":{{if .State.Health}}{{json .
 GET_URLS = ('http://localhost:80/', 'http://127.0.0.1:80/')
 HEALTH_CLASSES = ('ok', 'connection_refused', 'localhost_resolution_failed', 'timeout', 'unknown_failure')
 GET_RESULTS = ('ok', 'nonzero', 'unavailable')
+MAX_BYTES = 2 ** 60
+CAPACITY_BYTES = ('sysconf_free_bytes', 'memory_total_bytes', 'memory_free_bytes',
+                  'memory_available_bytes', 'disk_total_bytes', 'disk_free_bytes', 'disk_available_bytes')
+MEMINFO_KEYS = {'MemTotal': 'memory_total_bytes', 'MemFree': 'memory_free_bytes',
+                'MemAvailable': 'memory_available_bytes'}
 # Compare inside Docker's formatter: neither the configured command nor health output is
 # returned to Python/CI. Only exact known BusyBox messages receive a named classification.
 KNOWN_TEST = json.dumps(['CMD', 'wget', '-qO-', GET_URLS[0]], separators=(',', ':'))
@@ -65,6 +70,64 @@ def capture(args: list, data: Optional[bytes] = None, timeout: int = 10) -> byte
 def version(raw: bytes) -> Optional[str]:
     text = raw.decode('ascii', errors='replace').strip()
     return text if re.fullmatch(r'[0-9]{1,4}(\.[0-9]{1,4}){1,3}', text) else None
+
+
+def bounded_bytes(value: Any, unit: Any = 1) -> Optional[int]:
+    if type(value) is not int or type(unit) is not int or not 0 <= value <= MAX_BYTES or not 1 <= unit <= MAX_BYTES:
+        return None
+    result = value * unit
+    return result if result <= MAX_BYTES else None
+
+
+def filter_capacity(value: Any) -> dict:
+    data = value if isinstance(value, dict) else {}
+    cpu = data.get('cpu_count')
+    return {'cpu_count': cpu if type(cpu) is int and 1 <= cpu <= 65536 else None,
+            **{name: bounded_bytes(data.get(name)) for name in CAPACITY_BYTES}}
+
+
+def parse_meminfo(raw: bytes) -> dict:
+    result = {name: None for name in MEMINFO_KEYS.values()}
+    if not isinstance(raw, bytes) or len(raw) > 65536:
+        return result
+    try:
+        lines = raw.decode('ascii').splitlines()
+    except UnicodeError:
+        return result
+    selected = {key: [line.partition(':')[2] for line in lines
+                     if line.partition(':')[0].strip() == key] for key in MEMINFO_KEYS}
+    for key, entries in selected.items():
+        if len(entries) == 1:
+            match = re.fullmatch(r'[ \t]*([0-9]{1,16})[ \t]+kB[ \t]*', entries[0])
+            if match:
+                result[MEMINFO_KEYS[key]] = bounded_bytes(int(match.group(1)), 1024)
+    return result
+
+
+def host_capacity(root: Path) -> dict:
+    result = filter_capacity({})
+    try:
+        result['cpu_count'] = os.cpu_count()
+    except (OSError, ValueError):
+        pass  # Unknown remains null; raw platform errors are never forwarded.
+    try:
+        result['sysconf_free_bytes'] = bounded_bytes(os.sysconf('SC_AVPHYS_PAGES'), os.sysconf('SC_PAGE_SIZE'))
+    except (OSError, ValueError, AttributeError):
+        pass
+    try:
+        with Path('/proc/meminfo').open('rb') as stream:
+            result.update(parse_meminfo(stream.read(65537)))
+    except (OSError, ValueError):
+        pass
+    try:
+        if safe_path(root):
+            disk = os.statvfs(root)
+            for source, target in [('f_blocks', 'disk_total_bytes'), ('f_bfree', 'disk_free_bytes'),
+                                   ('f_bavail', 'disk_available_bytes')]:
+                result[target] = bounded_bytes(getattr(disk, source), disk.f_frsize)
+    except (OSError, ValueError, AttributeError):
+        pass
+    return filter_capacity(result)
 
 
 def http_get(container: str, url: str) -> str:
@@ -170,7 +233,8 @@ def probe(root: Path = Path('/opt/washflow')) -> dict:
         refusals.append(REFUSALS[2])
     report = {'format': 'washflow-readonly-diagnostic-v1', 'python': list(sys.version_info[:3]),
               'docker': None, 'compose': None, 'apps': {'backend': [], 'frontend': []},
-              'release': state, 'observed_prerequisite_refusals': refusals, 'docker_probe_ok': False}
+              'release': state, 'capacity': host_capacity(root),
+              'observed_prerequisite_refusals': refusals, 'docker_probe_ok': False}
     try:
         report['docker'] = version(capture(['docker', 'version', '--format', '{{.Server.Version}}']))
         report['compose'] = version(capture(['docker', 'compose', 'version', '--short']))
@@ -201,6 +265,7 @@ def filter_report(value: dict) -> dict:
               'docker': version(str(value.get('docker')).encode()),
               'compose': version(str(value.get('compose')).encode()),
               'docker_probe_ok': value.get('docker_probe_ok') is True,
+              'capacity': filter_capacity(value.get('capacity')),
               'apps': {}, 'release': {}, 'observed_prerequisite_refusals': []}
     apps_by_service = value.get('apps')
     state = value.get('release')
