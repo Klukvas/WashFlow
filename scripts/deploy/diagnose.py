@@ -18,6 +18,21 @@ FILES = ('payload.json', 'expected.json', 'preflight.json', 'images.json', 'roll
 HEALTH = ('healthy', 'unhealthy', 'starting', 'none', 'unknown')
 REFUSALS = ('python_3_11_required', 'bootstrap_root_unsafe', 'bootstrap_releases_unsafe')
 META = '{"running":{{json .State.Running}},"health":{{if .State.Health}}{{json .State.Health.Status}}{{else}}"none"{{end}},"image":{{json .Image}}}'
+GET_URLS = ('http://localhost:80/', 'http://127.0.0.1:80/')
+HEALTH_CLASSES = ('ok', 'connection_refused', 'localhost_resolution_failed', 'timeout', 'unknown_failure')
+GET_RESULTS = ('ok', 'nonzero', 'unavailable')
+# Compare inside Docker's formatter: neither the configured command nor health output is
+# returned to Python/CI. Only exact known BusyBox messages receive a named classification.
+KNOWN_TEST = json.dumps(['CMD', 'wget', '-qO-', GET_URLS[0]], separators=(',', ':'))
+HEALTH_DETAIL = ('{"known_localhost_wget":{{if .Config.Healthcheck}}{{eq (json .Config.Healthcheck.Test) '
+                + json.dumps(KNOWN_TEST) + '}}{{else}}false{{end}},"recent":['
+                '{{if .State.Health}}{{range $i,$entry := .State.Health.Log}}{{if lt $i 5}}{{if $i}},{{end}}'
+                '{"exit_code":{{json $entry.ExitCode}},"failure_class":'
+                '{{if eq $entry.ExitCode 0}}"ok"'
+                '{{else if eq $entry.Output "wget: can\'t connect to remote host: Connection refused\\n"}}"connection_refused"'
+                '{{else if eq $entry.Output "wget: bad address \'localhost\'\\n"}}"localhost_resolution_failed"'
+                '{{else if eq $entry.Output "wget: download timed out\\n"}}"timeout"'
+                '{{else}}"unknown_failure"{{end}}}{{end}}{{end}}{{end}}]}')
 FAILURES = {'validation': 'invalid_access_metadata', 'ssh': 'ssh_command_failed',
             'protocol': 'interpreter_or_protocol_failed'}
 
@@ -50,6 +65,42 @@ def capture(args: list, data: Optional[bytes] = None, timeout: int = 10) -> byte
 def version(raw: bytes) -> Optional[str]:
     text = raw.decode('ascii', errors='replace').strip()
     return text if re.fullmatch(r'[0-9]{1,4}(\.[0-9]{1,4}){1,3}', text) else None
+
+
+def http_get(container: str, url: str) -> str:
+    if not re.fullmatch(r'[0-9a-f]{64}', container) or url not in GET_URLS:
+        raise ValueError('invalid_fixed_get')
+    try:
+        result = subprocess.run(['docker', 'exec', container, 'wget', '-q', '-O', '-', '-T', '5', url],
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8, check=False)
+        return 'ok' if result.returncode == 0 else 'nonzero'
+    except (OSError, subprocess.TimeoutExpired):
+        return 'unavailable'
+
+
+def filter_health_detail(value: dict) -> dict:
+    if not isinstance(value, dict):
+        raise ValueError('invalid_diagnostic_protocol')
+    recent = value.get('recent', [])
+    if not isinstance(recent, list) or len(recent) > 5 or not all(isinstance(x, dict) for x in recent):
+        raise ValueError('invalid_diagnostic_protocol')
+    return {'known_localhost_wget': value.get('known_localhost_wget') is True,
+            'recent': [{'exit_code': x.get('exit_code') if type(x.get('exit_code')) is int
+                        and -1 <= x['exit_code'] <= 255 else None,
+                        'failure_class': x.get('failure_class') if x.get('failure_class') in HEALTH_CLASSES
+                        else 'unknown_failure'} for x in recent],
+            'localhost_get': value.get('localhost_get') if value.get('localhost_get') in GET_RESULTS else 'unavailable',
+            'ipv4_get': value.get('ipv4_get') if value.get('ipv4_get') in GET_RESULTS else 'unavailable'}
+
+
+def frontend_health(container: str) -> dict:
+    try:
+        detail = json.loads(capture(['docker', 'inspect', '--format', HEALTH_DETAIL, container]))
+        detail['localhost_get'] = http_get(container, GET_URLS[0])
+        detail['ipv4_get'] = http_get(container, GET_URLS[1])
+        return filter_health_detail(detail)
+    except (OSError, ValueError, TypeError):
+        return filter_health_detail({})
 
 
 def safe_path(path: Path) -> bool:
@@ -130,6 +181,9 @@ def probe(root: Path = Path('/opt/washflow')) -> dict:
             if len(ids) > 4 or not all(re.fullmatch(r'[0-9a-f]{64}', x) for x in ids):
                 raise ValueError('invalid_metadata')
             report['apps'][service] = [json.loads(capture(['docker', 'inspect', '--format', META, x])) for x in ids]
+            if service == 'frontend':
+                report['apps'][service] = [{**app, 'healthcheck': frontend_health(container)}
+                                           for app, container in zip(report['apps'][service], ids)]
         report['docker_probe_ok'] = True
     except (OSError, ValueError, TypeError, UnicodeError):
         report['docker_probe_ok'] = False
@@ -164,6 +218,8 @@ def filter_report(value: dict) -> dict:
             result['apps'][name].append({'running': app.get('running') is True,
                 'health': app.get('health') if app.get('health') in HEALTH else 'unknown',
                 'image': image if isinstance(image, str) and re.fullmatch(r'sha256:[0-9a-f]{64}', image) else None})
+            if name == 'frontend':
+                result['apps'][name][-1]['healthcheck'] = filter_health_detail(app.get('healthcheck', {}))
     for name in ['root_safe', 'releases_private', 'release_private']:
         result['release'][name] = state.get(name) is True
     for name in ['payload_hashes_match', 'configuration_hashes_match']:

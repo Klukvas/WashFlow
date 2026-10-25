@@ -8,6 +8,7 @@ import io
 import json
 from pathlib import Path
 import re
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -31,6 +32,7 @@ class DiagnosticTests(unittest.TestCase):
         self.release.mkdir(parents=True, mode=0o700)
         self.release.parent.chmod(0o700)
         self.calls = []
+        self.requests = []
 
     def fixture(self, args, **_):
         self.calls.append(args)
@@ -42,13 +44,20 @@ class DiagnosticTests(unittest.TestCase):
             self.assertIn('label=com.docker.compose.project.working_dir=/opt/washflow', args)
             return ('2' * 64).encode()
         if args[:2] == ['docker', 'inspect']:
+            if args[3] == diagnose.HEALTH_DETAIL:
+                return json.dumps({'known_localhost_wget': True,
+                    'recent': [{'exit_code': 1, 'failure_class': 'connection_refused', 'Output': SENTINEL}],
+                    'command': SENTINEL}).encode()
             self.assertEqual(args[2:4], ['--format', diagnose.META])
             return json.dumps({'running': True, 'health': 'healthy', 'image': IMAGE,
                                'environment': SENTINEL}).encode()
         raise AssertionError('Unapproved read-only fixture command')
 
     def report(self):
-        with patch('diagnose.capture', side_effect=self.fixture):
+        def get(container, url):
+            self.requests.append((container, url))
+            return 'ok' if url == diagnose.GET_URLS[1] else 'nonzero'
+        with patch('diagnose.capture', side_effect=self.fixture), patch('diagnose.http_get', side_effect=get):
             return diagnose.probe(self.root)
 
     def test_probe_only_selected_reads_and_no_remote_writes(self):
@@ -58,9 +67,42 @@ class DiagnosticTests(unittest.TestCase):
         self.assertEqual(value['docker'], '27.5.1')
         self.assertEqual(value['apps']['backend'][0]['image'], IMAGE)
         self.assertEqual({str(p.relative_to(self.root)) for p in self.root.rglob('*')}, before)
-        self.assertEqual(len(self.calls), 6)
+        self.assertEqual(len(self.calls), 7)
         self.assertTrue(all(c[1] in {'version', 'compose', 'ps', 'inspect'} for c in self.calls))
+        self.assertEqual([url for _, url in self.requests], list(diagnose.GET_URLS))
         self.assertNotIn(SENTINEL, json.dumps(value))
+
+    def test_frontend_health_only_closed_classes_codes_and_fixed_get_results(self):
+        detail = self.report()['apps']['frontend'][0]['healthcheck']
+        self.assertEqual(detail, {'known_localhost_wget': True,
+            'recent': [{'exit_code': 1, 'failure_class': 'connection_refused'}],
+            'localhost_get': 'nonzero', 'ipv4_get': 'ok'})
+        malicious = {'known_localhost_wget': SENTINEL, 'recent': [
+            {'exit_code': SENTINEL, 'failure_class': SENTINEL, 'Output': SENTINEL}],
+            'localhost_get': SENTINEL, 'ipv4_get': SENTINEL, 'command': SENTINEL}
+        filtered = diagnose.filter_health_detail(malicious)
+        self.assertNotIn(SENTINEL, json.dumps(filtered))
+        self.assertEqual(filtered['recent'], [{'exit_code': None, 'failure_class': 'unknown_failure'}])
+        for recent in [SENTINEL, [SENTINEL], [{}] * 6]:
+            with self.assertRaises(ValueError): diagnose.filter_health_detail({'recent': recent})
+        # No raw log or configured command JSON is selected for transport.
+        self.assertNotIn('{{json $entry.Output}}', diagnose.HEALTH_DETAIL)
+        self.assertIn('"connection_refused"', diagnose.HEALTH_DETAIL)
+        self.assertIn('eq (json .Config.Healthcheck.Test)', diagnose.HEALTH_DETAIL)
+
+    def test_http_get_exact_allowlist_discards_bodies_and_errors(self):
+        container = '2' * 64
+        with patch('diagnose.subprocess.run', return_value=argparse.Namespace(returncode=0)) as run:
+            for url in diagnose.GET_URLS:
+                self.assertEqual(diagnose.http_get(container, url), 'ok')
+                run.assert_called_with(['docker', 'exec', container, 'wget', '-q', '-O', '-', '-T', '5', url],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8, check=False)
+            with self.assertRaises(ValueError): diagnose.http_get(container, 'https://unrelated.example/')
+            with self.assertRaises(ValueError): diagnose.http_get('untrusted-id', diagnose.GET_URLS[0])
+        with patch('diagnose.subprocess.run', return_value=argparse.Namespace(returncode=1)):
+            self.assertEqual(diagnose.http_get(container, diagnose.GET_URLS[0]), 'nonzero')
+        with patch('diagnose.subprocess.run', side_effect=subprocess.TimeoutExpired(['fixture'], 8, stderr=SENTINEL)):
+            self.assertEqual(diagnose.http_get(container, diagnose.GET_URLS[0]), 'unavailable')
 
     def test_python_old_version_still_reports_known_bootstrap_refusal(self):
         with patch('diagnose.sys.version_info', (3, 8, 10)):

@@ -135,6 +135,10 @@ JSON fields and arbitrary strings are discarded or rejected by a second local pr
 Observed prerequisite refusals describe current state. File presence alone cannot establish
 historic stop/cutover, successful rollback or backup integrity; missing/invalid metadata remains
 unknown. No dump or upload archive contents are read by this probe.
+Frontend diagnostics also expose at most five recent health exit codes and exact known static
+failure classes, a boolean matching the known localhost-wget test, and bounded GET outcomes
+for only `http://localhost:80/` and `http://127.0.0.1:80/`. Raw health output, configured commands,
+response bodies and stderr are discarded; these probes do not change the healthcheck or restart apps.
 
 Transport failures now expose only static `stage` (`validation`, `bootstrap`, `remote`) and
 allowlisted `reason` codes. Diagnostic access failures distinguish validation, SSH command and
