@@ -13,7 +13,8 @@ import signal
 import sys
 import threading
 
-from common import (FRONTEND_HEALTH_TEST, Refusal, catalog_hash, digest, frontend_localhost_exception, private_directory, private_path,
+from common import (FRONTEND_HEALTH_TEST, Refusal, catalog_hash, digest, frontend_localhost_exception,
+                    linux_available_memory, private_directory, private_path,
                     require, run, save_json, verify_uploads, wait_until)
 
 META = '''{"id":{{json .Id}},"image":{{json .Image}},"running":{{json .State.Running}},
@@ -175,8 +176,8 @@ class Deployment:
                               'du', '-sk', '/app/uploads']).decode().split()[0])
         required = 2 * (db['size'] + upload_kib * 1024) + 2 * 1024**3
         require(shutil.disk_usage(self.root).free >= required, 'insufficient_disk_for_backup')
-        require((os.cpu_count() or 0) >= 1 and os.sysconf('SC_AVPHYS_PAGES') *
-                os.sysconf('SC_PAGE_SIZE') >= 256 * 1024**2, 'insufficient_host_capacity')
+        require((os.cpu_count() or 0) >= 1 and linux_available_memory() >= 256 * 1024**2,
+                'insufficient_host_capacity')
         self.schema_gate()
         for service, ref in self.refs.items():
             run(['docker', 'pull', ref], timeout=600)

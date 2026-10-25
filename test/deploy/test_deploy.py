@@ -168,7 +168,7 @@ class DeploymentTests(unittest.TestCase):
         patch('remote.run', side_effect=self.fixture).start()
         patch('common.run', side_effect=self.fixture).start()
         patch('remote.shutil.disk_usage', return_value=argparse.Namespace(free=20 * 1024**3)).start()
-        patch('remote.os.sysconf', side_effect=lambda key: 1024**3 if key == 'SC_AVPHYS_PAGES' else 1).start()
+        patch('remote.linux_available_memory', return_value=1024**3).start()
         def wait(check, **_):
             common.require(check(), 'health_deadline_exceeded')
         patch('remote.wait_until', side_effect=wait).start()
@@ -219,6 +219,37 @@ class DeploymentTests(unittest.TestCase):
                 self.no_update()
                 if failure in {'backend','postgres','redis'}:
                     self.assertFalse(any(c[3:4] == [common.FRONTEND_HEALTH_PROOF] for c in self.fixture.calls))
+
+    def test_available_memory_reserve_exact_boundary_and_one_byte_below(self):
+        reserve = 256 * 1024**2
+        for available in [reserve, reserve - 1]:
+            with self.subTest(available=available):
+                self.setUp()
+                with patch('remote.linux_available_memory', return_value=available):
+                    if available == reserve:
+                        self.deployment.execute()
+                        self.assertEqual(self.deployment.phase, 'complete')
+                    else:
+                        with self.assertRaisesRegex(common.Refusal, 'insufficient_host_capacity'):
+                            self.deployment.execute()
+                        self.no_update()
+                        self.assertFalse(any(c[:2] == ['docker','pull'] for c in self.fixture.calls))
+
+    def test_low_free_pages_do_not_replace_linux_available_memory_and_cpu_zero_refuses(self):
+        raw = ('MemTotal: '+str(4005466112//1024)+' kB\nMemFree: '+str(218234880//1024)+
+               ' kB\nMemAvailable: '+str(3147866112//1024)+' kB\n').encode()
+        with patch('common.open', return_value=io.BytesIO(raw)) as opened, \
+             patch('remote.linux_available_memory', side_effect=common.linux_available_memory), \
+             patch('remote.os.sysconf', side_effect=AssertionError('free-pages fallback forbidden')):
+            self.deployment.execute()
+        opened.assert_called_once_with('/proc/meminfo', 'rb')
+        self.assertEqual(self.deployment.phase, 'complete')
+        self.setUp()
+        with patch('remote.os.cpu_count', return_value=0), patch('remote.linux_available_memory') as memory:
+            with self.assertRaisesRegex(common.Refusal, 'insufficient_host_capacity'):
+                self.deployment.execute()
+            memory.assert_not_called()
+            self.no_update()
 
     def test_success_backup_precedes_app_only_update_and_preserves_config(self):
         self.deployment.execute()
@@ -396,6 +427,27 @@ class DeploymentTests(unittest.TestCase):
 
 
 class ProtocolTests(unittest.TestCase):
+    def test_linux_available_memory_strict_parser_refuses_unknown_and_implausible_values(self):
+        valid = b'MemTotal: 1048576 kB\nMemAvailable: 262144 kB\nMemFree: 1 kB\n'
+        self.assertEqual(common.parse_available_memory(valid), 256*1024**2)
+        invalid = [b'', b'MemTotal: 1 kB\n', b'MemAvailable: 1 kB\n', b'\xff', b'x'*65537,
+                   valid+b'MemAvailable: 262144 kB\n', valid+b'MemTotal: malformed\n',
+                   b'MemTotal: 0 kB\nMemAvailable: 0 kB\n',
+                   b'MemTotal: 1 kB\nMemAvailable: 2 kB\n']
+        for value in [b'-1 kB', b'1.5 kB', b'123 MB', b'123', b'9'*100+b' kB',
+                      str(2**60//1024+1).encode()+b' kB']:
+            invalid.append(b'MemTotal: '+value+b'\nMemAvailable: 1 kB\n')
+            invalid.append(b'MemTotal: 1048576 kB\nMemAvailable: '+value+b'\n')
+        for raw in invalid:
+            with self.subTest(raw=raw[:80]):
+                with self.assertRaisesRegex(common.Refusal, '^insufficient_host_capacity$'):
+                    common.parse_available_memory(raw)
+
+    def test_unreadable_meminfo_fails_closed_without_raw_error(self):
+        with patch('common.open', side_effect=OSError('PRIVATE_MEMORY_ERROR')):
+            with self.assertRaisesRegex(common.Refusal, '^insufficient_host_capacity$'):
+                common.linux_available_memory()
+
     def test_heartbeat_open_silent_pipe_and_eof_notify(self):
         for eof in [False,True]:
             reader,writer=os.pipe()

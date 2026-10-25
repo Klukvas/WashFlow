@@ -43,7 +43,10 @@ The full-SHA images are pulled while the old app is running. Their OCI revision,
 platform, immutable image IDs and repository digests are checked/recorded. An architecture
 mismatch refuses deployment; this route does not introduce multi-platform builds. Free space
 must cover twice the database plus upload size and 2 GiB headroom, both before and after pulls;
-available memory must be at least 256 MiB. These conservative checks may require an operator
+Linux `MemAvailable` must be at least 256 MiB, with at least one CPU. The bounded meminfo
+parser requires unique valid `MemAvailable` and positive `MemTotal` values in kB, checks that
+available does not exceed total, and refuses missing/malformed/overflow data. There is no
+MemFree/sysconf fallback and the 256 MiB reserve is unchanged. These checks may require an operator
 capacity decision; the script does not delete anything to free space.
 
 ## Paired backup and cutover
@@ -158,8 +161,9 @@ Capacity diagnostics add only CPU count, sysconf free-memory bytes, selected `/p
 MemTotal/MemFree/MemAvailable bytes, and deployment-filesystem total/free/available bytes.
 Only bounded nonnegative integer byte values (up to 1 EiB) and CPU counts 1–65536 are emitted;
 missing, malformed, duplicate or out-of-range fields become null. Raw meminfo and errors are
-withheld. Whether sysconf free memory versus MemAvailable explains the capacity refusal is a
-hypothesis pending production numbers; the deployment guard and 256 MiB reserve remain unchanged.
+withheld. Read-only run `40238895208` measured CPU 2, sysconf free/MemFree 218234880 bytes
+(208.125 MiB) and MemAvailable 3147866112 bytes; the previous free-pages metric caused the
+capacity refusal. The guard now uses strict Linux MemAvailable with the same 256 MiB reserve.
 
 Transport failures now expose only static `stage` (`validation`, `bootstrap`, `remote`) and
 allowlisted `reason` codes. Diagnostic access failures distinguish validation, SSH command and

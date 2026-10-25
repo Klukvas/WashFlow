@@ -44,6 +44,35 @@ def frontend_localhost_exception(container: str) -> bool:
         return False
 
 
+def parse_available_memory(raw: bytes) -> int:
+    """Use Linux's available-memory metric, with no free-pages fallback or raw error output."""
+    require(isinstance(raw, bytes) and len(raw) <= 65536, 'insufficient_host_capacity')
+    try:
+        lines = raw.decode('ascii').splitlines()
+    except UnicodeError:
+        raise Refusal('insufficient_host_capacity') from None
+    values = {}
+    for name in ['MemTotal', 'MemAvailable']:
+        entries = [line.partition(':')[2] for line in lines if line.partition(':')[0].strip() == name]
+        require(len(entries) == 1, 'insufficient_host_capacity')
+        match = re.fullmatch(r'[ \t]*([0-9]{1,16})[ \t]+kB[ \t]*', entries[0])
+        require(match is not None, 'insufficient_host_capacity')
+        value = int(match.group(1)) * 1024
+        require(value <= 2 ** 60, 'insufficient_host_capacity')
+        values[name] = value
+    require(0 < values['MemTotal'] and values['MemAvailable'] <= values['MemTotal'],
+            'insufficient_host_capacity')
+    return values['MemAvailable']
+
+
+def linux_available_memory() -> int:
+    try:
+        with open('/proc/meminfo', 'rb') as stream:
+            return parse_available_memory(stream.read(65537))
+    except OSError:
+        raise Refusal('insufficient_host_capacity') from None
+
+
 def require(condition, code):
     if not condition:
         raise Refusal(code)
