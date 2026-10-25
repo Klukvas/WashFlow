@@ -194,3 +194,17 @@ partial cutover/health/interruption rollback, SSH options and heartbeat EOF/sile
 real PG16 case verifies the 15-migration chain, read-only catalog gate, semantic column-order
 equivalence versus type/null/index drift, and custom dump listing. It uses only newly created
 network-none/tmpfs containers, with no published ports, shared volumes or production network.
+
+A separately reviewed, explicitly authorized one-session operation is available on a Codex branch
+with `close_idle_psql=true`. It excludes all normal release and diagnostic jobs and rejects
+combined diagnostic/test-skip flags. Through the same strict SSH stdin route and existing
+container authentication, it counts current-database network `psql` client backends separately
+from eligible idle sessions without an open transaction. Zero total is a static no-op; any
+unsafe/nonunique candidate refuses. A fresh connection rechecks all conditions and the captured
+PID/backend-start identity in a materialized SQL decision before one `pg_terminate_backend`
+call, then bounded read-only queries confirm that exact identity is absent. No PID, timestamp,
+query, username, address or credential is printed. PostgreSQL does not lock another session in
+idle state: activity can change after the check, so this does not promise an atomic idle lock.
+There is no termination retry, deployment bootstrap, upload or service update in this job.
+A successful closure (or proved absence) requires separate healthy-stack verification before
+rerunning only the previously failed Deploy job of the approved immutable main release.

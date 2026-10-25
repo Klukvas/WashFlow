@@ -276,9 +276,16 @@ class DiagnosticTests(unittest.TestCase):
         source = (ROOT/'.github/workflows/ci.yml').read_text().split('jobs:\n', 1)[1]
         blocks = re.split(r'(?m)^  ([a-z][a-z0-9-]+):\n', source)[1:]
         jobs = dict(zip(blocks[::2], blocks[1::2]))
-        self.assertEqual(len(jobs), 9)
+        self.assertEqual(len(jobs), 10)
         for name, job in jobs.items():
-            if name != 'diagnose': self.assertIn('!inputs.diagnostic_only', job)
+            if name not in {'diagnose', 'close-idle-psql'}:
+                self.assertIn('!inputs.diagnostic_only', job)
+        operation = jobs['close-idle-psql']
+        self.assertIn('inputs.diagnostic_only || inputs.skip_unit_tests || inputs.skip_e2e', operation)
+        self.assertIn('run: test "$CONFLICT" = false', operation)
+        self.assertLess(operation.index('Reject conflicting operational inputs'),
+                        operation.index('Setup existing operational SSH access'))
+        self.assertIn('!inputs.close_idle_psql', jobs['diagnose'])
         self.assertNotIn('environment:', jobs['diagnose'])
         self.assertIn("startsWith(github.ref, 'refs/heads/codex/')", jobs['diagnose'])
         self.assertNotIn('transport.py', jobs['diagnose'])
