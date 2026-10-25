@@ -1,5 +1,15 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator } from '@playwright/test';
 import { ScheduleViewPage } from '../pages/ScheduleViewPage';
+
+async function waitForContentOrEmpty(
+  content: Locator,
+  emptyState: Locator,
+): Promise<void> {
+  // The schedule shell is visible before its independent queries render their data.
+  await expect
+    .poll(async () => (await content.count()) > 0 || (await emptyState.isVisible()))
+    .toBe(true);
+}
 
 test.describe('Schedule Tab', () => {
   let schedule: ScheduleViewPage;
@@ -46,6 +56,10 @@ test.describe('Schedule Tab', () => {
     await expect(schedule.scheduleGrid).toBeVisible({ timeout: 10_000 });
 
     // At least some slots (free or occupied) should be visible
+    await waitForContentOrEmpty(
+      schedule.freeSlots.or(schedule.occupiedSlots),
+      page.getByText(/no scheduled orders|no available slots/i).first(),
+    );
     const freeCount = await schedule.freeSlots.count();
     const occupiedCount = await schedule.occupiedSlots.count();
     if (freeCount + occupiedCount === 0)
@@ -62,6 +76,10 @@ test.describe('Schedule Tab', () => {
 
     await expect(schedule.scheduleGrid).toBeVisible({ timeout: 10_000 });
 
+    await waitForContentOrEmpty(
+      schedule.occupiedSlots,
+      page.getByText(/no scheduled orders/i).first(),
+    );
     const initialRows = await schedule.occupiedSlots.count();
 
     // Select a specific work post filter
@@ -76,6 +94,10 @@ test.describe('Schedule Tab', () => {
           await wpFilter.selectOption(value);
           await page.waitForLoadState('networkidle');
 
+          await waitForContentOrEmpty(
+            schedule.occupiedSlots,
+            page.getByText(/no scheduled orders/i).first(),
+          );
           const filteredRows = await schedule.occupiedSlots.count();
           expect(filteredRows).toBeLessThanOrEqual(initialRows);
         }
@@ -92,6 +114,10 @@ test.describe('Schedule Tab', () => {
 
     await expect(schedule.scheduleGrid).toBeVisible({ timeout: 10_000 });
 
+    await waitForContentOrEmpty(
+      schedule.freeSlots,
+      page.getByText(/no available slots/i).first(),
+    );
     const freeCount = await schedule.freeSlots.count();
     if (freeCount > 0) {
       await schedule.clickFreeSlot();
