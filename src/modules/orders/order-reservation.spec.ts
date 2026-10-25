@@ -147,6 +147,8 @@ function harness(initial: Row[], synchronizeUnprotectedReads = false) {
         }
       };
       const tx = {
+        client: prisma.client,
+        vehicle: prisma.vehicle,
         bookingSettings,
         branch: {
           findFirst: jest.fn(({ where }: Where) =>

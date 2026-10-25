@@ -68,6 +68,52 @@ export class AnalyticsRepository {
     return this.tenantPrisma.forTenant(tenantId);
   }
 
+  async findDaySummaryBranch(tenantId: string, branchId: string) {
+    return this.db(tenantId).branch.findFirst({
+      where: { id: branchId },
+      select: { timezone: true },
+    });
+  }
+
+  async getDaySummary(
+    tenantId: string,
+    branchId: string,
+    range: { start: Date; end: Date },
+  ) {
+    return this.db(tenantId).$transaction(
+      async (tx) => {
+        const sales = await tx.order.groupBy({
+          by: ['status'],
+          where: {
+            tenantId,
+            branchId,
+            deletedAt: null,
+            scheduledStart: { gte: range.start, lt: range.end },
+          },
+          _count: { _all: true },
+          _sum: { totalPrice: true },
+          orderBy: { status: 'asc' },
+        });
+        // Intentionally no deletedAt/status filter on the parent: receipts are paid
+        // records on their payment date, including cancelled or deleted orders.
+        const receipts = await tx.payment.groupBy({
+          by: ['method'],
+          where: {
+            tenantId,
+            status: 'PAID',
+            createdAt: { gte: range.start, lt: range.end },
+            order: { tenantId, branchId },
+          },
+          _count: { _all: true },
+          _sum: { amount: true },
+          orderBy: { method: 'asc' },
+        });
+        return { sales, receipts };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
+  }
+
   private buildDateFilter(
     query: AnalyticsQueryDto,
     userBranchId: string | null = null,

@@ -20,7 +20,7 @@ operator dashboard, and a standalone React booking widget, backed by PostgreSQL 
 | Auth                   | Global `JwtAuthGuard` — every route protected unless marked `@Public()`                             |
 | Tenancy                | `TenantPrismaService.forTenant(tenantId)` injects `tenantId` + filters `deletedAt` at the ORM layer |
 | Domain models          | 20 Prisma models, 8 enums (`prisma/schema.prisma`)                                                  |
-| HTTP surface           | 24 `@Controller` classes, 113 routes, 17 of them `@Public()`                                        |
+| HTTP surface           | 24 `@Controller` classes, 116 routes, 17 of them `@Public()`                                        |
 | Permissions            | 47 `module.action` permissions across 14 modules                                                    |
 | Background work        | 3 BullMQ queues (`notifications`, `analytics`, `booking-confirmations`) + 3 cron jobs               |
 

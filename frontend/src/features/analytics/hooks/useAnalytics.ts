@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   fetchRevenue,
+  fetchDaySummary,
   fetchServiceStats,
   type AnalyticsParams,
 } from '../api/analytics.api';
@@ -27,5 +28,13 @@ export function useAnalyticsServices(params?: AnalyticsParams) {
     queryKey: ['analytics', 'services', params],
     queryFn: () => fetchServiceStats(params),
     staleTime: 60 * 1000,
+  });
+}
+
+export function useDaySummary(branchId: string, date: string) {
+  return useQuery({
+    queryKey: ['day-summary', branchId, date],
+    queryFn: () => fetchDaySummary(branchId, date),
+    enabled: !!branchId && !!date,
   });
 }

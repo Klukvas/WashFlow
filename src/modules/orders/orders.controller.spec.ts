@@ -73,13 +73,11 @@ describe('OrdersController', () => {
 
       mockSchedulingService.checkAvailability.mockResolvedValue(expected);
 
-      const result = await controller.checkAvailability(
-        tenantId,
+      const result = await controller.checkAvailability(tenantId, null, {
         branchId,
         date,
-        undefined,
-        undefined,
-      );
+        durationMinutes: 30,
+      });
 
       expect(mockSchedulingService.checkAvailability).toHaveBeenCalledWith({
         tenantId,
@@ -101,13 +99,12 @@ describe('OrdersController', () => {
 
       mockSchedulingService.checkAvailability.mockResolvedValue(expected);
 
-      const result = await controller.checkAvailability(
-        tenantId,
+      const result = await controller.checkAvailability(tenantId, null, {
         branchId,
         date,
-        durationMinutes,
+        durationMinutes: Number(durationMinutes),
         workPostId,
-      );
+      });
 
       expect(mockSchedulingService.checkAvailability).toHaveBeenCalledWith({
         tenantId,

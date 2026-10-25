@@ -6,6 +6,7 @@ import { CurrentTenant } from '../../common/decorators/current-tenant.decorator'
 import { CurrentBranch } from '../../common/decorators/current-branch.decorator';
 import { AnalyticsService } from './analytics.service';
 import { AnalyticsExportService } from './analytics-export.service';
+import { DaySummaryQueryDto } from './dto/day-summary-query.dto';
 import { AnalyticsQueryDto } from './dto/analytics-query.dto';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -17,6 +18,16 @@ export class AnalyticsController {
     private readonly analyticsService: AnalyticsService,
     private readonly exportService: AnalyticsExportService,
   ) {}
+
+  @Get('day-summary')
+  @Permissions('analytics.view')
+  getDaySummary(
+    @CurrentTenant() tenantId: string,
+    @CurrentBranch() branchId: string | null,
+    @Query() query: DaySummaryQueryDto,
+  ) {
+    return this.analyticsService.getDaySummary(tenantId, query, branchId);
+  }
 
   @Get('dashboard')
   @Permissions('analytics.view')

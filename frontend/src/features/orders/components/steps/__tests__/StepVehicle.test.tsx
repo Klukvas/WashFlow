@@ -1,3 +1,6 @@
+vi.mock('@/shared/components/PermissionGate', () => ({
+  PermissionGate: ({ children }: { children: React.ReactNode }) => children,
+}));
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -44,13 +47,7 @@ vi.mock('@/shared/ui/button', () => ({
 }));
 
 vi.mock('@/shared/ui/input', () => ({
-  Input: ({
-    error,
-    ...props
-  }: {
-    error?: string;
-    [key: string]: unknown;
-  }) => (
+  Input: ({ error, ...props }: { error?: string; [key: string]: unknown }) => (
     <div>
       <input {...(props as React.InputHTMLAttributes<HTMLInputElement>)} />
       {error && <span data-testid="field-error">{error}</span>}

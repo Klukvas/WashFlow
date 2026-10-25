@@ -7,7 +7,7 @@ export class OrdersPage {
 
   constructor(private readonly page: Page) {
     this.heading = page.getByRole('heading', { name: /orders/i });
-    this.createOrderButton = page.getByRole('button', { name: /create order/i });
+    this.createOrderButton = page.getByRole('button', { name: /quick order/i });
     this.tableRows = page.locator('table tbody tr');
   }
 

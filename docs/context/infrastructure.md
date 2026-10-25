@@ -185,7 +185,7 @@ mapped to dotted config keys in `src/config/configuration.ts` and read via
 
 ### Server and auth
 
-| Variable                 | Default       | Config key              | Notes                                                            |
+| Variable                 | Default | Config key              | Notes                                                                      |
 | ------------------------ | ------------- | ----------------------- | ---------------------------------------------------------------- |
 | `PORT`                   | `3000`        | `port`                  | Coerced to a positive integer                                    |
 | `NODE_ENV`               | `development` | `nodeEnv`               | `development` \| `production` \| `test`                          |
@@ -195,8 +195,8 @@ mapped to dotted config keys in `src/config/configuration.ts` and read via
 
 ### Billing (Paddle)
 
-| Variable                 | Default | Config key                 | Notes                                                                    |
-| ------------------------ | ------- | -------------------------- | ------------------------------------------------------------------------ |
+| Variable                 | Default | Config key              | Notes                                                                      |
+| ------------------------ | ------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `PADDLE_API_KEY`         | —       | `paddle.apiKey`            | All three credentials must be nonblank when payments are enabled; partial sets are always rejected (`superRefine`) |
 | `PADDLE_CLIENT_TOKEN`    | —       | `paddle.clientToken`       | Returned to the browser for the checkout overlay                         |
 | `PADDLE_WEBHOOK_SECRET`  | —       | `paddle.webhookSecret`     | HMAC-SHA256 verification of `Paddle-Signature`                           |
@@ -207,7 +207,7 @@ mapped to dotted config keys in `src/config/configuration.ts` and read via
 
 ### Email, support, frontend link
 
-| Variable                   | Default                                 | Config key               | Notes                                               |
+| Variable                 | Default | Config key              | Notes                                                                      |
 | -------------------------- | --------------------------------------- | ------------------------ | --------------------------------------------------- |
 | `RESEND_API_KEY`           | `''`                                    | `resend.apiKey`          | Empty → `EmailService` no-ops                       |
 | `EMAIL_FROM`               | `WashFlow <noreply@washflow.solutions>` | `resend.from`            |                                                     |
@@ -217,7 +217,7 @@ mapped to dotted config keys in `src/config/configuration.ts` and read via
 
 ### Observability
 
-| Variable                    | Default                            | Config key                       | Notes                                                    |
+| Variable                 | Default | Config key              | Notes                                                                      |
 | --------------------------- | ---------------------------------- | -------------------------------- | -------------------------------------------------------- |
 | `SENTRY_DSN`                | —                                  | read directly in `instrument.ts` | Absent → `Sentry.init` is skipped                        |
 | `SENTRY_TRACES_SAMPLE_RATE` | `0.05` prod / `1.0` dev (computed) | `instrument.ts`                  | Zod-validated to 0–1                                     |
@@ -252,7 +252,8 @@ See [frontend.md](./frontend.md#build-and-runtime-configuration).
 2. `src/config/configuration.ts` — expose it under a dotted key.
 3. `.env.example` (and `.env.docker.example` if it is Compose-relevant) — placeholder only.
 4. `docker-compose.prod.yml` — pass it through to the `backend` service.
-5. `.github/workflows/ci.yml` — add to the E2E job env and/or the deploy `.env.production` writer.
+5. `.github/workflows/ci.yml` — add synthetic E2E values if required; deployment preserves
+   live server settings, so production configuration changes are separate operator work.
 6. This document's tables.
 
 ---
@@ -314,28 +315,22 @@ Notes that matter when you read a failed run:
 - `build-and-push` passes `build-args: VITE_PADDLE_SANDBOX=false` to the frontend image and
   **no other build arg** — notably not `VITE_SENTRY_DSN`. See
   [§2](#images-and-startup) for what that means in production.
-- The deploy job writes `.env.production` with `printf` from environment variables (never
-  interpolated into the shell command line), `scp`s it plus `docker-compose.prod.yml` to
-  `/opt/washflow/`, renames them to `.env` / `docker-compose.yml`, pulls `:latest`, runs
-  `docker compose up -d --remove-orphans`, polls the backend then frontend healthchecks, prunes
-  dangling images, and finally deletes the SSH key and `.env.production`.
-- That generated `.env` also carries `DOCKER_TAG`, written from `build-and-push`'s image-tag
-  output, and **`DOCKER_TAG` is what Compose actually resolves** for both services. The
-  explicit `docker pull …:latest || true` calls are best-effort warm-ups, not the selector.
-  Rolling back therefore means repinning `DOCKER_TAG`, not re-tagging `:latest` —
-  [../CONTRIBUTING.md](../CONTRIBUTING.md#rollback).
+- The deploy job preserves live `/opt/washflow/.env` and `docker-compose.yml`. It checks the
+  existing project, capacity, full migration checksums and public-schema catalog against a
+  fresh isolated PG16 reference. Images use full commit-SHA tags, then resolved immutable
+  image IDs after revision/platform checks. A quiesced paired database/uploads backup is
+  mandatory before app-only recreation. Failure attempts exact-ID app rollback; no pruning,
+  `remove-orphans` or configuration/provider changes occur. See the
+  [deployment runbook](../operations/deployment.md) for gates, interruption recovery and limits.
+- The image override explicitly runs `node dist/main.js` after verifying zero pending
+  migrations; the live base Compose migration-start command is preserved. Backend HTTP,
+  cron and BullMQ resume together before health. Application rollback cannot undo writes.
+- Production settings, including `PAYMENTS_ENABLED` and provider credentials, remain those
+  already configured on the server. The deploy job no longer regenerates them from GitHub.
 
-The deploy job reads `vars.PAYMENTS_ENABLED`, defaulting to `false`. To enable production
-payments, set the GitHub Actions repository/environment variable `PAYMENTS_ENABLED=true` and
-configure all three nonblank secrets: `PADDLE_API_KEY`, `PADDLE_CLIENT_TOKEN` and
-`PADDLE_WEBHOOK_SECRET`.
-
-**GitHub secrets referenced:** `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`, `DEPLOY_SSH_KEY`,
-`DEPLOY_HOST`, `DEPLOY_USER`, `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `JWT_ACCESS_SECRET`,
-`JWT_REFRESH_SECRET`, `CORS_ORIGINS`, `FRONTEND_URL`, `RESEND_API_KEY`, `PADDLE_API_KEY`,
-`PADDLE_CLIENT_TOKEN`, `PADDLE_WEBHOOK_SECRET`, `PADDLE_PRICE_IDS`, `PADDLE_ADDON_PRICE_IDS`,
-`SENTRY_DSN`, `METRICS_TOKEN`, `VITE_SENTRY_DSN`, `GRAFANA_LOKI_HOST`, `GRAFANA_LOKI_USERNAME`,
-`GRAFANA_LOKI_PASSWORD`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_SUPPORT_CHAT_ID`.
+**Deployment secrets referenced:** `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`,
+`DEPLOY_SSH_KEY`, `DEPLOY_HOST`, `DEPLOY_USER`. Existing live application credentials are
+not read back or rewritten by the job.
 
 `frontend-booking/` has **no CI job and no image build**.
 
@@ -414,7 +409,7 @@ Frontend: `frontend/src/shared/lib/sentry.ts` — see
 ## 6. External integrations
 
 | Service          | Direction | Where                                                           | Failure mode                                                                                                                                                                                                                                                                                    |
-| ---------------- | --------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ---------------- | --------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Paddle**       | out       | `PaddleService` (`fetch` to the Paddle API)                     | Mutations are guarded by `PaymentsEnabledGuard` (503 when `PAYMENTS_ENABLED` is off). Enabling payments without all three nonblank credentials fails startup validation. Configured but invalid credentials can still fail at runtime; a `CircuitBreaker` opens after 5 failures. `PaddlePriceCacheService` (startup + hourly) falls back to hard-coded prices |
 | **Paddle**       | in        | `POST /api/v1/webhooks/paddle` (`@Public()`, `@SkipThrottle()`) | Missing header/raw body/invalid HMAC → `400`; duplicate `event_id` → skipped                                                                                                                                                                                                                    |
 | **Resend**       | out       | `EmailService`                                                  | No key → silent no-op; failures logged; `CircuitBreaker` opens after 5 failures for 30 s                                                                                                                                                                                                        |
@@ -448,6 +443,11 @@ format, computes `createHmac('sha256', PADDLE_WEBHOOK_SECRET)` and compares with
 | Soft-delete retention  | `CleanupService` daily at 02:00, `CLEANUP_RETENTION_DAYS` (default 30), one FK-ordered `$transaction` |
 | Idempotency keys       | `IdempotencyCleanupService` hourly; rows have a 24 h TTL                                              |
 | Uploads                | `uploads_data` volume mounted at `/app/uploads`; served from `/uploads`                               |
+
+Local PostgreSQL 16 custom-format backup, paired quiesced uploads, guarded new-target restore,
+an isolated synthetic drill and operator recovery decisions are documented in the
+[backup/recovery runbook](../operations/backup-recovery.md). The tools are local preparation;
+production schedules, offsite copies, encryption and PostgreSQL PITR are not activated.
 
 ---
 
@@ -493,21 +493,27 @@ No production database or data was modified by these checks.
 
 ---
 
+The isolated critical-workflow harness in `test/p0-critical-harness.ts` uses the same
+`WASHFLOW_REPAIR_TEST_DATABASE_URL` guard as the repair concurrency suite. It constructs only
+controllers and real domain services with synthetic signed auth contexts; no application
+bootstrap, `.env`, Redis, subscribers or cron loads. See the
+[critical HTTP verification recipe](../CONTRIBUTING.md#isolated-critical-http-workflows).
+
 ## 8. Known unknowns
 
 Not evidenced anywhere in this repository. Do not invent answers; ask or verify externally.
 
 | Question                                          | What the repo shows                                                                                                                                   |
-| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | TLS termination / reverse proxy in front of nginx | `docker-compose.prod.yml` publishes `127.0.0.1:8080`, implying an external proxy, but no config for it exists here. `main.ts` sets `trust proxy = 1`. |
 | DNS, CDN, WAF                                     | `washflow.solutions` appears in defaults and in `frontend/src/shared/components/Seo.tsx`; nothing about how it is served.                             |
-| Database backup / restore / PITR                  | Nothing. No backup service, cron, or documented procedure.                                                                                            |
-| Production secret management                      | Secrets flow GitHub Secrets → generated `.env.production` → `/opt/washflow/.env`. No vault/secret manager is configured.                              |
+| Production backup activation / PITR               | [Local backup/restore tooling and runbook](../operations/backup-recovery.md) exist; no active schedule, offsite destination, encryption service or WAL/PITR configuration is evidenced. |
+| Production secret management                      | Existing `/opt/washflow/.env` is preserved by deployment. GitHub supplies SSH/registry access only; no vault/secret manager is configured. |
 | Log retention and alert routing                   | Loki push credentials only; no dashboards or alert rules in the repo.                                                                                 |
 | Multi-replica / horizontal scaling                | Single `backend` service. `@socket.io/redis-adapter` is a dependency but **not wired**; cron jobs have no leader election.                            |
 | Hosting for `frontend-booking/`                   | No Dockerfile, nginx config, or CI job. Build output only.                                                                                            |
 | Staging environment                               | Only `environment: production` in CI.                                                                                                                 |
-| Automated rollback                                | `docs/CONTRIBUTING.md` documents a manual `DOCKER_TAG` repin; there is no rollback job, no image retention policy, and no migration-down path.        |
+| Automated rollback                                | Deployment attempts bounded app-only rollback to both old image IDs; no automatic DB restore, image retention policy or migration-down path. See [deployment.md](../operations/deployment.md). |
 
 ---
 

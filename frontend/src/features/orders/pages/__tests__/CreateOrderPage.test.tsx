@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { CreateOrderPage } from '../CreateOrderPage';
 
 const mockNavigate = vi.fn();
-let mockSearchParams = new URLSearchParams();
+let mockSearchParams = new URLSearchParams('mode=wizard');
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -194,7 +194,7 @@ function createWrapper() {
 describe('CreateOrderPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSearchParams = new URLSearchParams();
+    mockSearchParams = new URLSearchParams('mode=wizard');
   });
 
   describe('Mode Selector', () => {
@@ -266,6 +266,7 @@ describe('CreateOrderPage', () => {
   describe('URL Prefill', () => {
     it('skips mode selector when URL has prefill params', () => {
       mockSearchParams = new URLSearchParams({
+        mode: 'wizard',
         branchId: 'b1',
         date: '2026-03-18',
         time: '2026-03-18T10:00:00Z',
@@ -285,6 +286,7 @@ describe('CreateOrderPage', () => {
 
     it('does not skip mode selector when URL has partial params', () => {
       mockSearchParams = new URLSearchParams({
+        mode: 'wizard',
         branchId: 'b1',
       });
 

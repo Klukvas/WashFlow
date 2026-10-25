@@ -27,6 +27,28 @@ describe('AuditSubscriber', () => {
     subscriber = module.get<AuditSubscriber>(AuditSubscriber);
   });
 
+  it('records the reschedule before/after fields as one UPDATE', async () => {
+    const event = makeEvent({
+      orderId: 'order-1',
+      branchId: 'branch-1',
+      userId: 'actor',
+      previous: { scheduledStart: 'before' },
+      updated: { scheduledStart: 'after' },
+    });
+    await subscriber.handleOrderRescheduled(event);
+    expect(auditRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityId: 'order-1',
+        action: AuditAction.UPDATE,
+        oldValue: event.payload.previous,
+        newValue: event.payload.updated,
+        performedById: 'actor',
+        metadata: { branchId: 'branch-1' },
+      }),
+    );
+    expect(auditRepo.create).toHaveBeenCalledTimes(1);
+  });
+
   describe('handleOrderCreated', () => {
     const event = makeEvent({
       id: 'order-1',

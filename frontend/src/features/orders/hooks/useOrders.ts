@@ -8,6 +8,9 @@ import {
   deleteOrder,
   restoreOrder,
   fetchAvailability,
+  fetchSchedule,
+  rescheduleOrder,
+  type RescheduleOrderPayload,
   type OrderQueryParams,
   type CreateOrderPayload,
   type UpdateOrderStatusPayload,
@@ -36,6 +39,7 @@ export function useCreateOrder() {
     mutationFn: (payload: CreateOrderPayload) => createOrder(payload),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['day-summary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['availability'] });
     },
@@ -55,6 +59,7 @@ export function useUpdateOrderStatus() {
       updateOrderStatus(id, payload),
     onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['day-summary'] });
       queryClient.invalidateQueries({ queryKey: ['orders', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['availability'] });
@@ -71,6 +76,7 @@ export function useDeleteOrder() {
     mutationFn: (id: string) => deleteOrder(id),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['day-summary'] });
       queryClient.invalidateQueries({ queryKey: ['availability'] });
     },
     onError: (error: Error) => {
@@ -85,6 +91,7 @@ export function useRestoreOrder() {
     mutationFn: (id: string) => restoreOrder(id),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['day-summary'] });
       queryClient.invalidateQueries({ queryKey: ['availability'] });
     },
     onError: (error: Error) => {
@@ -99,5 +106,26 @@ export function useAvailability(params: AvailabilityParams) {
     queryFn: () => fetchAvailability(params),
     enabled: !!params.branchId && !!params.date,
     staleTime: 30 * 1000,
+    refetchInterval: 30 * 1000,
+  });
+}
+
+export function useSchedule(branchId: string, date: string) {
+  return useQuery({
+    queryKey: ['orders', 'schedule', branchId, date],
+    queryFn: () => fetchSchedule(branchId, date),
+    enabled: !!branchId && !!date,
+    refetchInterval: 60_000,
+  });
+}
+export function useRescheduleOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...payload }: RescheduleOrderPayload & { id: string }) =>
+      rescheduleOrder(id, payload),
+    onSettled: () => {
+      for (const key of ['orders', 'availability', 'dashboard', 'day-summary'])
+        qc.invalidateQueries({ queryKey: [key] });
+    },
   });
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -19,6 +19,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/shared/ui/dialog';
+import { PermissionGate } from '@/shared/components/PermissionGate';
 import { cn } from '@/shared/utils/cn';
 
 const vehicleSchema = z.object({
@@ -38,6 +39,7 @@ interface StepVehicleProps {
   clientId: string;
   vehicleId: string;
   onVehicleChange: (vehicleId: string) => void;
+  compact?: boolean;
   onNext: () => void;
   onBack: () => void;
 }
@@ -48,10 +50,18 @@ export function StepVehicle({
   onVehicleChange,
   onNext,
   onBack,
+  compact,
 }: StepVehicleProps) {
   const { t } = useTranslation('orders');
   const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { mutate: createVehicleMut, isPending: isCreatingVehicle } =
     useCreateVehicle();
@@ -66,7 +76,11 @@ export function StepVehicle({
     resolver: zodResolver(vehicleSchema) as any,
   });
 
-  const { data: vehicles } = useQuery({
+  const {
+    data: vehicles,
+    isFetching,
+    isError,
+  } = useQuery({
     queryKey: ['vehicles', clientId],
     queryFn: async () => {
       const { data } = await apiClient.get<PaginatedApiResponse<Vehicle>>(
@@ -90,6 +104,7 @@ export function StepVehicle({
       },
       {
         onSuccess: (newVehicle) => {
+          if (!mounted.current) return;
           onVehicleChange(newVehicle.id);
           setDialogOpen(false);
           reset();
@@ -104,6 +119,15 @@ export function StepVehicle({
       <CardHeader className="p-0">
         <CardTitle className="text-lg">{t('creation.selectVehicle')}</CardTitle>
       </CardHeader>
+      {isFetching && <p role="status">{tc('status.loading')}</p>}
+      {isError && (
+        <p role="alert" className="text-destructive">
+          {tc('errors.loadFailed')}
+        </p>
+      )}
+      {!isFetching && !isError && vehicles?.length === 0 && (
+        <p className="text-sm text-muted-foreground">{t('quick.noVehicles')}</p>
+      )}
       <div className="space-y-2">
         {(vehicles ?? []).map((v) => (
           <button
@@ -127,38 +151,61 @@ export function StepVehicle({
           </button>
         ))}
       </div>
-      <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)}>
-        <Plus className="mr-1 h-4 w-4" />
-        {tc('actions.create')} {t('fields.vehicle')}
-      </Button>
-      <div className="flex gap-3">
-        <Button variant="outline" onClick={onBack}>
-          {tc('actions.back')}
+      <PermissionGate permission="vehicles.create">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!clientId}
+          onClick={() => setDialogOpen(true)}
+        >
+          <Plus className="mr-1 h-4 w-4" />
+          {tc('actions.create')} {t('fields.vehicle')}
         </Button>
-        <Button onClick={onNext} disabled={!vehicleId}>
-          {tc('actions.next')}
-        </Button>
-      </div>
+      </PermissionGate>
+      {!compact && (
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={onBack}>
+            {tc('actions.back')}
+          </Button>
+          <Button onClick={onNext} disabled={!vehicleId}>
+            {tc('actions.next')}
+          </Button>
+        </div>
+      )}
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
+      <Dialog
+        open={dialogOpen}
+        dismissable={!isCreatingVehicle}
+        className="max-h-[90vh] overflow-y-auto"
+        onClose={() => setDialogOpen(false)}
+      >
         <DialogHeader>
           <DialogTitle>
             {tc('actions.create')} {t('fields.vehicle')}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(handleQuickCreate)} className="space-y-4">
+        <form
+          onSubmit={(event) => {
+            void handleSubmit(handleQuickCreate)(event);
+          }}
+          className="space-y-4"
+        >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>{tc('fields.make')}</Label>
+              <Label htmlFor="quick-vehicle-make">{tc('fields.make')}</Label>
               <Input
+                id="quick-vehicle-make"
                 {...register('make')}
                 placeholder={tc('fields.make')}
                 error={errors.make?.message}
               />
             </div>
             <div className="space-y-2">
-              <Label>{tc('fields.licensePlate')}</Label>
+              <Label htmlFor="quick-vehicle-plate">
+                {tc('fields.licensePlate')}
+              </Label>
               <Input
+                id="quick-vehicle-plate"
                 {...register('licensePlate')}
                 placeholder={tc('fields.licensePlate')}
               />
@@ -166,16 +213,29 @@ export function StepVehicle({
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="space-y-2">
-              <Label>{tc('fields.model')}</Label>
-              <Input {...register('model')} placeholder={tc('fields.model')} />
+              <Label htmlFor="quick-vehicle-model">{tc('fields.model')}</Label>
+              <Input
+                id="quick-vehicle-model"
+                {...register('model')}
+                placeholder={tc('fields.model')}
+              />
             </div>
             <div className="space-y-2">
-              <Label>{tc('fields.color')}</Label>
-              <Input {...register('color')} placeholder={tc('fields.color')} />
+              <Label htmlFor="quick-vehicle-color">{tc('fields.color')}</Label>
+              <Input
+                id="quick-vehicle-color"
+                {...register('color')}
+                placeholder={tc('fields.color')}
+              />
             </div>
             <div className="space-y-2">
-              <Label>{tc('fields.year')}</Label>
-              <Input type="number" {...register('year')} placeholder="2024" />
+              <Label htmlFor="quick-vehicle-year">{tc('fields.year')}</Label>
+              <Input
+                type="number"
+                id="quick-vehicle-year"
+                {...register('year')}
+                placeholder="2024"
+              />
             </div>
           </div>
           <DialogFooter>

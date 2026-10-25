@@ -14,9 +14,11 @@ test.describe('Schedule Tab', () => {
     await schedule.switchToScheduleTab();
   });
 
-  test('shows "select a branch" message initially', async () => {
+  test('requires a branch or safely selects the only/scoped branch', async () => {
     await schedule.switchToScheduleTab();
-    await expect(schedule.selectBranchMessage).toBeVisible();
+    if (!(await schedule.branchSelect.inputValue()))
+      await expect(schedule.selectBranchMessage).toBeVisible();
+    else await expect(schedule.datePicker).toBeVisible();
   });
 
   test('branch selector is visible in schedule tab', async () => {
@@ -24,7 +26,7 @@ test.describe('Schedule Tab', () => {
     await expect(schedule.branchSelect).toBeVisible();
   });
 
-  test('selecting a branch loads the schedule grid', async ({ page }) => {
+  test('selecting a branch loads the schedule surface', async ({ page }) => {
     await schedule.switchToScheduleTab();
     await schedule.selectBranch(0);
 
@@ -35,7 +37,7 @@ test.describe('Schedule Tab', () => {
     await expect(schedule.scheduleGrid).toBeVisible({ timeout: 10_000 });
   });
 
-  test('free and occupied slots are shown in the grid', async ({ page }) => {
+  test('shows capacity or an explicit empty state', async ({ page }) => {
     await schedule.switchToScheduleTab();
     await schedule.selectBranch(0);
     await page.waitForLoadState('networkidle');
@@ -46,17 +48,21 @@ test.describe('Schedule Tab', () => {
     // At least some slots (free or occupied) should be visible
     const freeCount = await schedule.freeSlots.count();
     const occupiedCount = await schedule.occupiedSlots.count();
-    expect(freeCount + occupiedCount).toBeGreaterThan(0);
+    if (freeCount + occupiedCount === 0)
+      await expect(
+        page.getByText(/no scheduled orders|no available slots/i).first(),
+      ).toBeVisible();
+    else expect(freeCount + occupiedCount).toBeGreaterThan(0);
   });
 
-  test('work post filter narrows grid rows', async ({ page }) => {
+  test('work post filter narrows scheduled order cards', async ({ page }) => {
     await schedule.switchToScheduleTab();
     await schedule.selectBranch(0);
     await page.waitForLoadState('networkidle');
 
     await expect(schedule.scheduleGrid).toBeVisible({ timeout: 10_000 });
 
-    const initialRows = await schedule.scheduleGrid.locator('tbody tr').count();
+    const initialRows = await schedule.occupiedSlots.count();
 
     // Select a specific work post filter
     const wpFilter = schedule.workPostFilter;
@@ -70,9 +76,7 @@ test.describe('Schedule Tab', () => {
           await wpFilter.selectOption(value);
           await page.waitForLoadState('networkidle');
 
-          const filteredRows = await schedule.scheduleGrid
-            .locator('tbody tr')
-            .count();
+          const filteredRows = await schedule.occupiedSlots.count();
           expect(filteredRows).toBeLessThanOrEqual(initialRows);
         }
       }
@@ -102,7 +106,9 @@ test.describe('Schedule Tab', () => {
     }
   });
 
-  test('legend shows free and occupied labels', async ({ page }) => {
+  test('explains reservation policy and workforce capacity', async ({
+    page,
+  }) => {
     await schedule.switchToScheduleTab();
     await schedule.selectBranch(0);
     await page.waitForLoadState('networkidle');
@@ -110,16 +116,20 @@ test.describe('Schedule Tab', () => {
     await expect(schedule.scheduleGrid).toBeVisible({ timeout: 10_000 });
 
     // Legend should be visible with Free and Occupied
-    await expect(page.getByText('Free').last()).toBeVisible();
-    await expect(page.getByText('Occupied').last()).toBeVisible();
+    await expect(
+      page.getByText(/check overdue work with the worker/i),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/service duration is checked during order creation/i),
+    ).toBeVisible();
   });
 
-  test('can switch back to orders tab', async () => {
+  test('can switch back to orders tab', async ({ page }) => {
     await schedule.switchToScheduleTab();
-    await expect(schedule.selectBranchMessage).toBeVisible();
+    await expect(schedule.branchSelect).toBeVisible();
 
     await schedule.switchToOrdersTab();
     // Orders table or filter should be visible
-    await expect(schedule.scheduleGrid).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('table')).toBeVisible({ timeout: 10_000 });
   });
 });

@@ -1,208 +1,146 @@
-import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { ScheduleView } from '../ScheduleView';
-import type { TimeSlot } from '@/shared/types/api';
 
-const mockNavigate = vi.fn();
-
+const state = vi.hoisted(() => ({
+  navigate: vi.fn(),
+  scoped: false,
+  error: false,
+  loading: false,
+  analytics: false,
+}));
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-    i18n: { language: 'en', changeLanguage: vi.fn() },
-  }),
+  useTranslation: () => ({ t: (key: string) => key }),
 }));
-
-vi.mock('react-router', () => ({
-  useNavigate: () => mockNavigate,
+vi.mock('react-router', () => ({ useNavigate: () => state.navigate }));
+vi.mock('@/shared/hooks/useNow', () => ({
+  useNow: () => Date.parse('2026-10-25T08:00:00Z'),
 }));
-
 vi.mock('@/shared/hooks/useBranchScope', () => ({
-  useBranchScope: () => ({ branchId: null, isBranchScoped: false }),
-}));
-
-vi.mock('@/shared/utils/format', () => ({
-  formatTime: (v: string) => `t:${v}`,
-}));
-
-vi.mock('@/shared/utils/cn', () => ({
-  cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
-}));
-
-// Mock useAvailability and useBranchBookingSettings
-let mockSlots: TimeSlot[] = [];
-let mockSlotsLoading = false;
-
-vi.mock('../../hooks/useOrders', () => ({
-  useAvailability: () => ({
-    data: mockSlots,
-    isLoading: mockSlotsLoading,
+  useBranchScope: () => ({
+    branchId: state.scoped ? 'b1' : null,
+    isBranchScoped: state.scoped,
   }),
 }));
-
-const fakeBranches = [
-  { id: 'b1', name: 'Branch One' },
-  { id: 'b2', name: 'Branch Two' },
-];
-
-const fakeWorkPosts = [
-  { id: 'wp1', name: 'Post 1' },
-  { id: 'wp2', name: 'Post 2' },
-];
-
+vi.mock('@/shared/components/PermissionGate', () => ({
+  PermissionGate: ({
+    permission,
+    children,
+  }: {
+    permission: string;
+    children: ReactNode;
+  }) => (permission === 'analytics.view' && !state.analytics ? null : children),
+}));
+vi.mock('@/features/analytics/components/DaySummary', () => ({
+  DaySummary: () => <div>day-summary</div>,
+}));
 vi.mock('@/features/branches/hooks/useBranches', () => ({
   useBranches: () => ({
     data: {
-      items: fakeBranches,
-      meta: { total: 2, page: 1, limit: 100, totalPages: 1 },
+      items: [
+        {
+          id: 'b1',
+          name: 'Branch One',
+          isActive: true,
+          timezone: 'Europe/Kyiv',
+        },
+        { id: 'b2', name: 'Branch Two', isActive: true, timezone: 'UTC' },
+      ],
     },
-    isLoading: false,
-  }),
-  useBranchBookingSettings: () => ({
-    data: { workingDays: [1, 2, 3, 4, 5] },
   }),
 }));
-
-vi.mock('@/features/work-posts/hooks/useWorkPosts', () => ({
-  useWorkPosts: () => ({
-    data: {
-      items: fakeWorkPosts,
-      meta: { total: 2, page: 1, limit: 50, totalPages: 1 },
-    },
-    isLoading: false,
+vi.mock('../../hooks/useOrders', () => ({
+  useSchedule: () => ({
+    isLoading: state.loading,
+    isError: state.error,
+    data:
+      state.loading || state.error
+        ? undefined
+        : {
+            timezone: 'Europe/Kyiv',
+            now: '2026-10-25T08:00:00Z',
+            orders: Array.from({ length: 25 }, (_, index) => ({
+              id: `o${index}`,
+              status: 'IN_PROGRESS',
+              vehicle: { licensePlate: `AA${index}` },
+              services: [{ name: 'Wash' }],
+              scheduledStart: '2026-10-25T06:00:00Z',
+              scheduledEnd: '2026-10-25T07:00:00Z',
+              workPost: { id: 'p1', name: 'Post 1' },
+              assignedEmployee: { id: 'e1', name: 'Worker One' },
+              isOverdue: index === 0,
+            })),
+          },
   }),
-}));
-
-vi.mock('@/shared/ui/select', () => ({
-  Select: ({
-    options,
-    value,
-    onChange,
-    placeholder,
-  }: {
-    options?: { value: string; label: string }[];
-    value: string;
-    onChange: React.ChangeEventHandler<HTMLSelectElement>;
-    placeholder?: string;
-  }) => (
-    <select
-      data-testid="select"
-      value={value}
-      onChange={onChange}
-      aria-label={placeholder}
-    >
-      {placeholder && <option value="">{placeholder}</option>}
-      {options?.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
-  ),
-}));
-
-vi.mock('@/shared/ui/label', () => ({
-  Label: ({ children }: { children: ReactNode }) => <label>{children}</label>,
-}));
-
-vi.mock('@/shared/ui/date-picker', () => ({
-  DatePicker: ({
-    value,
-    onChange,
-  }: {
-    value: string;
-    onChange: (v: string) => void;
-  }) => (
-    <input
-      type="date"
-      data-testid="date-picker"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    />
-  ),
-}));
-
-function createWrapper() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    );
-  };
-}
-
-describe('ScheduleView', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockSlots = [];
-    mockSlotsLoading = false;
-  });
-
-  it('shows "select branch first" message when no branch is selected', () => {
-    render(<ScheduleView />, { wrapper: createWrapper() });
-
-    expect(screen.getByText('schedule.selectBranchFirst')).toBeInTheDocument();
-  });
-
-  it('renders branch selector', () => {
-    render(<ScheduleView />, { wrapper: createWrapper() });
-
-    const selects = screen.getAllByTestId('select');
-    expect(selects.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('shows no slots message when slots array is empty', async () => {
-    // Pre-select a branch by rendering with a scoped user
-    vi.doMock('@/shared/hooks/useBranchScope', () => ({
-      useBranchScope: () => ({ branchId: 'b1', isBranchScoped: true }),
-    }));
-
-    // Re-render directly by selecting branch
-    const { rerender } = render(<ScheduleView />, {
-      wrapper: createWrapper(),
-    });
-
-    // Select a branch
-    const selects = screen.getAllByTestId('select');
-    fireEvent.change(selects[0], { target: { value: 'b1' } });
-
-    rerender(<ScheduleView />);
-  });
-
-  it('renders legend with free and occupied labels', () => {
-    render(<ScheduleView />, { wrapper: createWrapper() });
-
-    // Legend should be in the component even without slots
-    // but only when a branch is selected and grid is shown
-  });
-
-  it('navigates to create order with params when clicking a free slot', () => {
-    mockSlots = [
+  useAvailability: () => ({
+    data: [
       {
-        start: '2026-03-18T10:00:00Z',
-        end: '2026-03-18T10:30:00Z',
-        workPostId: 'wp1',
+        start: '2026-10-25T10:00:00Z',
+        workPostId: 'p1',
         workPostName: 'Post 1',
         available: true,
       },
       {
-        start: '2026-03-18T10:00:00Z',
-        end: '2026-03-18T10:30:00Z',
-        workPostId: 'wp2',
-        workPostName: 'Post 2',
+        start: '2026-10-25T11:00:00Z',
+        workPostId: 'p1',
+        workPostName: 'Post 1',
         available: false,
       },
-    ];
+    ],
+    isLoading: false,
+  }),
+}));
 
-    // We need to get the component into a state with a selected branch
-    // Since useBranchScope returns null, we need to select one via UI
-    render(<ScheduleView />, { wrapper: createWrapper() });
-
-    const selects = screen.getAllByTestId('select');
-    fireEvent.change(selects[0], { target: { value: 'b1' } });
+describe('operator schedule', () => {
+  beforeEach(() => {
+    state.navigate.mockClear();
+    state.scoped = false;
+    state.loading = false;
+    state.error = false;
+    state.analytics = false;
+  });
+  it('requires a branch, and renders branch/date/post controls', () => {
+    render(<ScheduleView />);
+    expect(screen.getByText('schedule.selectBranchFirst')).toBeInTheDocument();
+    expect(screen.getByLabelText('fields.branch')).toBeEnabled();
+    expect(screen.getByLabelText('creation.date')).toHaveAttribute(
+      'type',
+      'date',
+    );
+  });
+  it('shows every order beyond first 20, local time, worker, status, overdue and detail navigation', () => {
+    state.scoped = true;
+    render(<ScheduleView />);
+    expect(screen.getByLabelText('fields.branch')).toBeDisabled();
+    expect(screen.getByText('AA24')).toBeInTheDocument();
+    expect(screen.getAllByText(/Worker One/)).toHaveLength(25);
+    expect(screen.getByText('schedule.overdue')).toBeInTheDocument();
+    expect(screen.getAllByText(/08:00 – 09:00/)).toHaveLength(25);
+    fireEvent.click(screen.getByText('AA0'));
+    expect(state.navigate).toHaveBeenCalledWith('/orders/o0');
+    expect(screen.queryByText('day-summary')).not.toBeInTheDocument();
+  });
+  it('navigates free capacity to prefilled quick intake and never invents an order for unavailable capacity', () => {
+    state.scoped = true;
+    render(<ScheduleView />);
+    fireEvent.click(screen.getByRole('button', { name: '12:00 · Post 1' }));
+    expect(state.navigate.mock.calls[0][0]).toContain(
+      '/orders/create?branchId=b1',
+    );
+    expect(state.navigate.mock.calls[0][0]).toContain('workPostId=p1');
+    expect(
+      screen.queryByRole('button', { name: '13:00 · Post 1' }),
+    ).not.toBeInTheDocument();
+  });
+  it('shows query failures and loading explicitly', () => {
+    state.scoped = true;
+    state.error = true;
+    const view = render(<ScheduleView />);
+    expect(screen.getByRole('alert')).toHaveTextContent('errors.loadFailed');
+    state.error = false;
+    state.loading = true;
+    view.rerender(<ScheduleView />);
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 });

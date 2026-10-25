@@ -9,6 +9,7 @@ export type EmployeeReservation = {
   scheduledStart: Date;
   scheduledEnd: Date;
   bufferMinutes: number;
+  excludeOrderId?: string;
 };
 
 /** Shared by explicit and automatic assignment inside the booking transaction. */
@@ -38,6 +39,9 @@ export function employeeEligibilityWhere(
     orders: {
       none: {
         tenantId,
+        ...(params.excludeOrderId
+          ? { id: { not: params.excludeOrderId } }
+          : {}),
         status: { notIn: ['CANCELLED', 'NO_SHOW', 'COMPLETED'] },
         scheduledStart: {
           lt: new Date(scheduledEnd.getTime() + bufferMinutes * 60000),

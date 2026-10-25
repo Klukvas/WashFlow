@@ -45,6 +45,32 @@ export class IdempotencyRepository {
     return result.length > 0;
   }
 
+  async acquireRequestLock(
+    tx: Prisma.TransactionClient,
+    data: {
+      key: string;
+      tenantId: string;
+      method: string;
+      path: string;
+      expiresAt: Date;
+      claimedAt: Date;
+      responseBody: Prisma.InputJsonValue;
+    },
+  ): Promise<boolean> {
+    // Expiry replacement is a single conditional UPSERT, so concurrent callers
+    // cannot delete a live winner or leave an expired key permanently blocked.
+    const rows = await tx.$queryRaw<{ id: string }[]>`
+      INSERT INTO idempotency_keys (id, key, "tenantId", method, path, "statusCode", "responseBody", "createdAt", "expiresAt")
+      VALUES (gen_random_uuid(), ${data.key}, ${data.tenantId}, ${data.method}, ${data.path}, 0, ${JSON.stringify(data.responseBody)}::jsonb, NOW(), ${data.expiresAt})
+      ON CONFLICT ("tenantId", key) DO UPDATE SET
+        method = EXCLUDED.method, path = EXCLUDED.path, "statusCode" = 0,
+        "responseBody" = EXCLUDED."responseBody", "createdAt" = NOW(), "expiresAt" = EXCLUDED."expiresAt"
+      WHERE idempotency_keys."expiresAt" <= ${data.claimedAt}
+      RETURNING id
+    `;
+    return rows.length > 0;
+  }
+
   async saveResult(
     tx: Prisma.TransactionClient,
     tenantId: string,

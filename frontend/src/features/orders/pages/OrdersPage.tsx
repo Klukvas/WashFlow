@@ -83,7 +83,7 @@ export function OrdersPage() {
             <PermissionGate permission={PERMISSIONS.ORDERS.CREATE}>
               <Button onClick={() => navigate('/orders/create')}>
                 <Plus className="h-4 w-4" />
-                {t('createOrder')}
+                {t('quick.title')}
               </Button>
             </PermissionGate>
           </div>

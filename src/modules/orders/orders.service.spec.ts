@@ -97,6 +97,8 @@ describe('OrdersService', () => {
     vehicle: { findFirst: jest.Mock };
   };
   let mockTx: {
+    client: { findFirst: jest.Mock };
+    vehicle: { findFirst: jest.Mock };
     $queryRaw: jest.Mock;
     bookingSettings: { findUnique: jest.Mock; findFirst: jest.Mock };
     order: {
@@ -111,6 +113,7 @@ describe('OrdersService', () => {
   };
   let ordersRepo: {
     findAll: jest.Mock;
+    lockOrderTx: jest.Mock;
     findById: jest.Mock;
     findByIdIncludeDeleted: jest.Mock;
     updateStatus: jest.Mock;
@@ -125,13 +128,25 @@ describe('OrdersService', () => {
   let servicesRepo: { findByIds: jest.Mock };
   let eventDispatcher: { dispatch: jest.Mock };
   let idempotencyService: {
-    checkTx: jest.Mock;
-    acquireLockTx: jest.Mock;
-    saveResultTx: jest.Mock;
+    requestIdentity: jest.Mock;
+    claimRequestTx: jest.Mock;
+    saveRequestTx: jest.Mock;
   };
 
   beforeEach(async () => {
     mockTx = {
+      client: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({ id: 'client-uuid-1', tenantId: TENANT_ID }),
+      },
+      vehicle: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'vehicle-uuid-1',
+          tenantId: TENANT_ID,
+          clientId: 'client-uuid-1',
+        }),
+      },
       $queryRaw: jest.fn().mockResolvedValue([]),
       bookingSettings: {
         findUnique: jest.fn().mockResolvedValue(null),
@@ -164,6 +179,7 @@ describe('OrdersService', () => {
       allowOnlineBooking: true,
     };
 
+    mockTx.bookingSettings.findFirst.mockResolvedValue(defaultBookingSettings);
     prisma = {
       $transaction: jest.fn((fn) => fn(mockTx)),
       bookingSettings: {
@@ -199,6 +215,7 @@ describe('OrdersService', () => {
       {} as TenantPrismaService,
     );
     ordersRepo = {
+      lockOrderTx: jest.fn().mockResolvedValue(undefined),
       restoreInTransaction: transactionalOrdersRepo.restoreInTransaction.bind(
         transactionalOrdersRepo,
       ),
@@ -224,9 +241,12 @@ describe('OrdersService', () => {
     };
 
     idempotencyService = {
-      checkTx: jest.fn().mockResolvedValue({ hit: false }),
-      acquireLockTx: jest.fn().mockResolvedValue(true),
-      saveResultTx: jest.fn().mockResolvedValue(undefined),
+      requestIdentity: jest.fn((params) => ({
+        ...params,
+        fingerprint: 'test',
+      })),
+      claimRequestTx: jest.fn().mockResolvedValue({ replay: false }),
+      saveRequestTx: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -459,13 +479,14 @@ describe('OrdersService', () => {
       );
     });
 
-    it('validates services before entering the transaction', async () => {
+    it('validates services before reserving resources', async () => {
       servicesRepo.findByIds.mockResolvedValue([]);
       const dto = makeCreateDto({ serviceIds: [SERVICE_ID_1] });
 
       await expect(service.create(TENANT_ID, dto, USER_ID)).rejects.toThrow();
 
-      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(mockTx.order.create).not.toHaveBeenCalled();
+      expect(schedulingService.reserveSlot).not.toHaveBeenCalled();
     });
 
     it('sets status to BOOKED for INTERNAL source', async () => {
@@ -542,7 +563,7 @@ describe('OrdersService', () => {
     });
 
     it('uses buffer time from bookingSettings when available', async () => {
-      prisma.bookingSettings.findUnique.mockResolvedValue({
+      mockTx.bookingSettings.findUnique.mockResolvedValue({
         slotDurationMinutes: 30,
         bufferTimeMinutes: 15,
         workingHoursStart: '08:00',
@@ -567,7 +588,7 @@ describe('OrdersService', () => {
     });
 
     it('defaults buffer time to 10 when bookingSettings is null', async () => {
-      prisma.bookingSettings.findUnique.mockResolvedValue(null);
+      mockTx.bookingSettings.findUnique.mockResolvedValue(null);
       const svc = makeService(SERVICE_ID_1);
       servicesRepo.findByIds.mockResolvedValue([svc]);
       mockTx.order.create.mockResolvedValue(makeOrder());
@@ -687,79 +708,94 @@ describe('OrdersService', () => {
       );
     });
 
-    it('does not call idempotency services when idempotencyKey is undefined', async () => {
-      const svc = makeService(SERVICE_ID_1);
-      servicesRepo.findByIds.mockResolvedValue([svc]);
+    it('validates client, vehicle, services and settings through the transaction only', async () => {
+      servicesRepo.findByIds.mockResolvedValue([makeService(SERVICE_ID_1)]);
       mockTx.order.create.mockResolvedValue(makeOrder());
-      const dto = makeCreateDto();
-
-      await service.create(TENANT_ID, dto, USER_ID, undefined);
-
-      expect(idempotencyService.checkTx).not.toHaveBeenCalled();
-      expect(idempotencyService.acquireLockTx).not.toHaveBeenCalled();
-      expect(idempotencyService.saveResultTx).not.toHaveBeenCalled();
+      await service.create(TENANT_ID, makeCreateDto(), USER_ID);
+      expect(prisma.client.findFirst).not.toHaveBeenCalled();
+      expect(prisma.vehicle.findFirst).not.toHaveBeenCalled();
+      expect(prisma.bookingSettings.findUnique).not.toHaveBeenCalled();
+      expect(prisma.bookingSettings.findFirst).not.toHaveBeenCalled();
+      expect(mockTx.client.findFirst).toHaveBeenCalledWith({
+        where: { id: 'client-uuid-1', tenantId: TENANT_ID, deletedAt: null },
+      });
+      expect(mockTx.vehicle.findFirst).toHaveBeenCalledWith({
+        where: { id: 'vehicle-uuid-1', tenantId: TENANT_ID, deletedAt: null },
+      });
+      expect(servicesRepo.findByIds).toHaveBeenCalledWith(
+        TENANT_ID,
+        [SERVICE_ID_1],
+        mockTx,
+      );
     });
 
-    it('calls idempotency services when idempotencyKey is provided and is a cache miss', async () => {
-      idempotencyService.checkTx.mockResolvedValue({ hit: false });
-      idempotencyService.acquireLockTx.mockResolvedValue(true);
-      const svc = makeService(SERVICE_ID_1);
-      servicesRepo.findByIds.mockResolvedValue([svc]);
+    it('does not call idempotency services without a key', async () => {
+      servicesRepo.findByIds.mockResolvedValue([makeService(SERVICE_ID_1)]);
+      mockTx.order.create.mockResolvedValue(makeOrder());
+      await service.create(TENANT_ID, makeCreateDto(), USER_ID);
+      expect(idempotencyService.requestIdentity).not.toHaveBeenCalled();
+      expect(idempotencyService.claimRequestTx).not.toHaveBeenCalled();
+    });
+
+    it('saves the new order identity in its reservation transaction', async () => {
+      servicesRepo.findByIds.mockResolvedValue([makeService(SERVICE_ID_1)]);
       const created = makeOrder();
       mockTx.order.create.mockResolvedValue(created);
-      const dto = makeCreateDto();
-
-      await service.create(TENANT_ID, dto, USER_ID, 'idem-key-123');
-
-      expect(idempotencyService.checkTx).toHaveBeenCalledWith(
+      await service.create(TENANT_ID, makeCreateDto(), USER_ID, 'idem-key');
+      expect(idempotencyService.claimRequestTx).toHaveBeenCalledWith(
         mockTx,
-        TENANT_ID,
-        'idem-key-123',
+        expect.objectContaining({
+          tenantId: TENANT_ID,
+          key: 'idem-key',
+          actorId: USER_ID,
+          kind: 'order-v1',
+          path: '/orders',
+        }),
       );
-      expect(idempotencyService.acquireLockTx).toHaveBeenCalled();
-      expect(idempotencyService.saveResultTx).toHaveBeenCalledWith(
+      expect(idempotencyService.saveRequestTx).toHaveBeenCalledWith(
         mockTx,
-        TENANT_ID,
-        'idem-key-123',
-        201,
-        created,
+        expect.objectContaining({ key: 'idem-key' }),
+        created.id,
       );
     });
 
-    it('returns cached response immediately on idempotency cache hit', async () => {
+    it('replays the current scoped order without business revalidation or a second event', async () => {
       const cachedOrder = makeOrder({ id: 'cached-order' });
-      idempotencyService.checkTx.mockResolvedValue({
-        hit: true,
-        cachedResponse: { body: cachedOrder },
+      idempotencyService.claimRequestTx.mockResolvedValue({
+        replay: true,
+        resourceId: cachedOrder.id,
       });
-      servicesRepo.findByIds.mockResolvedValue([makeService(SERVICE_ID_1)]);
-      const dto = makeCreateDto();
-
+      mockTx.order.findFirst.mockResolvedValue(cachedOrder);
       const result = await service.create(
         TENANT_ID,
-        dto,
+        makeCreateDto(),
         USER_ID,
-        'idem-key-123',
+        'idem-key',
       );
-
       expect(result).toEqual(cachedOrder);
       expect(mockTx.order.create).not.toHaveBeenCalled();
+      expect(servicesRepo.findByIds).not.toHaveBeenCalled();
+      expect(eventDispatcher.dispatch).not.toHaveBeenCalled();
+      expect(mockTx.order.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            id: cachedOrder.id,
+            tenantId: TENANT_ID,
+            branchId: BRANCH_ID,
+            deletedAt: null,
+          },
+        }),
+      );
     });
 
-    it('throws ConflictException when idempotency lock cannot be acquired', async () => {
-      idempotencyService.checkTx.mockResolvedValue({ hit: false });
-      idempotencyService.acquireLockTx.mockResolvedValue(false);
-      servicesRepo.findByIds.mockResolvedValue([makeService(SERVICE_ID_1)]);
-      const dto = makeCreateDto();
-
-      // $transaction re-throws what the callback throws
-      prisma.$transaction.mockImplementation(
-        (fn: (tx: unknown) => Promise<unknown>) => fn(mockTx),
+    it('rejects a conflicting request identity without creating an order', async () => {
+      idempotencyService.claimRequestTx.mockRejectedValue(
+        new ConflictException('Idempotency key belongs to a different request'),
       );
-
       await expect(
-        service.create(TENANT_ID, dto, USER_ID, 'idem-key-concurrent'),
+        service.create(TENANT_ID, makeCreateDto(), USER_ID, 'idem-key'),
       ).rejects.toThrow(ConflictException);
+      expect(mockTx.order.create).not.toHaveBeenCalled();
     });
   });
 
@@ -1169,7 +1205,7 @@ describe('OrdersService', () => {
       const svc = makeService(SERVICE_ID_1, 50, 30);
       servicesRepo.findByIds.mockResolvedValue([svc]);
       // Remove Sunday (0) from working days
-      prisma.bookingSettings.findFirst.mockResolvedValue({
+      mockTx.bookingSettings.findFirst.mockResolvedValue({
         slotDurationMinutes: 30,
         bufferTimeMinutes: 10,
         workingHoursStart: '08:00',
@@ -1192,7 +1228,7 @@ describe('OrdersService', () => {
     it('throws BadRequestException when booking too far in advance', async () => {
       const svc = makeService(SERVICE_ID_1, 50, 30);
       servicesRepo.findByIds.mockResolvedValue([svc]);
-      prisma.bookingSettings.findFirst.mockResolvedValue({
+      mockTx.bookingSettings.findFirst.mockResolvedValue({
         slotDurationMinutes: 30,
         bufferTimeMinutes: 10,
         workingHoursStart: '08:00',

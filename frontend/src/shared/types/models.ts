@@ -142,6 +142,7 @@ export interface Order {
   vehicleId: string;
   workPostId: string | null;
   createdById: string | null;
+  assignedEmployeeId?: string | null;
   status: OrderStatus;
   source: OrderSource;
   scheduledStart: string;

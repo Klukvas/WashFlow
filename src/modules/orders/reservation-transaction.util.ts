@@ -9,6 +9,23 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isReservationConflict(error: unknown): boolean {
+  // COMMIT errors escape Prisma's query wrappers as the installed pg adapter's
+  // DriverAdapterError. Recognize only its exact observed serialization/deadlock
+  // cause shapes; other adapter failures must keep their original error.
+  if (
+    isRecord(error) &&
+    error.name === 'DriverAdapterError' &&
+    isRecord(error.cause)
+  ) {
+    const cause = error.cause;
+    return (
+      (cause.kind === 'TransactionWriteConflict' &&
+        cause.originalCode === '40001') ||
+      (cause.kind === 'postgres' &&
+        cause.code === '40P01' &&
+        cause.originalCode === '40P01')
+    );
+  }
   if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return false;
   if (error.code === 'P2034') return true;
   if (error.code !== 'P2010') return false;

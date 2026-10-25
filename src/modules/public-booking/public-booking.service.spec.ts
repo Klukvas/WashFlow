@@ -21,7 +21,7 @@ describe('PublicBookingService', () => {
     checkAvailability: jest.Mock;
     validateNoOverlap: jest.Mock;
   };
-  let ordersService: { create: jest.Mock };
+  let ordersService: { create: jest.Mock; replayPublicBooking: jest.Mock };
   let servicesRepo: { findActive: jest.Mock; findByIds: jest.Mock };
   let branchesRepo: { findActive: jest.Mock };
   let prisma: {
@@ -68,7 +68,10 @@ describe('PublicBookingService', () => {
       checkAvailability: jest.fn(),
       validateNoOverlap: jest.fn().mockResolvedValue(true),
     };
-    ordersService = { create: jest.fn() };
+    ordersService = {
+      create: jest.fn(),
+      replayPublicBooking: jest.fn().mockResolvedValue(null),
+    };
     servicesRepo = {
       findActive: jest.fn(),
       findByIds: jest.fn().mockResolvedValue([]),
@@ -334,6 +337,8 @@ describe('PublicBookingService', () => {
         expect.objectContaining({ source: 'WEB' }),
         null,
         undefined,
+        null,
+        expect.objectContaining({ source: 'WEB' }),
       );
     });
 
@@ -346,6 +351,8 @@ describe('PublicBookingService', () => {
         expect.anything(),
         null,
         idemKey,
+        null,
+        expect.objectContaining({ source: 'WEB' }),
       );
     });
 
@@ -374,6 +381,8 @@ describe('PublicBookingService', () => {
         }),
         null,
         undefined,
+        null,
+        expect.objectContaining({ source: 'WEB' }),
       );
     });
 
@@ -396,6 +405,8 @@ describe('PublicBookingService', () => {
           expect.objectContaining({ clientId: mockClient.id }),
           null,
           undefined,
+          null,
+          expect.objectContaining({ source: 'WEB' }),
         );
       });
 
@@ -420,6 +431,8 @@ describe('PublicBookingService', () => {
           expect.objectContaining({ clientId: newClient.id }),
           null,
           undefined,
+          null,
+          expect.objectContaining({ source: 'WEB' }),
         );
       });
     });
@@ -445,6 +458,8 @@ describe('PublicBookingService', () => {
           expect.objectContaining({ vehicleId: mockVehicle.id }),
           null,
           undefined,
+          null,
+          expect.objectContaining({ source: 'WEB' }),
         );
       });
 
@@ -470,6 +485,8 @@ describe('PublicBookingService', () => {
           expect.objectContaining({ vehicleId: newVehicle.id }),
           null,
           undefined,
+          null,
+          expect.objectContaining({ source: 'WEB' }),
         );
       });
 
@@ -638,6 +655,8 @@ describe('PublicBookingService', () => {
         expect.objectContaining({ source: 'WEB' }),
         null,
         undefined,
+        null,
+        expect.objectContaining({ source: 'WEB' }),
       );
       expect(result).toMatchObject({ id: mockOrder.id });
     });
@@ -654,6 +673,8 @@ describe('PublicBookingService', () => {
         expect.anything(),
         null,
         'idem-key',
+        null,
+        expect.objectContaining({ source: 'WEB' }),
       );
     });
 

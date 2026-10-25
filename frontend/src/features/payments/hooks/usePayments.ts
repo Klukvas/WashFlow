@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { fetchPayments, createPayment, type CreatePaymentPayload } from '../api/payments.api';
+import {
+  fetchPayments,
+  createPayment,
+  type CreatePaymentPayload,
+} from '../api/payments.api';
 
 export function usePayments(orderId: string) {
   return useQuery({
@@ -13,10 +17,13 @@ export function usePayments(orderId: string) {
 export function useCreatePayment(orderId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: CreatePaymentPayload) => createPayment(orderId, payload),
+    mutationFn: (payload: CreatePaymentPayload) =>
+      createPayment(orderId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['payments', orderId] });
       qc.invalidateQueries({ queryKey: ['orders'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['day-summary'] });
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to process payment');

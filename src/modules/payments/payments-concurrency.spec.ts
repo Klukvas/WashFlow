@@ -1,3 +1,4 @@
+import { IdempotencyService } from '../idempotency/idempotency.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { OrderStatus, PaymentMethod, Prisma } from '@prisma/client';
 import { EventDispatcherService } from '../../common/events/event-dispatcher.service';
@@ -113,7 +114,9 @@ function createHarness(
   const tenantPrisma = { forTenant } as unknown as TenantPrismaService;
   const repo = new PaymentsRepository(tenantPrisma);
   const dispatcher = { dispatch } as unknown as EventDispatcherService;
-  const service = new PaymentsService(repo, tenantPrisma, dispatcher);
+  const service = new PaymentsService(repo, tenantPrisma, dispatcher, {
+    requestIdentity: () => undefined,
+  } as unknown as IdempotencyService);
   return { service, dispatch, getPayments: () => payments };
 }
 

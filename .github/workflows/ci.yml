@@ -21,7 +21,7 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   NODE_VERSION: '20'
@@ -379,7 +379,7 @@ jobs:
       - backend-e2e
       - frontend-e2e
     outputs:
-      image_tag: ${{ steps.meta.outputs.version }}
+      image_tag: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
 
@@ -398,7 +398,7 @@ jobs:
         with:
           images: ${{ env.DOCKER_IMAGE }}
           tags: |
-            type=sha,prefix=
+            type=sha,format=long,prefix=
             type=raw,value=latest
 
       - name: Build and push backend
@@ -417,7 +417,7 @@ jobs:
         with:
           images: ${{ env.DOCKER_IMAGE_FRONTEND }}
           tags: |
-            type=sha,prefix=
+            type=sha,format=long,prefix=
             type=raw,value=latest
 
       - name: Build and push frontend
@@ -447,135 +447,43 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
-
-      - name: Generate .env file
+      - name: Verify deployment tooling
         env:
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
-          JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET }}
-          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
-          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
-          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          PADDLE_API_KEY: ${{ secrets.PADDLE_API_KEY }}
-          PADDLE_CLIENT_TOKEN: ${{ secrets.PADDLE_CLIENT_TOKEN }}
-          PADDLE_WEBHOOK_SECRET: ${{ secrets.PADDLE_WEBHOOK_SECRET }}
-          PAYMENTS_ENABLED: ${{ vars.PAYMENTS_ENABLED || 'false' }}
-          PADDLE_PRICE_IDS: ${{ secrets.PADDLE_PRICE_IDS }}
-          PADDLE_ADDON_PRICE_IDS: ${{ secrets.PADDLE_ADDON_PRICE_IDS }}
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          METRICS_TOKEN: ${{ secrets.METRICS_TOKEN }}
-          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
-          GRAFANA_LOKI_HOST: ${{ secrets.GRAFANA_LOKI_HOST }}
-          GRAFANA_LOKI_USERNAME: ${{ secrets.GRAFANA_LOKI_USERNAME }}
-          GRAFANA_LOKI_PASSWORD: ${{ secrets.GRAFANA_LOKI_PASSWORD }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_SUPPORT_CHAT_ID: ${{ secrets.TELEGRAM_SUPPORT_CHAT_ID }}
+          WASHFLOW_DEPLOY_DOCKER_TEST: '1'
+        run: python3 -B -m unittest discover -s test/deploy -p 'test_*.py' -v
+
+      - name: Build expected migration and schema metadata
+        run: python3 -B scripts/deploy/expected.py --output "$RUNNER_TEMP/washflow-expected.json"
+
+      - name: Setup existing deployment SSH access
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
-          # Use printf to safely write key=value lines even when values contain
-          # double quotes, JSON, dollar signs, etc. Values are read from env
-          # vars so they are NEVER interpolated into the bash command line.
-          {
-            printf 'POSTGRES_PASSWORD=%s\n' "$POSTGRES_PASSWORD"
-            printf 'REDIS_PASSWORD=%s\n' "$REDIS_PASSWORD"
-            printf 'JWT_ACCESS_SECRET=%s\n' "$JWT_ACCESS_SECRET"
-            printf 'JWT_REFRESH_SECRET=%s\n' "$JWT_REFRESH_SECRET"
-            printf 'CORS_ORIGINS=%s\n' "$CORS_ORIGINS"
-            printf 'DOCKER_IMAGE=%s/washflow\n' "$DOCKERHUB_USERNAME"
-            printf 'DOCKER_IMAGE_FRONTEND=%s/washflow-frontend\n' "$DOCKERHUB_USERNAME"
-            printf 'DOCKER_TAG=%s\n' "$IMAGE_TAG"
-            printf 'FRONTEND_URL=%s\n' "$FRONTEND_URL"
-            printf 'RESEND_API_KEY=%s\n' "$RESEND_API_KEY"
-            printf 'PADDLE_API_KEY=%s\n' "$PADDLE_API_KEY"
-            printf 'PADDLE_CLIENT_TOKEN=%s\n' "$PADDLE_CLIENT_TOKEN"
-            printf 'PADDLE_WEBHOOK_SECRET=%s\n' "$PADDLE_WEBHOOK_SECRET"
-            printf 'PAYMENTS_ENABLED=%s\n' "$PAYMENTS_ENABLED"
-            printf 'PADDLE_PRICE_IDS=%s\n' "$PADDLE_PRICE_IDS"
-            printf 'PADDLE_ADDON_PRICE_IDS=%s\n' "$PADDLE_ADDON_PRICE_IDS"
-            printf 'SENTRY_DSN=%s\n' "$SENTRY_DSN"
-            printf 'METRICS_TOKEN=%s\n' "$METRICS_TOKEN"
-            printf 'VITE_SENTRY_DSN=%s\n' "$VITE_SENTRY_DSN"
-            printf 'GRAFANA_LOKI_HOST=%s\n' "$GRAFANA_LOKI_HOST"
-            printf 'GRAFANA_LOKI_USERNAME=%s\n' "$GRAFANA_LOKI_USERNAME"
-            printf 'GRAFANA_LOKI_PASSWORD=%s\n' "$GRAFANA_LOKI_PASSWORD"
-            printf 'TELEGRAM_BOT_TOKEN=%s\n' "$TELEGRAM_BOT_TOKEN"
-            printf 'TELEGRAM_SUPPORT_CHAT_ID=%s\n' "$TELEGRAM_SUPPORT_CHAT_ID"
-          } > .env.production
-          chmod 600 .env.production
+          set -euo pipefail
+          [[ "$DEPLOY_HOST" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]]
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$RUNNER_TEMP/washflow-deploy-key"
+          # Existing TOFU baseline: no pinned host-key secret is available. Strict
+          # verification is required on both subsequent SSH calls; never bypass it.
+          ssh-keyscan -T 10 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Copy files to server
+      - name: Paired backup and app-only SHA deployment
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          RELEASE_SHA: ${{ github.sha }}
+          RELEASE_ATTEMPT: ${{ github.run_id }}-${{ github.run_attempt }}
         run: |
-          scp -i ~/.ssh/deploy_key \
-            docker-compose.prod.yml .env.production \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/washflow/
+          python3 -B scripts/deploy/transport.py \
+            --host "$DEPLOY_HOST" --user "$DEPLOY_USER" \
+            --key "$RUNNER_TEMP/washflow-deploy-key" \
+            --expected "$RUNNER_TEMP/washflow-expected.json" \
+            --backend "$DOCKER_IMAGE:$RELEASE_SHA" \
+            --frontend "$DOCKER_IMAGE_FRONTEND:$RELEASE_SHA" \
+            --revision "$RELEASE_SHA" --attempt "$RELEASE_ATTEMPT"
 
-      - name: Deploy via SSH
-        run: |
-          DOCKER_IMG="${{ env.DOCKER_IMAGE }}"
-          DOCKER_IMG_FE="${{ env.DOCKER_IMAGE_FRONTEND }}"
-          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "DOCKER_IMG=${DOCKER_IMG}" "DOCKER_IMG_FE=${DOCKER_IMG_FE}" bash --login -s << 'DEPLOY_SCRIPT'
-            set -euo pipefail
-            export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
-            cd /opt/washflow
-
-            # Install .env from pipeline secrets
-            chmod 600 .env.production
-            mv -f .env.production .env
-
-            # Rename compose file
-            mv -f docker-compose.prod.yml docker-compose.yml
-
-            # Pull the latest images
-            docker pull "${DOCKER_IMG}:latest" || true
-            docker pull "${DOCKER_IMG_FE}:latest" || true
-
-            # Bring up the stack (recreates only changed services)
-            docker compose up -d --remove-orphans
-
-            # Wait for backend health check
-            echo "Waiting for backend to be healthy..."
-            for i in $(seq 1 30); do
-              if docker compose exec -T backend wget -qO- http://localhost:3000/api/v1/health > /dev/null 2>&1; then
-                echo "Backend is healthy!"
-                break
-              fi
-              if [ "$i" -eq 30 ]; then
-                echo "Backend failed health check after 60s"
-                docker compose logs backend --tail=50
-                exit 1
-              fi
-              sleep 2
-            done
-
-            # Wait for frontend health check
-            echo "Waiting for frontend to be healthy..."
-            for i in $(seq 1 15); do
-              if docker compose exec -T frontend wget -qO- http://localhost:80/ > /dev/null 2>&1; then
-                echo "Frontend is healthy!"
-                break
-              fi
-              if [ "$i" -eq 15 ]; then
-                echo "Frontend failed health check after 30s"
-                docker compose logs frontend --tail=50
-                exit 1
-              fi
-              sleep 2
-            done
-
-            # Clean up old dangling images
-            docker image prune -f --filter "until=24h"
-          DEPLOY_SCRIPT
-
-      - name: Cleanup sensitive files
+      - name: Cleanup ephemeral deployment key
         if: always()
-        run: |
-          rm -f ~/.ssh/deploy_key
-          rm -f .env.production
+        run: rm -f "$RUNNER_TEMP/washflow-deploy-key"

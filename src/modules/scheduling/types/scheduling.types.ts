@@ -13,6 +13,7 @@ export interface CheckAvailabilityParams {
   assignedEmployeeId?: string;
   date: Date;
   durationMinutes: number;
+  excludeOrderId?: string;
 }
 
 export interface ReserveSlotParams {
@@ -21,4 +22,5 @@ export interface ReserveSlotParams {
   scheduledStart: Date;
   scheduledEnd: Date;
   bufferMinutes: number;
+  excludeOrderId?: string;
 }

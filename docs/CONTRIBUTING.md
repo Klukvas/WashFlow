@@ -214,6 +214,26 @@ to the disposable database; a read-only reviewer should inspect its recorded evi
 non-mutating checks. It tests the old-chain upgrade, existing data and timezone preservation,
 ordinary Prisma operations, index retention and atomic photo-column conflict handling.
 
+### Isolated critical HTTP workflows
+
+Using the same guarded disposable PostgreSQL URL and migration-built schema above:
+
+```bash
+pnpm exec jest --config test/jest-e2e.json --runTestsByPath test/p0-critical.e2e-spec.ts test/p0-critical-idempotency.e2e-spec.ts test/p0-critical-pool.e2e-spec.ts test/repair-concurrency.e2e-spec.ts --runInBand
+```
+
+The P0 harness uses actual controllers, DTO validation, response envelopes, JWT/tenant/permission
+**guards**, and real services/repositories. A test-only JWT strategy supplies signed synthetic
+auth contexts; this does not test production login, session revocation or the production JWT
+strategy. No `AppModule`, `.env`, cron, Redis, event subscribers or external integrations load.
+Missing URL explicitly skips these suites; a supplied URL must meet the same loopback/dedicated
+DB guard. Cases include 401/403/404 boundaries, replay after scope/deletion changes, request
+identity/legacy-key conflicts, atomic expired-key reuse and rollback, payment caps and matching
+concurrent requests, order replay/events, and public receipt privacy/recovery before CRM writes.
+The pool regression holds all 15 real transaction connections before validation; it covers
+keyed/non-keyed creation and verifies simultaneous serialization failures resolve to a
+committed order or bounded `409`. Read-only reviewers inspect recorded database evidence rather than rerunning these mutating suites.
+
 ### Browser race regressions
 
 The focused public-booking tests intercept synthetic API responses and do not create real
@@ -225,6 +245,26 @@ tmux, then run:
 cd frontend && pnpm exec playwright test --config playwright.booking-selection.config.ts
 cd ../frontend-booking && pnpm exec playwright test --config playwright.booking-selection.config.ts
 ```
+
+### Isolated reschedule and day-view regression checks
+
+The opt-in `test/p0-workflow-*.e2e-spec.ts` suites reuse the guarded synthetic PostgreSQL
+URL contract above, actual HTTP guards/DTOs and domain services. They do not import
+`AppModule`, load `.env`, start queues/cron or register external integrations. The harness uses
+a synthetic signed JWT context, not production login/session revocation. Run only against a
+new task-owned `washflow_repair_*` database on loopback port 15433 after applying the existing
+migration chain with `test/repair-prisma.config.ts`:
+
+```bash
+WASHFLOW_REPAIR_TEST_DATABASE_URL="<guarded synthetic URL>" \
+pnpm exec jest --config test/jest-e2e.json --runTestsByPath test/p0-workflow-contracts.e2e-spec.ts test/p0-workflow-reports.e2e-spec.ts test/p0-workflow-races.e2e-spec.ts --runInBand
+```
+
+Coverage includes reschedule money/resource preservation, tenant/branch/permission rejection,
+self-excluded availability, actual overlapping lock waits against create/restore/reschedule/
+status/payment/delete, full-day projections, receipt versus booking dates, cancelled/deleted
+parents, exact dates, DST 23/25-hour boundaries and negative-offset weekdays. Subscriber
+unit tests verify the dedicated reschedule audit/realtime handlers without external sockets.
 
 ### Frontend testing
 
@@ -374,45 +414,19 @@ scrape_configs:
 More symptoms and read-only diagnostics:
 [`context/infrastructure.md`](context/infrastructure.md#9-safe-verification-and-troubleshooting).
 
-### Rollback
+### Deployment and rollback
 
-Both services are pinned by the **same** `DOCKER_TAG` in `/opt/washflow/.env`
-(`backend: ${DOCKER_IMAGE}:${DOCKER_TAG}`, `frontend: ${DOCKER_IMAGE_FRONTEND}:${DOCKER_TAG}`),
-and the deploy job rewrites that file on every deploy. Roll back by pointing `DOCKER_TAG` at a
-known-good **immutable** tag — the commit sha pushed by `build-and-push` — and recreating both
-services:
+The main CI deployment uses existing SSH credentials, full-SHA images, read-only migration/
+schema/capacity checks and a mandatory quiesced PostgreSQL/uploads backup. It preserves the
+live `.env` and base Compose and recreates only backend/frontend using image-ID overrides.
+A failed partial cutover attempts both recorded old image IDs with bounded health checks.
+The P0 override explicitly bypasses migration startup after the zero-pending/schema-parity
+check. HTTP/cron/BullMQ resume together; rollback cannot undo post-start writes.
 
-```bash
-# On the server, in /opt/washflow (the deploy job installs the compose file as
-# docker-compose.yml there; add -f docker-compose.prod.yml if you kept the original name)
-
-# 0. Record the current values — DOCKER_IMAGE, DOCKER_IMAGE_FRONTEND, DOCKER_TAG
-grep '^DOCKER_' .env
-
-# 1. Verify BOTH images exist under the target tag; they are separate repositories,
-#    and a rollback that only has one of them will half-recreate the stack
-docker pull "<DOCKER_IMAGE>:<sha>"
-docker pull "<DOCKER_IMAGE_FRONTEND>:<sha>"
-
-# 2. Pin the tag, then recreate backend + frontend
-sed -i 's/^DOCKER_TAG=.*/DOCKER_TAG=<sha>/' .env
-docker compose up -d --no-deps backend frontend
-```
-
-Notes:
-
-- **Do not roll back by re-tagging `:latest` locally.** Compose resolves the image from
-  `DOCKER_TAG`, so a local re-tag changes nothing unless `DOCKER_TAG` is literally `latest` —
-  and `:latest` is overwritten by the next deploy anyway.
-- `build-and-push` pushes both images with a sha tag **and** `latest`
-  (`docker/metadata-action`: `type=sha,prefix=` + `type=raw,value=latest`), so a matching sha
-  normally exists for both — but confirm it in step 1 rather than assuming.
-- Undo the rollback the same way: put the previous `DOCKER_TAG` back, or redeploy from CI.
-- The backend runs `npx prisma migrate deploy` at container start. Rolling the image back does
-  **not** roll migrations back.
-
-Database migrations are **forward-only** — write a new corrective migration rather than running
-`prisma migrate reset` against real data.
+Follow the [deployment runbook](operations/deployment.md) for prerequisites, exact app-only
+rollback command shape, SSH trust limitation, retained private evidence and failure handling.
+No database restore, migration application, provider reconfiguration or image pruning is part
+of this route. Migrations remain forward-only; pending/failed/drifted schema blocks deployment.
 
 ### Configuration differences
 
@@ -434,7 +448,9 @@ Database migrations are **forward-only** — write a new corrective migration ra
 | High latency         | p95 > 2 s                            | Medium   |
 | Container restarts   | > 3 restarts in 10 min               | High     |
 
-Backups, TLS termination and secret management are **not configured in this repository** — see
+Local backup/restore tooling, isolated drill commands and recovery decisions are in the
+[backup/recovery runbook](operations/backup-recovery.md). Production scheduling, encryption and
+offsite activation remain pending. TLS termination and secret management are **not configured in this repository** — see
 [`context/infrastructure.md`](context/infrastructure.md#8-known-unknowns).
 
 ---

@@ -6,12 +6,16 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { runReservationTransaction } from './reservation-transaction.util';
 
 /** Real installed Prisma + pg adapter error translation; the pg connection is inert. */
-async function inertPostgres(sqlState: string, failures: number) {
+async function inertPostgres(
+  sqlState: string,
+  failures: number,
+  phase: 'SELECT' | 'COMMIT' = 'SELECT',
+) {
   const adapter = await new PrismaPg({}).connect();
   const pool = adapter.underlyingDriver();
   let remainingFailures = failures;
   const query = jest.fn(async (config: { text: string }) => {
-    if (config.text.startsWith('SELECT') && remainingFailures-- > 0) {
+    if (config.text.startsWith(phase) && remainingFailures-- > 0) {
       throw Object.assign(new Error('inert PostgreSQL query failure'), {
         code: sqlState,
         severity: 'ERROR',
@@ -99,6 +103,61 @@ describe('runReservationTransaction installed Prisma PostgreSQL translation', ()
     },
   );
 
+  it.each(['40001', '40P01'])(
+    'retries installed adapter %s failures at COMMIT on the same bounded path',
+    async (sqlState) => {
+      const { client, transaction } = await inertPostgres(
+        sqlState,
+        2,
+        'COMMIT',
+      );
+      try {
+        await expect(
+          runReservationTransaction(
+            client as unknown as PrismaService,
+            (tx) => tx.$queryRaw`SELECT 1`,
+          ),
+        ).resolves.toEqual([]);
+        expect(transaction).toHaveBeenCalledTimes(3);
+      } finally {
+        await client.$disconnect();
+      }
+    },
+  );
+
+  it('returns 409 after three installed adapter COMMIT serialization failures', async () => {
+    const { client, transaction } = await inertPostgres('40001', 3, 'COMMIT');
+    try {
+      await expect(
+        runReservationTransaction(
+          client as unknown as PrismaService,
+          (tx) => tx.$queryRaw`SELECT 1`,
+        ),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(transaction).toHaveBeenCalledTimes(3);
+    } finally {
+      await client.$disconnect();
+    }
+  });
+
+  it('preserves an unrecognized installed adapter COMMIT error without retry', async () => {
+    const { client, transaction } = await inertPostgres('42501', 3, 'COMMIT');
+    try {
+      await expect(
+        runReservationTransaction(
+          client as unknown as PrismaService,
+          (tx) => tx.$queryRaw`SELECT 1`,
+        ),
+      ).rejects.toMatchObject({
+        name: 'DriverAdapterError',
+        cause: { originalCode: '42501' },
+      });
+      expect(transaction).toHaveBeenCalledTimes(1);
+    } finally {
+      await client.$disconnect();
+    }
+  });
+
   it('returns 409 after three raw serialization failures without publishing', async () => {
     const { client, transaction } = await inertPostgres('40001', 3);
     const publish = jest.fn();
@@ -154,6 +213,26 @@ describe('runReservationTransaction installed Prisma PostgreSQL translation', ()
 
 describe('runReservationTransaction narrow retry classification', () => {
   it.each([
+    [
+      'adapter name with wrong kind',
+      Object.assign(new Error('inert'), {
+        name: 'DriverAdapterError',
+        cause: { kind: 'Unknown', originalCode: '40001' },
+      }),
+    ],
+    [
+      'adapter name with unknown SQLSTATE',
+      Object.assign(new Error('inert'), {
+        name: 'DriverAdapterError',
+        cause: { kind: 'TransactionWriteConflict', originalCode: '42501' },
+      }),
+    ],
+    [
+      'plain error with adapter-looking cause',
+      Object.assign(new Error('inert'), {
+        cause: { kind: 'TransactionWriteConflict', originalCode: '40001' },
+      }),
+    ],
     ['P2010 without metadata', knownError('P2010')],
     [
       'P2010 with unknown cause',

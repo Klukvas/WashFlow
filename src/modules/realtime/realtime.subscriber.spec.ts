@@ -58,6 +58,27 @@ describe('RealtimeSubscriber', () => {
     });
   });
 
+  it('publishes a reschedule event to tenant and branch without status/created substitutes', () => {
+    const event = makeEvent({
+      orderId: 'order-1',
+      branchId,
+      previous: {},
+      updated: {},
+    });
+    subscriber.handleOrderRescheduled(event);
+    expect(gateway.emitToTenant).toHaveBeenCalledWith(
+      tenantId,
+      'order.rescheduled',
+      event.payload,
+    );
+    expect(gateway.emitToBranch).toHaveBeenCalledWith(
+      branchId,
+      'order.rescheduled',
+      event.payload,
+    );
+    expect(gateway.emitToTenant).toHaveBeenCalledTimes(1);
+  });
+
   describe('handleOrderStatusChanged', () => {
     it('should emit order.status_changed to the tenant room', () => {
       const event = makeEvent({ orderId: 'order-2', newStatus: 'IN_PROGRESS' });

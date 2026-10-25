@@ -89,7 +89,7 @@ test.describe('Flexible Order Wizard', () => {
   test('URL prefill auto-selects time-first mode', async ({ page }) => {
     // Navigate with URL params (simulating click from schedule)
     await page.goto(
-      '/orders/create?branchId=fake-id&date=2026-03-20&time=10:00&workPostId=fake-wp',
+      '/orders/create?mode=wizard&branchId=fake-id&date=2026-03-20&time=10:00&workPostId=fake-wp',
     );
     await page.waitForLoadState('networkidle');
 

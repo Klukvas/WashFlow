@@ -125,16 +125,48 @@ export class PublicBookingService {
     });
   }
 
+  private bookingRequest(dto: CreateBookingDto): Record<string, unknown> {
+    return {
+      branchId: dto.branchId,
+      workPostId: dto.workPostId ?? null,
+      scheduledStart: new Date(dto.scheduledStart).toISOString(),
+      serviceIds: [...dto.serviceIds].sort(),
+      source: 'WEB',
+      firstName: dto.firstName,
+      lastName: dto.lastName ?? null,
+      phone: dto.phone,
+      email: dto.email ?? null,
+      licensePlate: dto.licensePlate,
+      vehicleMake: dto.vehicleMake || 'Unknown',
+      vehicleModel: dto.vehicleModel ?? null,
+      notes: dto.notes ?? null,
+    };
+  }
+
   private async createBookingInternal(
     tenantId: string,
     dto: CreateBookingDto,
     idempotencyKey?: string,
   ): Promise<BookingConfirmationDto> {
     const branch = await this.prisma.branch.findFirst({
-      where: { id: dto.branchId, tenantId },
+      where: { id: dto.branchId, tenantId, isActive: true, deletedAt: null },
     });
     if (!branch) {
       throw new NotFoundException('Branch not found');
+    }
+
+    const anonymousRequest = this.bookingRequest(dto);
+    if (idempotencyKey !== undefined) {
+      // A successful request already occupies its post. Recover its receipt
+      // before the availability pre-check or mutable CRM matching runs again.
+      const replay = await this.ordersService.replayPublicBooking(
+        tenantId,
+        dto.branchId,
+        idempotencyKey,
+        anonymousRequest,
+      );
+      if (replay)
+        return toBookingConfirmation(replay as ConfirmationOrder, dto);
     }
 
     // Check if online booking is enabled (branch-level → tenant → defaults)
@@ -242,6 +274,8 @@ export class PublicBookingService {
         },
         null, // No userId for public booking
         idempotencyKey,
+        null,
+        anonymousRequest,
       );
       // Project after create so cached idempotency results have the same privacy boundary.
       return toBookingConfirmation(order as ConfirmationOrder, dto);

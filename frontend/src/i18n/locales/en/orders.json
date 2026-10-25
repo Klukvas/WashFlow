@@ -48,7 +48,12 @@
     "free": "Free",
     "bookSlot": "Book this slot",
     "noWorkPosts": "No work posts found for this branch",
-    "selectBranchFirst": "Select a branch to view schedule"
+    "selectBranchFirst": "Select a branch to view schedule",
+    "now": "Now",
+    "overdue": "In progress beyond scheduled end — check with the worker",
+    "reservationHint": "Times show planned reservations. Check overdue work with the worker before booking that post.",
+    "noOrders": "No scheduled orders for this date and work post.",
+    "slotHint": "Only available starts are shown. Service duration is checked during order creation."
   },
   "creation": {
     "selectClient": "Select Client",
@@ -87,5 +92,70 @@
     "noShow": "No Show",
     "cancellationReason": "Cancellation reason",
     "confirmTransition": "Are you sure you want to change the order status to \"{{status}}\"?"
+  },
+  "quick": {
+    "title": "Quick order",
+    "wizard": "Guided wizard",
+    "description": "Find the client or vehicle, choose services, and confirm an available work post.",
+    "search": "Client phone or vehicle plate",
+    "searchPlaceholder": "Enter at least 2 characters",
+    "noMatches": "No matching clients or vehicles. Create a client below.",
+    "newClient": "New client",
+    "noVehicles": "No vehicles yet. Add a vehicle below.",
+    "earliest": "Available start and work post",
+    "minutes": "min",
+    "checking": "Checking availability…",
+    "invalid": "Check the client, vehicle, services and available slot.",
+    "slotChanged": "The selected slot is unavailable for this duration. Choose a new available slot.",
+    "servicesFirst": "Choose services to check availability"
+  },
+  "reschedule": {
+    "title": "Reschedule",
+    "description": "Choose a new available start. Unchanged post and worker are preserved.",
+    "keepPost": "Keep current ({{name}})",
+    "keepWorker": "Keep current worker",
+    "save": "Save schedule"
+  },
+  "day": {
+    "title": "Day summary",
+    "sales": "Scheduled sales",
+    "salesHint": "Orders scheduled for this branch date. Cancelled and no-show orders are excluded from the scheduled total.",
+    "orders": "{{count}} orders",
+    "completed": "{{count}} completed",
+    "receipts": "Paid receipts",
+    "receiptsHint": "PAID payments recorded on this branch date, including payments for orders scheduled on other dates."
+  },
+  "payment": {
+    "title": "Payments",
+    "received": "Paid received",
+    "remaining": "Unpaid balance",
+    "paid": "Paid in full",
+    "partial": "Partially paid",
+    "unpaid": "Unpaid",
+    "reservedHint": "Other recorded payments reserve {{amount}} of the payment limit. They are not counted as paid receipts.",
+    "beforeCompletion": "Record payment before completing the order. New payments are unavailable after completion, cancellation or no-show.",
+    "closed": "This order is closed for new payments. Payment history remains available.",
+    "history": "Payment history",
+    "amount": "Amount",
+    "maximum": "Available to record",
+    "methodLabel": "Method",
+    "reference": "Reference (optional)",
+    "record": "Record payment",
+    "invalid": "Enter a positive amount within the available payment limit, with up to 2 decimals.",
+    "empty": "No payments recorded",
+    "loadFailed": "Could not load payment history",
+    "method": {
+      "CASH": "Cash",
+      "CARD": "Card",
+      "ONLINE": "Online",
+      "OTHER": "Other"
+    },
+    "status": {
+      "PAID": "Paid",
+      "PENDING": "Pending",
+      "PARTIALLY_PAID": "Partially paid",
+      "REFUNDED": "Refunded",
+      "FAILED": "Failed"
+    }
   }
 }

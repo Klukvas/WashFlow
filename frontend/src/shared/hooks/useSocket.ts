@@ -37,22 +37,27 @@ export function useSocket() {
       // Auto-joined to tenant room by server
     });
 
-    socket.on('order.created', () => {
-      queryClientRef.current.invalidateQueries({ queryKey: ['orders'] });
-      queryClientRef.current.invalidateQueries({ queryKey: ['dashboard'] });
-    });
-
-    socket.on('order.status_changed', () => {
-      queryClientRef.current.invalidateQueries({ queryKey: ['orders'] });
-      queryClientRef.current.invalidateQueries({ queryKey: ['dashboard'] });
-    });
-
-    socket.on('order.cancelled', () => {
-      queryClientRef.current.invalidateQueries({ queryKey: ['orders'] });
-      queryClientRef.current.invalidateQueries({ queryKey: ['dashboard'] });
-    });
+    const invalidateOrders = () => {
+      for (const key of [
+        'orders',
+        'availability',
+        'dashboard',
+        'day-summary',
+      ]) {
+        queryClientRef.current.invalidateQueries({ queryKey: [key] });
+      }
+    };
+    for (const event of [
+      'order.created',
+      'order.status_changed',
+      'order.cancelled',
+      'order.rescheduled',
+    ]) {
+      socket.on(event, invalidateOrders);
+    }
 
     socket.on('payment.received', () => {
+      queryClientRef.current.invalidateQueries({ queryKey: ['day-summary'] });
       queryClientRef.current.invalidateQueries({ queryKey: ['payments'] });
       queryClientRef.current.invalidateQueries({ queryKey: ['orders'] });
       queryClientRef.current.invalidateQueries({

@@ -33,6 +33,7 @@ export class SchedulingRepository {
     workPostId: string,
     start: Date,
     end: Date,
+    excludeOrderId?: string,
   ) {
     return tx.$queryRaw`
       SELECT id FROM orders
@@ -42,6 +43,7 @@ export class SchedulingRepository {
         AND "scheduledStart" < ${end}
         AND "scheduledEnd" > ${start}
         AND "deletedAt" IS NULL
+        ${excludeOrderId ? Prisma.sql`AND id <> ${excludeOrderId}` : Prisma.empty}
       FOR UPDATE
     `;
   }
@@ -55,6 +57,7 @@ export class SchedulingRepository {
     workPostId: string,
     start: Date,
     end: Date,
+    excludeOrderId?: string,
   ): Promise<number> {
     const result = await tx.$queryRaw<[{ count: bigint }]>`
       SELECT COUNT(*) as count FROM orders
@@ -64,6 +67,7 @@ export class SchedulingRepository {
         AND "scheduledStart" < ${end}
         AND "scheduledEnd" > ${start}
         AND "deletedAt" IS NULL
+        ${excludeOrderId ? Prisma.sql`AND id <> ${excludeOrderId}` : Prisma.empty}
     `;
     return Number(result[0].count);
   }
@@ -102,10 +106,12 @@ export class SchedulingRepository {
     workPostIds: string[],
     rangeStart: Date,
     rangeEnd: Date,
+    excludeOrderId?: string,
   ) {
     if (workPostIds.length === 0) return [];
     return this.tenantPrisma.forTenant(tenantId).order.findMany({
       where: {
+        ...(excludeOrderId ? { id: { not: excludeOrderId } } : {}),
         workPostId: { in: workPostIds },
         status: { notIn: ['CANCELLED', 'NO_SHOW', 'COMPLETED'] },
         scheduledStart: { lt: rangeEnd },

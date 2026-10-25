@@ -22,7 +22,7 @@ Verified inventory of every HTTP route, read from `@Controller` / `@Get` / `@Pos
 - List endpoints extend `PaginationDto`: `page` (≥1, default 1), `limit` (1–100, default 20),
   `sortBy` (allow-listed), `sortOrder` (`asc`/`desc`, default `asc`), `includeDeleted`.
 
-**Totals: 24 controller classes, 113 routes, 17 of them `@Public()`.**
+**Totals: 24 controller classes, 116 routes, 17 of them `@Public()`.**
 
 | Area           |  Routes | Public |
 | -------------- | ------: | -----: |
@@ -37,9 +37,9 @@ Verified inventory of every HTTP route, read from `@Controller` / `@Get` / `@Pos
 | clients        |       7 |      0 |
 | vehicles       |       7 |      0 |
 | workforce      |       5 |      0 |
-| orders         |       7 |      0 |
+| orders         |       9 |      0 |
 | payments       |       2 |      0 |
-| analytics      |      11 |      0 |
+| analytics      |      12 |      0 |
 | audit          |       1 |      0 |
 | subscriptions  |      14 |      0 |
 | paddle webhook |       1 |      1 |
@@ -47,7 +47,7 @@ Verified inventory of every HTTP route, read from `@Controller` / `@Get` / `@Pos
 | support        |       1 |      1 |
 | health         |       1 |      1 |
 | metrics        |       1 |      1 |
-| **Total**      | **113** | **17** |
+| **Total**      | **116** | **17** |
 
 ---
 
@@ -79,7 +79,7 @@ No delete and no restore.
 
 ## Users — `UsersController` (`/users`)
 
-| Method | Path                        | Perm           | Notes                                     |
+| Method | Path                   | Perm | Notes                                                                                                    |
 | ------ | --------------------------- | -------------- | ----------------------------------------- |
 | GET    | `/users`                    | `users.read`   | Paginated, branch-scoped                  |
 | GET    | `/users/:id`                | `users.read`   |                                           |
@@ -91,7 +91,7 @@ No delete and no restore.
 
 ## Roles — `RolesController` (`/roles`)
 
-| Method | Path                     | Perm           |
+| Method | Path                      | Perm               |
 | ------ | ------------------------ | -------------- |
 | GET    | `/roles`                 | `roles.read`   |
 | GET    | `/roles/:id`             | `roles.read`   |
@@ -103,7 +103,7 @@ No delete and no restore.
 
 ## Permissions — `PermissionsController` (`/permissions`)
 
-| Method | Path                   | Perm         | Notes                            |
+| Method | Path                   | Perm | Notes                                                                                                    |
 | ------ | ---------------------- | ------------ | -------------------------------- |
 | GET    | `/permissions`         | `roles.read` | Whole global catalogue (47 rows) |
 | GET    | `/permissions/:module` | `roles.read` | Filtered by module name          |
@@ -116,7 +116,7 @@ instead, and there is no tenant delete route at all).
 
 ## Branches — `BranchesController` (`/branches`)
 
-| Method | Path                             | Perm              |
+| Method | Path                      | Perm               |
 | ------ | -------------------------------- | ----------------- |
 | GET    | `/branches`                      | `branches.read`   |
 | GET    | `/branches/:id`                  | `branches.read`   |
@@ -129,7 +129,7 @@ instead, and there is no tenant delete route at all).
 
 ## Work posts — `WorkPostsController` (`/work-posts`)
 
-| Method | Path                      | Perm                | Notes                                                |
+| Method | Path                   | Perm | Notes                                                                                                    |
 | ------ | ------------------------- | ------------------- | ---------------------------------------------------- |
 | GET    | `/work-posts`             | `work-posts.read`   | Optional `?branchId`; branch-scoped users are pinned |
 | GET    | `/work-posts/:id`         | `work-posts.read`   |                                                      |
@@ -140,7 +140,7 @@ instead, and there is no tenant delete route at all).
 
 ## Services — `ServicesController` (`/services`)
 
-| Method | Path                    | Perm              |
+| Method | Path                      | Perm               |
 | ------ | ----------------------- | ----------------- |
 | GET    | `/services`             | `services.read`   |
 | GET    | `/services/:id`         | `services.read`   |
@@ -151,7 +151,7 @@ instead, and there is no tenant delete route at all).
 
 ## Clients — `ClientsController` (`/clients`)
 
-| Method | Path                   | Perm             | Notes                              |
+| Method | Path                   | Perm | Notes                                                                                                    |
 | ------ | ---------------------- | ---------------- | ---------------------------------- |
 | POST   | `/clients/merge`       | `clients.update` | Declared **before** `/clients/:id` |
 | GET    | `/clients`             | `clients.read`   | `?search=` over name and phone     |
@@ -163,7 +163,7 @@ instead, and there is no tenant delete route at all).
 
 ## Vehicles — `VehiclesController` (`/vehicles`)
 
-| Method | Path                    | Perm              | Notes                                                                                                                                                                     |
+| Method | Path                   | Perm | Notes                                                                                                    |
 | ------ | ----------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | GET    | `/vehicles`             | `vehicles.read`   | `VehicleQueryDto` (e.g. filter by client)                                                                                                                                 |
 | GET    | `/vehicles/:id`         | `vehicles.read`   |                                                                                                                                                                           |
@@ -187,17 +187,31 @@ No restore route.
 
 ## Orders — `OrdersController` (`/orders`)
 
-| Method | Path                   | Perm              | Notes                                                                                                          |
-| ------ | ---------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------- |
+| Method | Path                   | Perm | Notes                                                                                                    |
+| ------ | ---------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | GET    | `/orders`              | `orders.read`     | `OrderQueryDto`: `status`, `branchId`, `clientId`, `dateFrom`, `dateTo` + pagination                           |
-| GET    | `/orders/availability` | `scheduling.read` | Query: `branchId` (UUID, required), `date`, `durationMinutes` (default 30), `workPostId`, `assignedEmployeeId` |
+| GET    | `/orders/availability` | `scheduling.read` | Query: `branchId` (UUID, required), `date`, `durationMinutes` (integer 1–1440, default 30), `workPostId`, `assignedEmployeeId`, `excludeOrderId` |
+| GET    | `/orders/schedule`     | `orders.read`     | Required UUID `branchId` and exact `YYYY-MM-DD` `date`; full branch-local day projection |
 | GET    | `/orders/:id`          | `orders.read`     |                                                                                                                |
 | POST   | `/orders`              | `orders.create`   | **201**; honours the `idempotency-key` header (service-level idempotency)                                      |
 | PATCH  | `/orders/:id/status`   | `orders.update`   | Validated against the state machine                                                                            |
+| PATCH  | `/orders/:id/reschedule` | `orders.update` | Timezone-qualified `scheduledStart`; optional UUID `workPostId`/`assignedEmployeeId`; explicit null rejected; full Order response |
 | DELETE | `/orders/:id`          | `orders.delete`   | Soft delete                                                                                                    |
 | PATCH  | `/orders/:id/restore`  | `orders.update`   | Re-validates scheduling conflicts for non-terminal orders                                                      |
 
-`/orders/availability` is declared before `/orders/:id` so it is not swallowed by the param route.
+`/orders/availability` and `/orders/schedule` precede `/orders/:id`.
+Reschedule permits only `BOOKED`/`BOOKED_PENDING_CONFIRMATION`, preserving status, branch,
+stored duration, service price snapshots, total and payments. Omitted resources retain their
+current values. Availability `excludeOrderId` first validates current tenant/branch order access.
+
+Schedule returns `{branchId,date,timezone,range:{start,end},now,orders}`. Each order contains only
+`id`, `status`, `scheduledStart`, `scheduledEnd`, `workPost:{id,name}|null`,
+`vehicle:{licensePlate}|null`, `services:[{name}]`, `assignedEmployee:{id,name}|null` and
+`isOverdue`. It includes all overlapping non-deleted orders except `CANCELLED`/`NO_SHOW`,
+including completed history and previous-day starts. Current-day results also retain older
+`IN_PROGRESS` overruns. No contact/payment fields or pagination are included.
+Availability validates UUID/date/duration inputs and rejects a different scoped branch with `403`.
+Explicit posts/employees are limited to the selected branch, even with zero employee profiles.
 Order detail/status/delete/restore apply the authenticated user's branch scope as well as
 its tenant. Create/restore validate active same-tenant/same-branch resource assignments and
 reserve the post before the employee within the transaction.
@@ -205,13 +219,16 @@ reserve the post before the employee within the transaction.
 ## Payments — `PaymentsController` (`/orders/:orderId/payments`)
 
 | Method | Path                        | Perm              | Rate  | Notes                                                    |
-| ------ | --------------------------- | ----------------- | ----- | -------------------------------------------------------- |
+| ------ | --------------------------- | ----------------- | ----- | ---------------------------------------------------- |
 | GET    | `/orders/:orderId/payments` | `payments.read`   | —     |                                                          |
-| POST   | `/orders/:orderId/payments` | `payments.create` | 5/min | Uses `IdempotencyInterceptor` (`idempotency-key` header) |
+| POST   | `/orders/:orderId/payments` | `payments.create` | 5/min | Transactional request-aware `idempotency-key` header |
 
-Payment creation locks the tenant-scoped order and performs Decimal sum/limit validation
-and insertion in one `ReadCommitted` transaction. Overpayment is a business `400`, including
-concurrent requests. The HTTP idempotency header does not replace this lock.
+Both payment routes validate current tenant/branch access to the active parent order (`404`
+outside scope). Creation locks that order, checks access before replay, and performs Decimal
+sum/limit validation, insertion and request-aware idempotency in one `ReadCommitted` transaction.
+Overpayment is a business `400`, including concurrent requests. Same-key retries bind the
+actor, method/path and normalized payment intent; mismatches and unversioned keys return `409`.
+A matching retry after order completion returns the original payment without another event.
 
 ## Analytics — `AnalyticsController` (`/analytics`)
 
@@ -219,6 +236,7 @@ All require `analytics.view`. Common query params: `dateFrom`, `dateTo`, optiona
 
 | Path                        | Returns                                                                                 |
 | --------------------------- | --------------------------------------------------------------------------------------- |
+| `/analytics/day-summary`    | Branch-local day sales and PAID receipts; exact `date`, explicit/effective single `branchId` |
 | `/analytics/dashboard`      | Summary: orders, revenue, clients, completion rate                                      |
 | `/analytics/revenue`        | Revenue over the date range                                                             |
 | `/analytics/services`       | Most popular services by order count                                                    |
@@ -231,11 +249,21 @@ All require `analytics.view`. Common query params: `dateFrom`, `dateTo`, optiona
 | `/analytics/export/orders`  | CSV of orders (streamed)                                                                |
 | `/analytics/export/clients` | CSV of clients (streamed)                                                               |
 
+`GET /analytics/day-summary` accepts exact `YYYY-MM-DD` `date`. A scoped caller may omit
+`branchId`; an unscoped caller must supply it. Another scoped branch is `403`. The data payload is
+`{branchId,date,timezone,range:{start,end},sales:{orderCount,completedCount,scheduledTotal,completedTotal,byStatus:[{status,count,total}]},receipts:{count,total,byMethod:[{method,count,total}]}}`.
+All monetary values are fixed two-decimal strings. Sales use non-deleted order booking-start
+dates; counts/status groups include every status, scheduled total excludes cancelled/no-show,
+and completed total includes only completed orders. Receipts use only `PAID.createdAt` and
+retain payments on cancelled/deleted parent orders, scoped by tenant and branch. Both day
+views independently convert each local midnight, including 23/25-hour DST days. Standard
+`TransformInterceptor` envelopes still apply. Legacy analytics meanings are unchanged.
+
 The two export routes have no caller in the operator dashboard.
 
 ## Audit — `AuditController` (`/audit-logs`)
 
-| Method | Path          | Perm         | Notes                                             |
+| Method | Path                   | Perm | Notes                                                                                                    |
 | ------ | ------------- | ------------ | ------------------------------------------------- |
 | GET    | `/audit-logs` | `audit.read` | `AuditQueryDto` filters; branch-scoped; paginated |
 
@@ -290,7 +318,7 @@ Paddle credentials at startup, in every environment.
 
 ### Slug-based — `PublicBookingController` (`/public/booking`), whole controller `@Public()`
 
-| Method | Path                                       | Declared rate | Notes                                |
+| Method | Path                          | Declared rate | Notes                                 |
 | ------ | ------------------------------------------ | ------------- | ------------------------------------ |
 | GET    | `/public/booking/:tenantSlug/availability` | 20/min        | Slug format validated before lookup  |
 | GET    | `/public/booking/:tenantSlug/services`     | 20/min        | Active services only                 |
@@ -338,8 +366,8 @@ Namespace **`/events`**.
 | --------------------------------- | ---------------------------------------------------------------------------------------- |
 | Handshake                         | `auth.token` or `Authorization: Bearer <access token>`; non-`access` tokens are rejected |
 | Rooms                             | Auto-join `tenant:{tenantId}`; server-side emits may target `branch:{branchId}`          |
-| Server → client                   | `order.created`, `order.status_changed`, `order.cancelled`                               |
-| Client listeners in the dashboard | the three above plus `payment.received` and `booking.confirmed` (no backend emitter yet) |
+| Server → client                   | `order.created`, `order.rescheduled`, `order.status_changed`, `order.cancelled` |
+| Client listeners in the dashboard | the four above plus `payment.received` and `booking.confirmed` (no backend emitter yet) |
 | Expiry                            | A 60 s sweep disconnects clients whose access token has expired                          |
 | CORS                              | From `CORS_ORIGINS`; empty/`*` means allow-all in dev and **deny** in production         |
 

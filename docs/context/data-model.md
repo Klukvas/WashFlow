@@ -238,11 +238,13 @@ branch row → tenant row (`branchId: null`) → hard-coded `DEFAULTS`.
 `name`, `address?`, `phone?`, `timezone` (default `"Europe/Kyiv"`), `isActive`. Soft-deleted.
 Indexes: `@@index([tenantId])`.
 
-`timezone` is used **only** by `SchedulingService.checkAvailability`, which derives the local
-day-of-week with `Intl.DateTimeFormat` and converts working hours to UTC with `fromZonedTime`.
-`OrdersService` validates `workingDays` and employee working hours in **UTC**
-(`getUTCDay()`, `getUTCHours()`), so the two paths can disagree for non-UTC branches. Keep this
-in mind before changing either.
+`timezone` defines the branch-local calendar used by order creation/reschedule validation,
+availability and day views. `OrdersService` derives the scheduled date with `branchCalendarDay`;
+`bookingDayRestrictions` checks its weekday and advance limit against branch-local today.
+Availability applies the same calendar rules and converts local working hours to UTC with
+`fromZonedTime`. Employee eligibility uses `workingWindowForInterval` across the full interval
+in the branch timezone, including DST transitions. Day views convert each local midnight
+independently, so a day can contain 23 or 25 hours.
 
 ### `User` — `users`
 
@@ -368,8 +370,9 @@ has no authenticated tenant UUID.
 Operational workforce layer, deliberately separate from RBAC. `userId` is **unique** (one
 profile per user, tenant-wide), `branchId`, `isWorker` (default true), `efficiencyCoefficient
 Float` (default 1 — stored, not yet used in capacity math), `active` (default true),
-`workStartTime?` / `workEndTime?` as `"HH:MM"` strings compared lexicographically against
-UTC-derived times. Soft-deleted (`20260304000001_add_employee_profile_deleted_at`).
+`workStartTime?` / `workEndTime?` as `"HH:MM"` branch-local shift boundaries. Availability
+and reservation compare them with the full branch-local interval from `workingWindowForInterval`;
+cross-local-day intervals are rejected and DST transitions are included. Soft-deleted (`20260304000001_add_employee_profile_deleted_at`).
 Indexes: `[tenantId]`, `[tenantId, branchId]`.
 
 > `employee_profiles_userId_key` is a plain unique index, so a soft-deleted profile still blocks
@@ -421,7 +424,6 @@ Facts worth knowing before you write a migration.
 | 5   | `IdempotencyKey.tenantId` is a plain string, sometimes `slug:<tenantSlug>`.                                                           | Do not add an FK without handling the slug form.                                                                           |
 | 6   | `Client.phone`, `Vehicle.licensePlate`, `Role.name` are indexed but **not unique**.                                                   | Uniqueness is a service-level convention only; duplicates are possible.                                                    |
 | 7   | `order_services.tenantId` and its index originated in raw SQL in `20260304000000_fix_schema_drift`; the index is now declared.        | The reconciliation migration preserves it; it is now declared in the schema.                                               |
-| 8   | `Branch.timezone` is honoured by `SchedulingService.checkAvailability` but **not** by `OrdersService` validation, which is UTC-based. | Availability and creation can disagree for non-UTC branches.                                                               |
 | 9   | `EmployeeProfile.efficiencyCoefficient` is stored but not used in capacity calculation.                                               | Reserved field.                                                                                                            |
 | 10  | `Tenant.settings Json?` is never read in `src/`.                                                                                      | Reserved field.                                                                                                            |
 | 11  | `docker-entrypoint.sh` runs `prisma db push --accept-data-loss`; the Compose files instead run `prisma migrate deploy`.               | The entrypoint is not referenced by any Compose service — see [infrastructure.md](./infrastructure.md#images-and-startup). |

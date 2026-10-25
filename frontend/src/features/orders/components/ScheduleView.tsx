@@ -1,266 +1,222 @@
-import { useState, useMemo } from 'react';
-import { isDateDayOff } from '../utils/schedule.utils';
+import { useNow } from '@/shared/hooks/useNow';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { useAvailability } from '../hooks/useOrders';
-import {
-  useBranches,
-  useBranchBookingSettings,
-} from '@/features/branches/hooks/useBranches';
-import { useWorkPosts } from '@/features/work-posts/hooks/useWorkPosts';
+import { useAvailability, useSchedule } from '../hooks/useOrders';
+import { useBranches } from '@/features/branches/hooks/useBranches';
 import { useBranchScope } from '@/shared/hooks/useBranchScope';
-import type { TimeSlot } from '@/shared/types/api';
+import { PermissionGate } from '@/shared/components/PermissionGate';
+import { DaySummary } from '@/features/analytics/components/DaySummary';
 import { Select } from '@/shared/ui/select';
+import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
-import { DatePicker } from '@/shared/ui/date-picker';
-import { formatTime } from '@/shared/utils/format';
+import { branchDate, branchTime } from '@/shared/utils/branch-time';
+import { StatusBadge } from './StatusBadge';
 import { cn } from '@/shared/utils/cn';
 
 export function ScheduleView() {
+  const now = useNow();
   const { t } = useTranslation('orders');
+  const { t: tc } = useTranslation('common');
   const navigate = useNavigate();
-  const { branchId: userBranchId } = useBranchScope();
-
-  const [branchId, setBranchId] = useState(userBranchId ?? '');
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split('T')[0],
+  const scope = useBranchScope();
+  const [chosenBranch, setBranch] = useState('');
+  const [chosenDate, setDate] = useState('');
+  const [postFilter, setPostFilter] = useState('');
+  const branchesQuery = useBranches({ limit: 100 });
+  const branches = (branchesQuery.data?.items ?? []).filter(
+    (b) =>
+      b.isActive &&
+      !b.deletedAt &&
+      (!scope.branchId || scope.branchId === b.id),
   );
-  const [workPostFilter, setWorkPostFilter] = useState('');
-
-  const { data: branchesData } = useBranches({ limit: 100 });
-  const branches = branchesData?.items ?? [];
-
-  const { data: workPostsData } = useWorkPosts({
-    branchId,
-    limit: 50,
-  });
-  const workPosts = useMemo(
-    () => workPostsData?.items ?? [],
-    [workPostsData?.items],
+  const branchId =
+    scope.branchId ??
+    (chosenBranch || (branches.length === 1 ? branches[0].id : ''));
+  const timezone = branches.find((b) => b.id === branchId)?.timezone ?? 'UTC';
+  const date = chosenDate || branchDate(new Date(), timezone);
+  const schedule = useSchedule(branchId, date);
+  const slots = useAvailability({ branchId, date });
+  const actualTimezone = schedule.data?.timezone ?? timezone;
+  const orders = (schedule.data?.orders ?? []).filter(
+    (o) => !postFilter || o.workPost?.id === postFilter,
   );
-
-  const { data: branchSettings } = useBranchBookingSettings(branchId);
-
-  const isDayOff = useMemo(
-    () => isDateDayOff(selectedDate, branchSettings?.workingDays),
-    [selectedDate, branchSettings?.workingDays],
+  const posts = Array.from(
+    new Map([
+      ...(schedule.data?.orders ?? []).flatMap((o) =>
+        o.workPost ? [[o.workPost.id, o.workPost.name] as const] : [],
+      ),
+      ...(slots.data ?? []).map((s) => [s.workPostId, s.workPostName] as const),
+    ]),
   );
-
-  // Fetch availability without duration to get all raw slots
-  const { data: slots, isLoading: slotsLoading } = useAvailability({
-    branchId,
-    date: selectedDate,
-    workPostId: workPostFilter || undefined,
-  });
-
-  // Group slots by work post
-  const { timeHeaders, gridData, filteredWorkPosts } = useMemo(() => {
-    if (!slots || slots.length === 0 || workPosts.length === 0) {
-      return { timeHeaders: [], gridData: new Map(), filteredWorkPosts: [] };
-    }
-
-    const filtered = workPostFilter
-      ? workPosts.filter((wp) => wp.id === workPostFilter)
-      : workPosts;
-
-    // Collect all unique time starts sorted
-    const timeSet = new Set<string>();
-    for (const slot of slots) {
-      timeSet.add(slot.start);
-    }
-    const headers = Array.from(timeSet).sort();
-
-    // Build lookup: workPostId -> { start -> slot }
-    const data = new Map<string, Map<string, TimeSlot>>();
-    for (const wp of filtered) {
-      data.set(wp.id, new Map());
-    }
-    for (const slot of slots) {
-      const wpMap = data.get(slot.workPostId);
-      if (wpMap) {
-        wpMap.set(slot.start, slot);
-      }
-    }
-
-    return {
-      timeHeaders: headers,
-      gridData: data,
-      filteredWorkPosts: filtered,
-    };
-  }, [slots, workPosts, workPostFilter]);
-
-  const handleSlotClick = (slot: TimeSlot) => {
-    if (!slot.available) return;
-    const params = new URLSearchParams({
-      branchId,
-      workPostId: slot.workPostId,
-      date: selectedDate,
-      time: slot.start,
-    });
-    navigate(`/orders/create?${params.toString()}`);
-  };
-
-  if (!branchId) {
-    return (
-      <div className="space-y-4">
-        <div className="max-w-xs">
-          <Label>{t('fields.branch')}</Label>
-          <Select
-            options={branches.map((b) => ({
-              value: b.id,
-              label: b.name,
-            }))}
-            placeholder={t('schedule.selectBranch')}
-            value={branchId}
-            onChange={(e) => setBranchId(e.target.value)}
-          />
-        </div>
-        <p className="text-sm text-muted-foreground">
-          {t('schedule.selectBranchFirst')}
-        </p>
-      </div>
-    );
-  }
-
+  const available = (slots.data ?? []).filter(
+    (s) =>
+      s.available &&
+      (!postFilter || s.workPostId === postFilter) &&
+      Date.parse(s.start) > now,
+  );
   return (
-    <div className="space-y-4">
-      {/* Filters row */}
-      <div className="flex flex-wrap items-end gap-4">
-        <div className="w-48">
-          <Label>{t('fields.branch')}</Label>
+    <div data-testid="schedule-view" className="space-y-5">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="w-full sm:w-52">
+          <Label htmlFor="schedule-branch">{t('fields.branch')}</Label>
           <Select
-            options={branches.map((b) => ({
-              value: b.id,
-              label: b.name,
-            }))}
+            id="schedule-branch"
+            disabled={scope.isBranchScoped}
             placeholder={t('schedule.selectBranch')}
             value={branchId}
+            options={branches.map((b) => ({ value: b.id, label: b.name }))}
             onChange={(e) => {
-              setBranchId(e.target.value);
-              setWorkPostFilter('');
+              setBranch(e.target.value);
+              setDate('');
+              setPostFilter('');
             }}
           />
         </div>
-        <div className="w-48">
-          <Label>{t('creation.date')}</Label>
-          <DatePicker
-            value={selectedDate}
-            onChange={setSelectedDate}
-            min={new Date().toISOString().split('T')[0]}
+        <div className="w-full sm:w-48">
+          <Label htmlFor="schedule-date">{t('creation.date')}</Label>
+          <Input
+            id="schedule-date"
+            type="date"
+            className="dark:[color-scheme:dark]"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
           />
         </div>
-        {workPosts.length > 0 && (
-          <div className="w-48">
-            <Label>{t('fields.workPost')}</Label>
-            <Select
-              options={[
-                { value: '', label: t('creation.anyWorkPost') },
-                ...workPosts.map((wp) => ({
-                  value: wp.id,
-                  label: wp.name,
-                })),
-              ]}
-              value={workPostFilter}
-              onChange={(e) => setWorkPostFilter(e.target.value)}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Day off warning */}
-      {isDayOff && (
-        <div className="rounded-md border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-warning-foreground">
-          {t('creation.branchClosed')}
+        <div className="w-full sm:w-48">
+          <Label htmlFor="schedule-post">{t('fields.workPost')}</Label>
+          <Select
+            id="schedule-post"
+            value={postFilter}
+            options={[
+              { value: '', label: t('creation.anyWorkPost') },
+              ...posts.map(([id, name]) => ({ value: id, label: name })),
+            ]}
+            onChange={(e) => setPostFilter(e.target.value)}
+          />
         </div>
-      )}
-
-      {/* Schedule grid */}
-      {!isDayOff && (
-        <div className="overflow-x-auto rounded-md border border-border">
-          {slotsLoading ? (
-            <div className="flex h-32 items-center justify-center">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-            </div>
-          ) : filteredWorkPosts.length === 0 ? (
-            <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
-              {t('schedule.noWorkPosts')}
-            </div>
-          ) : timeHeaders.length === 0 ? (
-            <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
-              {t('creation.noSlots')}
-            </div>
-          ) : (
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/50">
-                  <th className="sticky left-0 z-10 min-w-[120px] border-r border-border bg-muted/50 px-3 py-2 text-left font-medium">
-                    {t('fields.workPost')}
-                  </th>
-                  {timeHeaders.map((time) => (
-                    <th
-                      key={time}
-                      className="min-w-[70px] border-r border-border px-2 py-2 text-center font-medium"
-                    >
-                      {formatTime(time)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredWorkPosts.map((wp) => {
-                  const wpSlots = gridData.get(wp.id);
-                  return (
-                    <tr key={wp.id} className="border-b border-border">
-                      <td className="sticky left-0 z-10 border-r border-border bg-background px-3 py-2 font-medium">
-                        {wp.name}
-                      </td>
-                      {timeHeaders.map((time) => {
-                        const slot = wpSlots?.get(time);
-                        const isAvailable = slot?.available ?? false;
-                        return (
-                          <td key={time} className="border-r border-border p-1">
-                            <button
-                              className={cn(
-                                'flex h-8 w-full items-center justify-center rounded text-xs transition-colors',
-                                isAvailable
-                                  ? 'bg-success/10 text-success hover:bg-success/20'
-                                  : 'cursor-default bg-muted text-muted-foreground',
-                              )}
-                              onClick={() => slot && handleSlotClick(slot)}
-                              disabled={!isAvailable}
-                              title={
-                                isAvailable
-                                  ? t('schedule.bookSlot')
-                                  : t('schedule.occupied')
-                              }
-                            >
-                              {isAvailable
-                                ? t('schedule.free')
-                                : t('schedule.occupied')}
-                            </button>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <p className="py-2 text-xs text-muted-foreground">{actualTimezone}</p>
+      </div>
+      {!branchId ? (
+        <p>{t('schedule.selectBranchFirst')}</p>
+      ) : (
+        <>
+          {(schedule.isLoading || slots.isLoading) && (
+            <p role="status">{tc('status.loading')}</p>
           )}
-        </div>
-      )}
+          {(schedule.isError || branchesQuery.isError) && (
+            <p role="alert" className="text-destructive">
+              {tc('errors.loadFailed')}
+            </p>
+          )}
+          <section className="space-y-2">
+            <h2 className="font-semibold">{t('creation.availableSlots')}</h2>
+            {slots.isError && (
+              <p role="alert" className="text-destructive">
+                {tc('errors.loadFailed')}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {t('schedule.slotHint')}
+            </p>
+            <PermissionGate permission="orders.create">
+              <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">
+                {available.map((slot) => (
+                  <button
+                    key={`${slot.workPostId}-${slot.start}`}
+                    data-testid="schedule-free-slot"
+                    type="button"
+                    disabled={slots.isFetching}
+                    className="rounded-md border border-border bg-success/10 px-3 py-2 text-sm text-success hover:bg-success/20 disabled:opacity-50"
+                    onClick={() =>
+                      navigate(
+                        `/orders/create?${new URLSearchParams({ branchId, date, time: slot.start, workPostId: slot.workPostId })}`,
+                      )
+                    }
+                  >
+                    {branchTime(slot.start, actualTimezone)} ·{' '}
+                    {slot.workPostName}
+                  </button>
+                ))}
+              </div>
+            </PermissionGate>
+            {!slots.isFetching && !slots.isError && !available.length && (
+              <p>{t('creation.noSlots')}</p>
+            )}
+          </section>
+          {schedule.data && (
+            <>
+              {branchDate(schedule.data.now, actualTimezone) === date && (
+                <div
+                  className="flex items-center gap-3 text-sm font-medium text-primary"
+                  data-testid="schedule-now"
+                >
+                  <span className="h-2 w-2 rounded-full bg-primary" />
+                  <span>
+                    {t('schedule.now')}{' '}
+                    {branchTime(schedule.data.now, actualTimezone)}
+                  </span>
+                  <span className="h-px flex-1 bg-primary/40" />
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {t('schedule.reservationHint')}
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {orders.map((order) => (
+                  <button
+                    key={order.id}
+                    data-testid="schedule-order"
+                    type="button"
+                    onClick={() => navigate(`/orders/${order.id}`)}
+                    className={cn(
+                      'space-y-2 rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary focus-visible:outline-2 focus-visible:outline-primary',
+                      order.isOverdue && 'border-warning bg-warning/5',
+                    )}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <strong className="text-base">
+                        {order.vehicle?.licensePlate ?? '—'}
+                      </strong>
+                      <StatusBadge status={order.status} />
+                    </div>
+                    <p className="text-sm">
+                      {order.services.map((s) => s.name).join(', ') ||
+                        t('noServices')}
+                    </p>
+                    <p className="text-sm font-medium">
+                      {branchDate(order.scheduledStart, actualTimezone) !==
+                        date &&
+                        `${branchDate(order.scheduledStart, actualTimezone)} `}
+                      {branchTime(order.scheduledStart, actualTimezone)} –{' '}
+                      {branchTime(order.scheduledEnd, actualTimezone)} ·{' '}
+                      {order.workPost?.name ?? '—'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('fields.assignedWorker')}:{' '}
+                      {order.assignedEmployee?.name ?? '—'}
+                    </p>
+                    {order.isOverdue && (
+                      <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                        {t('schedule.overdue')}
+                      </p>
+                    )}
+                  </button>
+                ))}
+              </div>
+              {!orders.length && (
+                <p className="rounded-md border border-border p-5 text-sm text-muted-foreground">
+                  {t('schedule.noOrders')}
+                </p>
+              )}
+            </>
+          )}
 
-      {/* Legend */}
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1.5">
-          <div className="h-3 w-3 rounded bg-success/10" />
-          <span>{t('schedule.free')}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="h-3 w-3 rounded bg-muted" />
-          <span>{t('schedule.occupied')}</span>
-        </div>
-      </div>
+          <PermissionGate permission="analytics.view">
+            <DaySummary branchId={branchId} date={date} />
+          </PermissionGate>
+        </>
+      )}
     </div>
   );
 }

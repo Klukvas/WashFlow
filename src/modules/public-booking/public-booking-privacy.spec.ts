@@ -136,11 +136,13 @@ function assertNoPrivateFields(value: unknown): void {
 describe('Public booking confirmation privacy', () => {
   let app: INestApplication;
   const create = jest.fn();
+  const replay = jest.fn();
   const clientCreate = jest.fn();
   const vehicleCreate = jest.fn();
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    replay.mockReset().mockResolvedValue(null);
     const tx = {
       client: {
         findFirst: jest.fn().mockResolvedValue(privateOrder.client),
@@ -167,7 +169,13 @@ describe('Public booking confirmation privacy', () => {
           },
         },
         { provide: SchedulingService, useValue: {} },
-        { provide: OrdersService, useValue: { create } },
+        {
+          provide: OrdersService,
+          useValue: {
+            create,
+            replayPublicBooking: replay,
+          },
+        },
         { provide: ServicesRepository, useValue: {} },
         { provide: BranchesRepository, useValue: {} },
         {
@@ -218,6 +226,7 @@ describe('Public booking confirmation privacy', () => {
             ? JSON.parse(JSON.stringify(privateOrder))
             : privateOrder;
         create.mockResolvedValue(order);
+        if (resultKind === 'cached') replay.mockResolvedValue(order);
         const response = await request(app.getHttpServer())
           .post(path)
           .set('x-carwash-tenant-id', tenantId)
@@ -233,15 +242,26 @@ describe('Public booking confirmation privacy', () => {
         expect(JSON.stringify(body)).not.toMatch(/PRIVATE|private-/);
         expect(clientCreate).not.toHaveBeenCalled();
         expect(vehicleCreate).not.toHaveBeenCalled();
-        expect(create).toHaveBeenCalledWith(
-          tenantId,
-          expect.objectContaining({
-            clientId: privateOrder.clientId,
-            source: 'WEB',
-          }),
-          null,
-          'privacy-regression',
-        );
+        if (resultKind === 'cached') {
+          expect(create).not.toHaveBeenCalled();
+          expect(replay).toHaveBeenCalledWith(
+            tenantId,
+            payload.branchId,
+            'privacy-regression',
+            expect.objectContaining({ source: 'WEB' }),
+          );
+        } else
+          expect(create).toHaveBeenCalledWith(
+            tenantId,
+            expect.objectContaining({
+              clientId: privateOrder.clientId,
+              source: 'WEB',
+            }),
+            null,
+            'privacy-regression',
+            null,
+            expect.objectContaining({ source: 'WEB' }),
+          );
       },
     );
 

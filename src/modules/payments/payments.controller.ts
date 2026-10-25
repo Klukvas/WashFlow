@@ -6,14 +6,14 @@ import {
   Body,
   ParseUUIDPipe,
   UseGuards,
-  UseInterceptors,
+  Headers,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { IdempotencyInterceptor } from '../idempotency/idempotency.interceptor';
+import { CurrentBranch } from '../../common/decorators/current-branch.decorator';
 import { PaymentsService } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { ApiTags } from '@nestjs/swagger';
@@ -29,20 +29,29 @@ export class PaymentsController {
   findByOrder(
     @CurrentTenant() tenantId: string,
     @Param('orderId', ParseUUIDPipe) orderId: string,
+    @CurrentBranch() branchId: string | null,
   ) {
-    return this.paymentsService.findByOrderId(tenantId, orderId);
+    return this.paymentsService.findByOrderId(tenantId, orderId, branchId);
   }
 
   @Post()
   @Throttle({ short: { limit: 5, ttl: 60000 } })
   @Permissions('payments.create')
-  @UseInterceptors(IdempotencyInterceptor)
   create(
     @CurrentTenant() tenantId: string,
     @Param('orderId', ParseUUIDPipe) orderId: string,
     @Body() dto: CreatePaymentDto,
     @CurrentUser() user: { sub: string },
+    @CurrentBranch() branchId: string | null,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
-    return this.paymentsService.create(tenantId, orderId, dto, user.sub);
+    return this.paymentsService.create(
+      tenantId,
+      orderId,
+      dto,
+      user.sub,
+      idempotencyKey,
+      branchId,
+    );
   }
 }

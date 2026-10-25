@@ -15,20 +15,22 @@ protected by row-level locking, and side effects run through domain events and B
 
 ## Where to read next
 
-| Topic                                                       | Document                                                         |
-| ----------------------------------------------------------- | ---------------------------------------------------------------- |
-| Orientation, task→doc matrix, conventions                   | [docs/context/README.md](docs/context/README.md)                 |
-| Topology, request/async lifecycles, decisions and tradeoffs | [docs/context/architecture.md](docs/context/architecture.md)     |
-| Every backend module, dependency graph, change-impact guide | [docs/context/modules.md](docs/context/modules.md)               |
-| Prisma models, enums, relations, indexes, migrations        | [docs/context/data-model.md](docs/context/data-model.md)         |
-| Both frontends: bootstrap, routing, API/auth/query/realtime | [docs/context/frontend.md](docs/context/frontend.md)             |
-| Docker, env vars, CI/CD, observability, integrations        | [docs/context/infrastructure.md](docs/context/infrastructure.md) |
-| Domain invariants and business rules                        | [docs/context/business-logic.md](docs/context/business-logic.md) |
-| Product capabilities and every screen                       | [docs/context/features.md](docs/context/features.md)             |
-| Full route inventory + seed data                            | [docs/context/reference.md](docs/context/reference.md)           |
-| Task recipes, commands, doc-update matrix                   | [docs/context/agent-playbook.md](docs/context/agent-playbook.md) |
-| Contributor workflow, scripts, PR checklist, runbook        | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)                     |
-| Install and run                                             | [README.md](README.md)                                           |
+| Topic                                                       | Document                                                                 |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Orientation, task→doc matrix, conventions                   | [docs/context/README.md](docs/context/README.md)                         |
+| Topology, request/async lifecycles, decisions and tradeoffs | [docs/context/architecture.md](docs/context/architecture.md)             |
+| Every backend module, dependency graph, change-impact guide | [docs/context/modules.md](docs/context/modules.md)                       |
+| Prisma models, enums, relations, indexes, migrations        | [docs/context/data-model.md](docs/context/data-model.md)                 |
+| Both frontends: bootstrap, routing, API/auth/query/realtime | [docs/context/frontend.md](docs/context/frontend.md)                     |
+| Docker, env vars, CI/CD, observability, integrations        | [docs/context/infrastructure.md](docs/context/infrastructure.md)         |
+| Local DB/uploads backup, isolated restore drill, recovery   | [docs/operations/backup-recovery.md](docs/operations/backup-recovery.md) |
+| Local monitoring preparation (not an activated deployment)  | [docs/operations/monitoring.md](docs/operations/monitoring.md)           |
+| Domain invariants and business rules                        | [docs/context/business-logic.md](docs/context/business-logic.md)         |
+| Product capabilities and every screen                       | [docs/context/features.md](docs/context/features.md)                     |
+| Full route inventory + seed data                            | [docs/context/reference.md](docs/context/reference.md)                   |
+| Task recipes, commands, doc-update matrix                   | [docs/context/agent-playbook.md](docs/context/agent-playbook.md)         |
+| Contributor workflow, scripts, PR checklist, runbook        | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)                             |
+| Install and run                                             | [README.md](README.md)                                                   |
 
 ---
 
@@ -71,11 +73,11 @@ flowchart LR
 | Thing                                      | Count                                                |
 | ------------------------------------------ | ---------------------------------------------------- |
 | Backend feature modules                    | 24 registered in `AppModule` (+ `IdempotencyModule`) |
-| Controllers / routes                       | 24 classes, 113 routes, 17 public                    |
+| Controllers / routes                       | 24 classes, 116 routes, 17 public                    |
 | Prisma models / enums                      | 20 / 8                                               |
 | Soft-deleted models                        | 9                                                    |
 | Permissions / permission modules           | 47 / 14                                              |
-| Domain event types                         | 18                                                   |
+| Domain event types                         | 19                                                   |
 | BullMQ queues / cron jobs                  | 3 / 3                                                |
 | Frontend feature folders / i18n namespaces | 21 / 18 per language (EN, UK)                        |
 
@@ -95,18 +97,20 @@ these by hand.
 2. **Secure by default.** A global `JwtAuthGuard` protects everything; `@Public()` is an opt-out
    that must come with rate limiting. `PermissionsGuard` enforces `module.action` strings carried
    in the JWT. A global `TenantGuard` additionally allows audited super-admin tenant switching.
-3. **No double booking.** Create and restore reserve work posts before employees inside a
+3. **No double booking.** Create, restore and booked/pending reschedule reserve work posts before employees inside a
    `Serializable` transaction, locking stable resource rows even when there are no bookings.
    Serialization conflicts retry at most three attempts; see
-   [reservation rules](docs/context/business-logic.md#reservation-order-creation-and-restore).
+   [reservation rules](docs/context/business-logic.md#reservation-order-creation-reschedule-and-restore).
 4. **Repository pattern.** Controllers → services (rules, transactions, events) → repositories
    (Prisma only).
 5. **Side effects are events.** Services dispatch `DomainEvent`s; audit, realtime and queue
    subscribers react independently and never fail the request.
 6. **Soft delete with restore.** Nine models, `PATCH /:id/restore` on eight of them, and a daily
    retention cron that hard-deletes children before parents.
-7. **Idempotent mutations.** Order creation and public bookings use service-level idempotency
-   inside their transaction; payments use `IdempotencyInterceptor`. 24 h TTL, hourly cleanup.
+7. **Idempotent mutations.** Orders, public bookings and payments bind versioned keys to the
+   actor, route and submitted intent inside their mutation transaction. Replays check current
+   resource access and emit no duplicate event; old unversioned keys fail closed with `409`.
+   Keys expire after 24 h and are cleaned hourly.
 8. **Limits come from the subscription.** Create and restore check quotas and mutate inside
    one tenant-locked transaction; no subscription row means no limits.
    [Payments](docs/context/business-logic.md#payments) likewise serialize on the order and use
@@ -115,6 +119,29 @@ these by hand.
    [session caches](docs/context/frontend.md#auth-and-token-handling-sharedstoresauthstorets).
 9. **Configuration fails loudly.** Zod validates the environment at startup; a `*` CORS origin in
    production exits the process.
+
+---
+
+## Operator workflow
+
+Operators can create a quick walk-in order on one page with phone/plate lookup, inline client
+and vehicle creation, services and the earliest valid duration-aware work post. The guided
+wizard remains available. Full-day schedule cards show branch-local times, plate, service,
+status, worker and planned end, with overdue warnings and order-detail navigation.
+
+Booked/pending orders can be rescheduled transactionally without changing service snapshots,
+prices, payments or status; omitted post/worker fields preserve assignments. The minimal
+`order.rescheduled` event drives audit/realtime cache invalidation. Schedule projection covers
+all orders overlapping the local day, completed history and current-day overdue work, without
+contact/payment PII. Branch calendars and independent 23/25-hour DST day bounds govern dates.
+
+Order detail separates PAID receipts and unpaid balance from the all-status payment cap, supports
+partial payment before completion, and retains history on closed orders. The permission-gated
+day summary separates scheduled-date sales from PAID-payment-creation-date receipts by method,
+including receipts for cancelled/deleted order parents. Decimal-string amounts stay exact.
+The 30-second intake target remains unmeasured; these surfaces add no payroll/refund/accounting
+workflow or drag-and-drop scheduling. See [frontend behavior](docs/context/frontend.md) and
+[domain rules](docs/context/business-logic.md).
 
 ---
 

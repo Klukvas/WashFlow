@@ -74,6 +74,18 @@ describe('OrdersService employee eligibility inside booking transaction', () => 
   let durationMin: number;
   const dispatch = jest.fn();
   const tx = {
+    client: { findFirst: jest.fn().mockResolvedValue({ id: dto.clientId }) },
+    vehicle: {
+      findFirst: jest.fn().mockResolvedValue({ clientId: dto.clientId }),
+    },
+    bookingSettings: {
+      findUnique: jest.fn().mockResolvedValue(null),
+      findFirst: jest.fn().mockResolvedValue({
+        workingDays: [0, 1, 2, 3, 4, 5, 6],
+        maxAdvanceBookingDays: 30,
+        bufferTimeMinutes: 5,
+      }),
+    },
     $queryRaw: jest.fn().mockResolvedValue([{ id: employee.id }]),
     branch: {
       findFirst: jest.fn(({ where }: Lookup) =>

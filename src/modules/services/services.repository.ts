@@ -40,9 +40,17 @@ export class ServicesRepository {
     return row ? this.mapService(row) : row;
   }
 
-  async findByIds(tenantId: string, ids: string[]) {
-    const rows = await this.db(tenantId).service.findMany({
-      where: { id: { in: ids }, isActive: true },
+  async findByIds(
+    tenantId: string,
+    ids: string[],
+    tx?: Prisma.TransactionClient,
+  ) {
+    const rows = await (tx ?? this.db(tenantId)).service.findMany({
+      where: {
+        id: { in: ids },
+        isActive: true,
+        ...(tx ? { tenantId, deletedAt: null } : {}),
+      },
     });
     return rows.map((s) => this.mapService(s));
   }

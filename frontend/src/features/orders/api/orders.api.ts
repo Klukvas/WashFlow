@@ -48,6 +48,7 @@ export interface AvailabilityParams {
   durationMinutes?: number;
   workPostId?: string;
   assignedEmployeeId?: string;
+  excludeOrderId?: string;
 }
 
 export async function fetchOrders(
@@ -101,6 +102,51 @@ export async function fetchAvailability(
   const { data } = await apiClient.get<ApiResponse<TimeSlot[]>>(
     '/orders/availability',
     { params },
+  );
+  return data.data;
+}
+
+export type RescheduleOrderPayload = {
+  scheduledStart: string;
+  workPostId?: string;
+  assignedEmployeeId?: string;
+};
+export type ScheduleOrder = {
+  id: string;
+  status: OrderStatus;
+  scheduledStart: string;
+  scheduledEnd: string;
+  workPost: { id: string; name: string } | null;
+  vehicle: { licensePlate: string | null } | null;
+  services: { name: string }[];
+  assignedEmployee: { id: string; name: string } | null;
+  isOverdue: boolean;
+};
+export type BranchSchedule = {
+  branchId: string;
+  date: string;
+  timezone: string;
+  range: { start: string; end: string };
+  now: string;
+  orders: ScheduleOrder[];
+};
+export async function fetchSchedule(
+  branchId: string,
+  date: string,
+): Promise<BranchSchedule> {
+  const { data } = await apiClient.get<ApiResponse<BranchSchedule>>(
+    '/orders/schedule',
+    { params: { branchId, date } },
+  );
+  return data.data;
+}
+export async function rescheduleOrder(
+  id: string,
+  payload: RescheduleOrderPayload,
+): Promise<Order> {
+  const { data } = await apiClient.patch<ApiResponse<Order>>(
+    `/orders/${id}/reschedule`,
+    payload,
   );
   return data.data;
 }

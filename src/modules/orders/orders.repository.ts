@@ -31,6 +31,88 @@ export class OrdersRepository {
     },
   };
 
+  async lockOrderTx(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    id: string,
+    branchId: string | null,
+  ) {
+    await tx.$queryRaw`
+      SELECT id FROM orders WHERE id = ${id} AND "tenantId" = ${tenantId} AND "deletedAt" IS NULL
+      ${branchId !== null ? Prisma.sql`AND "branchId" = ${branchId}` : Prisma.empty}
+      FOR UPDATE
+    `;
+  }
+
+  async rescheduleTx(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    id: string,
+    data: Pick<
+      Prisma.OrderUncheckedUpdateInput,
+      'scheduledStart' | 'scheduledEnd' | 'workPostId' | 'assignedEmployeeId'
+    >,
+  ) {
+    return tx.order.update({
+      where: { id, tenantId, deletedAt: null },
+      data,
+      include: this.defaultInclude,
+    });
+  }
+
+  async findBranch(tenantId: string, branchId: string) {
+    return this.db(tenantId).branch.findFirst({
+      where: { id: branchId },
+      select: { timezone: true },
+    });
+  }
+
+  async findSchedule(
+    tenantId: string,
+    branchId: string,
+    range: { start: Date; end: Date },
+    now: Date,
+    isToday: boolean,
+  ) {
+    return this.db(tenantId).order.findMany({
+      where: {
+        branchId,
+        status: { notIn: ['CANCELLED', 'NO_SHOW'] },
+        OR: [
+          {
+            scheduledStart: { lt: range.end },
+            scheduledEnd: { gt: range.start },
+          },
+          ...(isToday
+            ? [
+                {
+                  status: OrderStatus.IN_PROGRESS,
+                  scheduledStart: { lt: now },
+                  scheduledEnd: { lt: now },
+                },
+              ]
+            : []),
+        ],
+      },
+      orderBy: [{ scheduledStart: 'asc' }, { id: 'asc' }],
+      select: {
+        id: true,
+        status: true,
+        scheduledStart: true,
+        scheduledEnd: true,
+        workPost: { select: { id: true, name: true } },
+        vehicle: { select: { licensePlate: true } },
+        services: { select: { service: { select: { name: true } } } },
+        assignedEmployee: {
+          select: {
+            id: true,
+            user: { select: { firstName: true, lastName: true } },
+          },
+        },
+      },
+    });
+  }
+
   async findAll(
     tenantId: string,
     query: OrderQueryDto,

@@ -1,0 +1,17 @@
+# INERT EXAMPLE: no cron/systemd/CI schedule is installed by this repository.
+# Operator proposal: every 6 hours, UTC; choose an RPO and approve the maintenance window first.
+# Cron timezone support varies; verify the scheduler's timezone before activation.
+#
+# The operator-owned wrapper must:
+# 1. Acquire one exclusive lock; refuse overlap.
+# 2. Block ingress/webhooks; stop all API/cron/queue/other DB and uploads writers.
+# 3. Verify quiescence, choose NEW bundle and JSON attempt record paths.
+# 4. Run backup.py backup with explicit loopback connection, --passfile,
+#    --confirm-quiesced, --record and --timeout-seconds (see runbook).
+# 5. Preserve the exit status, then resume the original stack even on failure.
+# 6. Alert on nonzero exit, failed/running-stale records, or stale last successful manifest.
+#
+# Example only; replace the placeholders with an approved wrapper, not a direct live snapshot:
+# 0 */6 * * * /APPROVED/OPERATOR/washflow-quiesced-backup-wrapper
+#
+# Do not auto-prune. Review retention, encryption and offsite destinations independently.

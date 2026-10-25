@@ -18,7 +18,7 @@ async function selectFirstBranch(page: import('@playwright/test').Page) {
 // fast enough or the admin user context differs. Fix seed/setup to guarantee branches.
 test.describe.skip('Order Create Wizard', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/orders/create');
+    await page.goto('/orders/create?mode=wizard');
     await page.waitForLoadState('networkidle');
     // Select client-first mode to enter wizard
     await page.getByText(/start from client/i).click();

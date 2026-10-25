@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { bookingDayRestrictions } from '../../common/utils/branch-day.util';
 import { fromZonedTime } from 'date-fns-tz';
 import { SchedulingRepository } from './scheduling.repository';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -60,33 +61,14 @@ export class SchedulingService {
     }
     const timezone = branchRecord.timezone ?? 'UTC';
 
-    // Enforce workingDays: use local timezone day-of-week
-    const localDayStr = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      weekday: 'short',
-    }).format(date);
-    const dayMap: Record<string, number> = {
-      Sun: 0,
-      Mon: 1,
-      Tue: 2,
-      Wed: 3,
-      Thu: 4,
-      Fri: 5,
-      Sat: 6,
-    };
-    const dayOfWeek = dayMap[localDayStr] ?? date.getUTCDay();
-    if (!settings.workingDays.includes(dayOfWeek)) {
-      return [];
-    }
-
-    // Enforce maxAdvanceBookingDays
-    const now = new Date();
-    const maxDate = new Date(
-      now.getTime() + settings.maxAdvanceBookingDays * 86_400_000,
+    const day = date.toISOString().slice(0, 10);
+    const restrictions = bookingDayRestrictions(
+      day,
+      timezone,
+      settings.workingDays,
+      settings.maxAdvanceBookingDays,
     );
-    if (date.getTime() > maxDate.getTime()) {
-      return [];
-    }
+    if (!restrictions.isWorkingDay || !restrictions.isWithinAdvance) return [];
 
     const slotDuration = durationMinutes || settings.slotDurationMinutes;
     if (slotDuration <= 0) {
@@ -97,7 +79,7 @@ export class SchedulingService {
     const workEnd = settings.workingHoursEnd;
     const workPosts = await tenantDb.workPost.findMany({
       where: workPostId
-        ? { id: workPostId, isActive: true }
+        ? { id: workPostId, branchId, isActive: true }
         : { branchId, isActive: true },
       select: { id: true, name: true },
     });
@@ -121,6 +103,7 @@ export class SchedulingService {
       workPostIds,
       dayStart,
       dayEnd,
+      params.excludeOrderId,
     );
 
     // Group orders by work post
@@ -135,7 +118,7 @@ export class SchedulingService {
 
     // Batch-fetch employee availability (2 queries instead of N per-slot queries)
     let employeeAvailabilityBySlot: Map<number, string[]> | null = null;
-    if (totalProfiles > 0) {
+    if (totalProfiles > 0 || assignedEmployeeId) {
       // 1. Fetch all candidate employees for this branch
       const candidates = await tenantDb.employeeProfile.findMany({
         where: {
@@ -162,6 +145,9 @@ export class SchedulingService {
           ? await tenantDb.order.findMany({
               where: {
                 assignedEmployeeId: { in: candidateIds },
+                ...(params.excludeOrderId
+                  ? { id: { not: params.excludeOrderId } }
+                  : {}),
                 status: { notIn: ['CANCELLED', 'NO_SHOW', 'COMPLETED'] },
                 scheduledStart: { lt: bufferedDayEnd },
                 scheduledEnd: { gt: bufferedDayStart },
@@ -276,7 +262,7 @@ export class SchedulingService {
       // Apply workforce cap when profiles are configured
       let effectiveCapacity = availablePostIndices.length;
       if (
-        totalProfiles > 0 &&
+        (totalProfiles > 0 || assignedEmployeeId) &&
         availablePostIndices.length > 0 &&
         employeeAvailabilityBySlot
       ) {
@@ -353,6 +339,7 @@ export class SchedulingService {
       workPostId,
       bufferedStart,
       bufferedEnd,
+      params.excludeOrderId,
     );
 
     const conflicts = await this.schedulingRepo.countOverlapping(
@@ -361,6 +348,7 @@ export class SchedulingService {
       workPostId,
       bufferedStart,
       bufferedEnd,
+      params.excludeOrderId,
     );
 
     if (conflicts > 0) {

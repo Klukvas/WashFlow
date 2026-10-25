@@ -54,6 +54,14 @@ describe('OrdersService create tenant reservation scope', () => {
     services: [{ id: 'order-service-1' }],
   };
   const tx = {
+    client: { findFirst: jest.fn().mockResolvedValue({ id: dto.clientId }) },
+    vehicle: {
+      findFirst: jest.fn().mockResolvedValue({ clientId: dto.clientId }),
+    },
+    bookingSettings: {
+      findUnique: jest.fn().mockResolvedValue(null),
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
     branch: {
       findFirst: jest.fn(({ where }: Lookup) =>
         Promise.resolve(branches.find((row) => matches(row, where)) ?? null),

@@ -28,7 +28,7 @@ export class CreateOrderWizardPage {
   }
 
   async goto() {
-    await this.page.goto('/orders/create');
+    await this.page.goto('/orders/create?mode=wizard');
     await this.page.waitForLoadState('networkidle');
   }
 
@@ -39,7 +39,7 @@ export class CreateOrderWizardPage {
     time: string;
   }) {
     const qs = new URLSearchParams(params).toString();
-    await this.page.goto(`/orders/create?${qs}`);
+    await this.page.goto(`/orders/create?mode=wizard&${qs}`);
     await this.page.waitForLoadState('networkidle');
   }
 

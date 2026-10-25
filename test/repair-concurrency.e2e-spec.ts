@@ -42,6 +42,7 @@ integration('repair concurrency — isolated real PostgreSQL', () => {
   let prisma: PrismaService;
   let orders: OrdersService;
   let payments: PaymentsService;
+  let eventDispatcher: EventDispatcherService;
   let branches: BranchesService;
   let workPosts: WorkPostsService;
   let services: ServicesService;
@@ -68,6 +69,7 @@ integration('repair concurrency — isolated real PostgreSQL', () => {
     const tenantPrisma = new TenantPrismaService(prisma);
     // An emitter with no subscribers cannot send email, enqueue work, or call integrations.
     const events = new EventDispatcherService(new EventEmitter2());
+    eventDispatcher = events;
     const serviceRepo = new ServicesRepository(tenantPrisma);
     const limits = new SubscriptionLimitsService(
       new SubscriptionsRepository(prisma),
@@ -76,6 +78,7 @@ integration('repair concurrency — isolated real PostgreSQL', () => {
       new PaymentsRepository(tenantPrisma),
       tenantPrisma,
       events,
+      new IdempotencyService(new IdempotencyRepository(prisma)),
     );
     orders = new OrdersService(
       prisma,
@@ -372,6 +375,48 @@ integration('repair concurrency — isolated real PostgreSQL', () => {
         .reduce((total, row) => total.plus(row.amount), new Prisma.Decimal(0))
         .toFixed(2),
     ).toBe('75.00');
+  });
+
+  it('commits one 25 payment and event for two lock-waiting identical-key requests', async () => {
+    const fixture = await bookingFixture();
+    const order = await prisma.order.create({ data: fixture.input });
+    const key = randomUUID();
+    const dispatch = jest.spyOn(eventDispatcher, 'dispatch');
+    const pay = () =>
+      payments.create(
+        fixture.tenantId,
+        order.id,
+        { amount: 25, method: 'CASH' },
+        'synthetic',
+        key,
+      );
+    const results = await contend(
+      (tx) =>
+        tx.$queryRaw`SELECT id FROM orders WHERE id = ${order.id} AND "tenantId" = ${fixture.tenantId} FOR UPDATE`,
+      [pay, pay],
+    );
+    expect(results.every((result) => result.status === 'fulfilled')).toBe(true);
+    const ids = results.flatMap((result) =>
+      result.status === 'fulfilled' &&
+      typeof result.value === 'object' &&
+      result.value !== null &&
+      'id' in result.value
+        ? [result.value.id]
+        : [],
+    );
+    expect(ids).toHaveLength(2);
+    expect(ids[0]).toBe(ids[1]);
+    const saved = await prisma.payment.findMany({
+      where: { tenantId: fixture.tenantId, orderId: order.id },
+    });
+    expect(saved).toHaveLength(1);
+    expect(saved[0].amount.toFixed(2)).toBe('25.00');
+    expect(
+      dispatch.mock.calls.filter(
+        ([event]) => event.eventType === 'payment.received',
+      ),
+    ).toHaveLength(1);
+    dispatch.mockRestore();
   });
 
   it('persists exact concurrent 0.10 + 0.20 payments against a 0.30 order', async () => {

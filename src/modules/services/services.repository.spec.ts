@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ServicesRepository } from './services.repository';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
@@ -79,6 +80,26 @@ describe('ServicesRepository', () => {
         where: { id: { in: ids }, isActive: true },
       });
     });
+  });
+
+  it('uses the supplied transaction with explicit tenant/active/soft-delete scope and existing price mapping', async () => {
+    const findMany = jest
+      .fn()
+      .mockResolvedValue([
+        { ...mockService, price: new Prisma.Decimal('25.50') },
+      ]);
+    const tx = { service: { findMany } } as unknown as Prisma.TransactionClient;
+    const result = await repo.findByIds(tenantId, [serviceId], tx);
+    expect(findMany).toHaveBeenCalledWith({
+      where: {
+        id: { in: [serviceId] },
+        tenantId,
+        deletedAt: null,
+        isActive: true,
+      },
+    });
+    expect(tenantPrisma.forTenant).not.toHaveBeenCalled();
+    expect(result).toEqual([{ ...mockService, price: 25.5 }]);
   });
 
   describe('create', () => {

@@ -102,6 +102,50 @@ Route-level behaviour, precisely:
   dashboard route is reachable by any authenticated user; the backend still enforces
   `@Permissions`, and `PermissionGate` is used **inside** pages to hide actions.
 
+### Operator intake, schedule, payments and day totals
+
+`/orders/create` opens `QuickOrderForm`: a compact phone/plate lookup, client-owned vehicle
+selection, active services and duration-aware availability on one page. It reuses `ClientForm`
+and the vehicle step's inline create dialog. The sole active branch is selected automatically;
+a branch-scoped user's branch remains fixed. The explicit `?mode=wizard` entry retains all
+three guided modes. Schedule prefill (`branchId`, `date`, `time`, `workPostId`) survives entry
+and switching to the wizard. A requested slot must still exist in fresh duration-aware
+availability; an invalid prefill requires a new selection. New walk-ins default to the earliest
+valid start/post. The 30-second operator pilot is a target, not a measured result.
+
+Changing branch clears vehicle and slot context; changing client clears the vehicle. Service
+changes query availability for the new duration. Confirmation is disabled for missing inputs,
+fetching/stale/unavailable slots and pending mutations; submit-time validation and an immediate
+lock prevent duplicate requests. Availability refreshes every 30 seconds and visible past-slot
+guards every 15 seconds. Both EN and UK labels are provided; the existing shell, fonts and
+light/dark tokens remain in use.
+
+`ScheduleView` reads the dedicated full-day `/orders/schedule` projection instead of deriving
+occupied orders from availability or the paginated order list. All returned overlapping orders
+are cards with plate, services, status, worker, post and planned end; clicking opens order detail.
+Dates/times and the server's now marker use the branch timezone. Overdue in-progress work is
+flagged as a warning, without claiming physical post occupancy beyond reservation policy.
+Unavailable workforce capacity is not presented as an order. Available raw starts appear above the order cards, enter
+quick intake and are revalidated for the selected service duration.
+
+Order detail exposes a booked/pending-only `RescheduleDialog` under `orders.update`. It uses the
+stored order duration and `excludeOrderId`; omitted post/worker values preserve assignments,
+and explicit choices send resource IDs. Changing any reschedule context clears the selection.
+Status transitions remain separately gated by `orders.update`.
+
+`OrderPayments` requires `payments.read`; recording additionally requires `payments.create`.
+PAID received and unpaid balance are distinct from the backend's cap, which is reserved by
+**all** recorded payment statuses. BigInt minor-unit helpers avoid floating-point additions.
+The panel shows partial/full payment, method and history, and directs operators to record
+payments before completion. New payment controls are hidden for completed/cancelled/no-show
+orders. It adds no refund or payment-status mutation.
+
+The schedule's `DaySummary` requires `analytics.view`, independently of schedule access. Its
+branch-date sales and PAID-payment-creation-date receipts are labeled separately, with payment
+method totals. Receipts may belong to orders scheduled on other dates, including cancelled or
+soft-deleted parents; this is an operational summary, not payroll/accounting. Money arrives as
+fixed decimal strings and is retained exactly for display.
+
 ### Directory layout
 
 ```
@@ -196,13 +240,14 @@ Connects to the `/events` namespace with `auth: { token }` and `transports: ['we
 reconnecting up to 10 times with a 1 s delay. Disconnects whenever the user logs out.
 Every handler is a **cache invalidation**, not a state patch:
 
-| Socket event           | Invalidated query keys                                                        |
-| ---------------------- | ----------------------------------------------------------------------------- |
-| `order.created`        | `['orders']`, `['dashboard']`                                                 |
-| `order.status_changed` | `['orders']`, `['dashboard']`                                                 |
-| `order.cancelled`      | `['orders']`, `['dashboard']`                                                 |
-| `payment.received`     | `['payments']`, `['orders']`, `['dashboard','kpi']`, `['dashboard','alerts']` |
-| `booking.confirmed`    | `['orders']`                                                                  |
+| Socket event           | Invalidated query keys                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------------------ |
+| `order.created`        | `['orders']`, `['availability']`, `['dashboard']`, `['day-summary']`                             |
+| `order.status_changed` | `['orders']`, `['availability']`, `['dashboard']`, `['day-summary']`                             |
+| `order.cancelled`      | `['orders']`, `['availability']`, `['dashboard']`, `['day-summary']`                             |
+| `order.rescheduled`    | `['orders']`, `['availability']`, `['dashboard']`, `['day-summary']`                             |
+| `payment.received`     | `['payments']`, `['orders']`, `['dashboard','kpi']`, `['dashboard','alerts']`, `['day-summary']` |
+| `booking.confirmed`    | `['orders']`                                                                                     |
 
 `payment.received` and `booking.confirmed` currently have **no backend emitter on the socket
 path** (see [architecture.md](./architecture.md#event-catalogue)) — the listeners are ready for
@@ -251,8 +296,8 @@ block, `uk` block).
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
 | `auth`                               | `/auth/login`, `/auth/register`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/change-password`, `/users/:id/reset-password`                                                                    | auth, users          |
 | `dashboard`                          | `/analytics/dashboard`, `/analytics/kpi`, `/analytics/live`, `/analytics/revenue`, `/analytics/services`, `/analytics/branches`, `/analytics/employees`, `/analytics/alerts`, `/analytics/online-booking` | analytics            |
-| `analytics`                          | `/analytics/revenue`, `/analytics/services`                                                                                                                                                               | analytics            |
-| `orders`                             | `/orders`, `/orders/:id`, `/orders/:id/status`, `/orders/:id/restore`, `/orders/availability`                                                                                                             | orders, scheduling   |
+| `analytics`                          | `/analytics/revenue`, `/analytics/services`, `/analytics/day-summary`                                                                                                                                     | analytics            |
+| `orders`                             | `/orders`, `/orders/:id`, `/orders/:id/status`, `/orders/:id/restore`, `/orders/:id/reschedule`, `/orders/availability`, `/orders/schedule`                                                               | orders, scheduling   |
 | `payments`                           | `/orders/:orderId/payments`                                                                                                                                                                               | payments             |
 | `clients`                            | `/clients`, `/clients/:id`, `/clients/:id/restore`, `/clients/merge`                                                                                                                                      | clients              |
 | `vehicles`                           | `/vehicles`, `/vehicles/:id`, `/vehicles/:id/restore`                                                                                                                                                     | vehicles             |
@@ -289,6 +334,13 @@ Production image: `frontend/Dockerfile` — `node:20-alpine` build stage → `ng
 `/assets` cached 1 year immutable; SPA fallback with `no-cache` on `index.html`).
 
 ### Tests
+
+- Isolated P0 verification uses `vite.p0.config.ts` (`envDir: false`, port 5187, no API proxy)
+  and `playwright.p0.config.ts` (`p0-e2e/`, existing local Chrome). The browser suite intercepts
+  only `/api/v1/**` with synthetic fixtures; it never loads `.env`/`.env.test` or writes a real
+  backend. Screenshots are retained in `frontend/test-results/p0-evidence/`. Run Vite in tmux,
+  then `pnpm exec playwright test --config playwright.p0.config.ts`; unit tests use
+  `pnpm exec vitest run --config vite.p0.config.ts`.
 
 - Vitest (`vitest.config.ts`, jsdom) — co-located `__tests__/` folders under
   `shared/api`, `shared/hooks`, `shared/stores`, `shared/components`, `shared/constants`,

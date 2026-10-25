@@ -26,6 +26,28 @@ export class RealtimeSubscriber {
     }
   }
 
+  @OnEvent(EventType.ORDER_RESCHEDULED)
+  handleOrderRescheduled(event: DomainEvent) {
+    try {
+      this.gateway.emitToTenant(
+        event.tenantId,
+        'order.rescheduled',
+        event.payload,
+      );
+      if (event.payload.branchId)
+        this.gateway.emitToBranch(
+          event.payload.branchId as string,
+          'order.rescheduled',
+          event.payload,
+        );
+    } catch (error) {
+      this.logger.error(
+        'Failed to emit order.rescheduled',
+        (error as Error).stack,
+      );
+    }
+  }
+
   @OnEvent(EventType.ORDER_STATUS_CHANGED)
   handleOrderStatusChanged(event: DomainEvent) {
     try {

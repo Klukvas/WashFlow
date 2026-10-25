@@ -15,12 +15,12 @@ export class ScheduleViewPage {
   constructor(private readonly page: Page) {
     this.scheduleTab = page.getByRole('tab', { name: /schedule/i });
     this.ordersTab = page.getByRole('tab', { name: /orders/i });
-    this.branchSelect = page.locator('select').first();
+    this.branchSelect = page.locator('#schedule-branch');
     this.datePicker = page.locator('input[type="date"]');
-    this.workPostFilter = page.locator('select').nth(1);
-    this.scheduleGrid = page.locator('table');
-    this.freeSlots = page.getByRole('button', { name: /free/i });
-    this.occupiedSlots = page.getByRole('button', { name: /occupied/i });
+    this.workPostFilter = page.locator('#schedule-post');
+    this.scheduleGrid = page.getByTestId('schedule-view');
+    this.freeSlots = page.getByTestId('schedule-free-slot');
+    this.occupiedSlots = page.getByTestId('schedule-order');
     this.legend = page.locator('.text-xs.text-muted-foreground').last();
     this.selectBranchMessage = page.getByText(/select a branch/i);
   }
@@ -39,6 +39,8 @@ export class ScheduleViewPage {
   }
 
   async selectBranch(index = 0) {
+    if (await this.branchSelect.isDisabled())
+      return this.branchSelect.inputValue();
     const options = this.branchSelect.locator('option:not([disabled])');
     const value = await options.nth(index).getAttribute('value');
     if (value) {

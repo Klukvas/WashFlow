@@ -138,6 +138,7 @@ describe('SchedulingService', () => {
         baseParams.workPostId,
         expectedBufferedStart,
         expectedBufferedEnd,
+        undefined,
       );
       expect(schedulingRepo.countOverlapping).toHaveBeenCalledWith(
         mockTx,
@@ -145,6 +146,7 @@ describe('SchedulingService', () => {
         baseParams.workPostId,
         expectedBufferedStart,
         expectedBufferedEnd,
+        undefined,
       );
     });
 
@@ -160,6 +162,7 @@ describe('SchedulingService', () => {
         expect.anything(),
         expect.anything(),
         expect.anything(),
+        undefined,
       );
       expect(schedulingRepo.countOverlapping).toHaveBeenCalledWith(
         specificTx,
@@ -167,6 +170,7 @@ describe('SchedulingService', () => {
         expect.anything(),
         expect.anything(),
         expect.anything(),
+        undefined,
       );
     });
 
@@ -182,6 +186,7 @@ describe('SchedulingService', () => {
         params.workPostId,
         params.scheduledStart,
         params.scheduledEnd,
+        undefined,
       );
     });
   });

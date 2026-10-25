@@ -11,6 +11,7 @@ import {
   HttpCode,
   ParseUUIDPipe,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
@@ -21,6 +22,9 @@ import type { JwtPayload } from '../../common/types/jwt-payload.type';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { RescheduleOrderDto } from './dto/reschedule-order.dto';
+import { OrderScheduleQueryDto } from './dto/order-schedule-query.dto';
+import { CheckOrderAvailabilityDto } from './dto/check-order-availability.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import { SchedulingService } from '../scheduling/scheduling.service';
 import { ApiTags } from '@nestjs/swagger';
@@ -46,22 +50,54 @@ export class OrdersController {
 
   @Get('availability')
   @Permissions('scheduling.read')
-  checkAvailability(
+  async checkAvailability(
     @CurrentTenant() tenantId: string,
-    @Query('branchId', ParseUUIDPipe) branchId: string,
-    @Query('date') date: string,
-    @Query('durationMinutes') durationMinutes?: string,
-    @Query('workPostId') workPostId?: string,
-    @Query('assignedEmployeeId') assignedEmployeeId?: string,
+    @CurrentBranch() userBranchId: string | null,
+    @Query() query: CheckOrderAvailabilityDto,
   ) {
+    if (userBranchId !== null && query.branchId !== userBranchId) {
+      throw new ForbiddenException(
+        'Cannot check availability for a different branch',
+      );
+    }
+    if (query.excludeOrderId) {
+      const order = await this.ordersService.findById(
+        tenantId,
+        query.excludeOrderId,
+        userBranchId,
+      );
+      if (order.branchId !== query.branchId)
+        throw new ForbiddenException(
+          'Excluded order belongs to a different branch',
+        );
+    }
     return this.schedulingService.checkAvailability({
       tenantId,
-      branchId,
-      workPostId,
-      assignedEmployeeId,
-      date: new Date(date),
-      durationMinutes: durationMinutes ? parseInt(durationMinutes, 10) : 30,
+      ...query,
+      date: new Date(query.date),
     });
+  }
+
+  @Get('schedule')
+  @Permissions('orders.read')
+  getSchedule(
+    @CurrentTenant() tenantId: string,
+    @CurrentBranch() branchId: string | null,
+    @Query() query: OrderScheduleQueryDto,
+  ) {
+    return this.ordersService.getSchedule(tenantId, query, branchId);
+  }
+
+  @Patch(':id/reschedule')
+  @Permissions('orders.update')
+  reschedule(
+    @CurrentTenant() tenantId: string,
+    @CurrentBranch() branchId: string | null,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RescheduleOrderDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.ordersService.reschedule(tenantId, id, dto, user.sub, branchId);
   }
 
   @Get(':id')

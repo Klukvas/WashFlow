@@ -25,6 +25,20 @@ export class AuditSubscriber {
     );
   }
 
+  @OnEvent(EventType.ORDER_RESCHEDULED)
+  async handleOrderRescheduled(event: DomainEvent) {
+    await this.log(
+      event.tenantId,
+      'Order',
+      event.payload.orderId as string,
+      AuditAction.UPDATE,
+      event.payload.previous as Record<string, unknown>,
+      event.payload.updated as Record<string, unknown>,
+      event.payload.userId as string,
+      { branchId: event.payload.branchId },
+    );
+  }
+
   @OnEvent(EventType.ORDER_STATUS_CHANGED)
   async handleOrderStatusChanged(event: DomainEvent) {
     await this.log(

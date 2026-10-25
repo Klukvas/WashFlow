@@ -181,13 +181,13 @@ describe('OrdersPage', () => {
     it('renders create order button', () => {
       render(<OrdersPage />, { wrapper: createWrapper() });
 
-      expect(screen.getByText('createOrder')).toBeInTheDocument();
+      expect(screen.getByText('quick.title')).toBeInTheDocument();
     });
 
     it('navigates to create page when clicking create button', () => {
       render(<OrdersPage />, { wrapper: createWrapper() });
 
-      fireEvent.click(screen.getByText('createOrder'));
+      fireEvent.click(screen.getByText('quick.title'));
       expect(mockNavigate).toHaveBeenCalledWith('/orders/create');
     });
   });

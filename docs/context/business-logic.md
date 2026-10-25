@@ -94,12 +94,19 @@ generated unique slug, an `Admin` `Role` granted every `Permission`, the first `
 
 ### Availability (`GET /orders/availability`, public booking)
 
+The authenticated endpoint validates UUIDs, a strict ISO date and an integer duration of
+1–1440 minutes (default 30). A branch-scoped caller requesting another branch gets `403`.
+An explicit post must belong to the selected tenant and branch. Explicit employees always
+use branch-scoped eligibility, including when the selected branch has no profiles; the
+zero-profile fallback applies only when no employee was requested.
+
 1. Resolve booking settings: **branch row → tenant row (`branchId: null`) → hard-coded
    defaults** (`src/common/utils/booking-settings.util.ts`).
 2. Verify the branch belongs to the tenant (`404` otherwise) and read its `timezone`.
-3. **Working-day check** — the local day-of-week is derived with `Intl.DateTimeFormat` in the
-   branch timezone; a non-working day returns `[]`.
-4. **Advance-booking check** — a date beyond `maxAdvanceBookingDays` returns `[]`.
+3. **Working-day check** — the requested date is a branch-local calendar label; its weekday
+   is evaluated without interpreting UTC midnight in the branch timezone. A non-working day returns `[]`.
+4. **Advance-booking check** — compare calendar labels against branch-local today plus
+   `maxAdvanceBookingDays`; a date beyond that limit returns `[]`.
 5. Working hours are converted from branch-local to UTC with `fromZonedTime`.
 6. Orders for all work posts in the day range are fetched in **one** query and grouped in
    memory (no N+1).
@@ -119,15 +126,22 @@ use the branch timezone across the entire half-open interval, including both sid
 transition. Seconds round the required end up to the next minute; cross-local-day intervals are
 rejected because profiles describe same-day shifts.
 
-### Reservation (order creation and restore)
+Authenticated availability may exclude one `excludeOrderId`, after current active tenant/branch
+access is checked. Both work-post and employee overlap predicates exclude that order.
+
+### Reservation (order creation, reschedule and restore)
 
 `runReservationTransaction` runs the whole reservation in a `Serializable` `$transaction`
 with a 10 s timeout and at most three total attempts. It retries `P2034` and raw-query
 `P2010` only when the PostgreSQL adapter cause identifies `TransactionWriteConflict` or
-SQLSTATE `40001` / `40P01`. Other raw SQL failures escape unchanged. Persistent contention
+SQLSTATE `40001` / `40P01`. Direct COMMIT `DriverAdapterError` failures are also retried
+only for the installed adapter's exact serialization/deadlock cause shapes. Other raw SQL
+and adapter failures escape unchanged. Persistent contention
 returns a friendly `409`; other errors retain their business status.
 Create and non-terminal restore use the same resource reservation path: validate the active
-branch/post, lock the stable work-post row first, then check overlapping orders:
+branch/post, lock the stable work-post row first, then check overlapping orders. Reschedule
+first locks/re-reads its active tenant/branch-scoped order, then reserves the target resources
+while excluding itself from both post conflict queries and employee overlap predicates:
 
 ```sql
 SELECT id FROM orders
@@ -189,6 +203,10 @@ NO_SHOW                     → (terminal)
 ### Creation — `OrdersService.create`, in order
 
 1. `validateBranchScope` — a branch-scoped user may only create in their own branch.
+   A supplied key is bound to the actor and normalized submitted intent. Inside the reservation
+   transaction, a matching replay reads the current active tenant/branch-scoped order before
+   running new-booking checks; it emits no second event. Public intent uses submitted contact
+   and vehicle fields rather than CRM ids, so a receipt survives later CRM matching changes.
 2. At least one `serviceId` is required.
 3. `scheduledStart` may not be in the past.
 4. Client **and** vehicle must belong to the tenant (`validateClientVehicleOwnership`).
@@ -197,18 +215,45 @@ NO_SHOW                     → (terminal)
 6. Price and duration are summed from the selected services;
    `scheduledEnd = scheduledStart + totalDuration`.
 7. Booking settings are resolved; `enforceBookingConstraints` rejects non-working days
-   (`getUTCDay()`) and dates beyond `maxAdvanceBookingDays`.
+   using the branch-local date label and dates beyond `maxAdvanceBookingDays`.
 8. `status` is `BOOKED_PENDING_CONFIRMATION` when `source === 'WEB'`, otherwise `BOOKED`.
-9. `Serializable` transaction: idempotency check/lock → work-post reservation → employee
-   assignment → `order.create` with nested `OrderService` rows (price snapshot) → idempotency
-   result saved.
+9. On a cache miss, the same `Serializable` transaction performs current business validation
+   using its own connection for active client/vehicle, service and booking-settings reads;
+   raw transaction queries explicitly scope tenant, soft deletion and service activity. Then:
+   work-post reservation → employee assignment → `order.create` with nested `OrderService`
+   rows (price snapshot) → idempotency result saved.
 10. After commit, `OrderCreatedEvent` is dispatched.
 
 ### Status change — `OrdersService.updateStatus`
 
-Runs in a transaction: loads the order, validates the transition against
-`VALID_STATUS_TRANSITIONS`, updates, then dispatches `OrderStatusChangedEvent` — plus
+Uses the bounded reservation transaction/retry helper, locks and re-reads the active
+tenant/branch-scoped order, validates `VALID_STATUS_TRANSITIONS`, updates, then dispatches
+`OrderStatusChangedEvent` — plus
 `OrderCancelledEvent` when the new status is `CANCELLED`.
+
+### Reschedule and branch-day views
+
+`PATCH /orders/:id/reschedule` accepts only `BOOKED` or `BOOKED_PENDING_CONFIRMATION`.
+The timezone-qualified start must pass current branch booking constraints. Omitted post/employee
+ids preserve their stored values, including legacy null assignments; explicit null is rejected.
+Stored duration, branch, services/prices, total, payments and status are preserved. The scoped
+row lock and resource reservation share one transaction. A committed change emits exactly one
+`order.rescheduled` for audit/realtime; a no-op emits none. No created/status event is reused.
+
+`GET /orders/schedule` returns the whole overlapping branch-local day without contact or
+payment data. It excludes deleted/cancelled/no-show orders but retains completed history.
+On the current local day, older `IN_PROGRESS` overruns remain visible and are marked overdue
+when their scheduled end is before now. This display does not extend reservation capacity.
+
+`GET /analytics/day-summary` separates non-deleted scheduled-start-date sales from
+`PAID.createdAt` receipts. Counts/status groups include all order statuses; scheduled totals
+exclude cancelled/no-show and completed totals use completed orders only. Receipts retain
+paid entries on cancelled/deleted parents, with explicit tenant and branch relation filters.
+Prisma Decimal aggregates become fixed two-decimal strings. Legacy analytics are unchanged.
+
+Both day views require exact `YYYY-MM-DD` dates and use `branchDayRange`: independently
+convert each local midnight, allowing 23/25-hour DST days. Create/reschedule validation and
+availability share branch-calendar weekday/advance checks, including negative-offset zones.
 
 ### Delete and restore
 
@@ -226,8 +271,14 @@ restore without changing the row.
 comparison against the order total, and insertion all happen under that lock. A waiter sees
 the preceding committed payment, so two 75 payments against a 100 order cannot both succeed.
 Amounts such as 0.10 + 0.20 remain exact through Prisma Decimal arithmetic and persistence.
-`PaymentReceivedEvent` is dispatched only after commit. The HTTP idempotency interceptor is
-separate from this monetary concurrency guarantee.
+Both payment routes check the current active parent order against the caller's tenant and
+branch (`404` outside that scope). Creation performs this check under the order lock before
+any idempotency replay. The optional validated key, normalized payment intent and payment
+insertion share that transaction. Identical concurrent retries return the same payment;
+changed actor, method/path or payload gets `409`. A valid retry may recover a payment after
+order completion, but cannot bypass current branch access or soft deletion.
+`PaymentReceivedEvent` is dispatched once after a new payment commits and never on replay.
+Existing `PENDING` payments still reserve the cap; this change adds no refund/accounting rule.
 
 ---
 
@@ -316,22 +367,24 @@ New tenants get `TRIAL` with `TRIAL_DEFAULTS` (derived from `PLAN_LIMITS[TRIAL]`
 
 ## Idempotency
 
-Two mechanisms, deliberately:
+Order creation, both public-booking routes and payment creation use service-level idempotency
+inside their own mutation transaction. The legacy `IdempotencyInterceptor` remains available
+in the module but is no longer attached to an HTTP route.
 
-| Mechanism         | Used by                                                                       | How it works                                                                                                                        |
-| ----------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| **Service-level** | `POST /orders`, `POST /public/booking/:slug/book`, `POST /public/widget/book` | `checkTx` → `acquireLockTx` → work → `saveResultTx`, all inside the same `Serializable` transaction                                 |
-| **Interceptor**   | `POST /orders/:orderId/payments`                                              | `IdempotencyInterceptor` reads the `idempotency-key` header, replays a cached response, or stores the result after the handler runs |
-
-Shared rules:
-
-- Key source: the `idempotency-key` request header (also allow-listed in CORS).
-- The interceptor ignores keys longer than 128 chars or not matching `^[\w\-:.]+$`.
-- Tenant discriminator: the authenticated `tenantId`, else `slug:<tenantSlug>` from the route
-  params. With neither, idempotency is skipped and a warning is logged.
-- `acquireLock` is an `INSERT … ON CONFLICT DO NOTHING`: the first caller wins;
-  a concurrent second caller gets `409 Request is being processed`.
-- A stored row with `statusCode > 0` and a future `expiresAt` is a **hit** and is replayed.
+- Optional `idempotency-key` header: nonempty, at most 128 characters, matching `^[\w\-:.]+$`;
+  invalid supplied keys return `400`.
+- Storage is tenant + key. Versioned `order-v1` / `payment-v1` envelopes bind the actor, canonical
+  method/path and SHA-256 fingerprint of normalized submitted intent; they store the resource id.
+  Public bookings use a separate `/public/book` identity and a null actor with submitted customer
+  identity/intent. Private order and payment routes bind the authenticated actor.
+- Matching retries fetch the current scoped resource. They do not rerun dynamic pricing/settings
+  checks or dispatch duplicate events. Public retries always pass through the confirmation projection.
+- A live key with changed route, actor or intent, or an unversioned historical body, returns `409`.
+  Old cache bodies cannot safely establish request ownership: reconcile the existing order/payment
+  before choosing a new key, since a new key can create a second mutation.
+- Atomic conditional UPSERT replaces expired keys. A losing payment claim rereads the committed
+  winner; order reservations use their existing bounded Serializable retry. Failed transactions
+  leave neither a mutation nor a cached success.
 - TTL 24 h; `IdempotencyCleanupService` prunes hourly.
 
 ---
@@ -370,8 +423,10 @@ Both resolve the tenant and require `isActive`, else `404 Car wash not found`.
 
 `createBookingInternal`:
 
-1. Branch must belong to the tenant.
-2. Booking settings are resolved; `allowOnlineBooking === false` → `403 Online booking is not available`.
+1. Branch must be active, non-deleted and belong to the active tenant. A matching public
+   idempotency receipt is recovered here, before availability checks or CRM writes; it still
+   uses the submitted-field confirmation projection.
+2. On a cache miss, booking settings are resolved; `allowOnlineBooking === false` → `403 Online booking is not available`.
 3. When a `workPostId` is supplied, a **pre-check** (`validateNoOverlap`) fails fast with
    `409 This time slot just became unavailable. Please select a different time.` so no orphan
    client/vehicle rows are created.
@@ -404,10 +459,11 @@ Services emit `DomainEvent`s; subscribers do the work. Full catalogue, emitters 
 [architecture.md](./architecture.md#event-catalogue).
 
 - **Audit** — `AuditSubscriber` writes `audit_logs` for order created/status-changed/cancelled,
-  client deleted/merged, auth login/login-failed/password-changed/logout, and super-admin tenant
-  access. Emails are masked (`ab***@example.com`). Failures are logged and swallowed.
-- **Realtime** — `RealtimeSubscriber` emits `order.created`, `order.status_changed`,
-  `order.cancelled` to `tenant:{id}` and, when present, `branch:{id}`.
+  and an `UPDATE` with previous/updated values for `order.rescheduled`; also client deleted/merged,
+  auth login/login-failed/password-changed/logout, and super-admin tenant access.
+  Emails are masked (`ab***@example.com`). Failures are logged and swallowed.
+- **Realtime** — `RealtimeSubscriber` emits `order.created`, `order.rescheduled`,
+  `order.status_changed`, `order.cancelled` to `tenant:{id}` and, when present, `branch:{id}`.
 - **Jobs** — `JobsSubscriber` queues an order-confirmation notification and an analytics record
   on `order.created` (plus a 30-minute confirmation timeout for `WEB` orders), and a
   status-update notification on `order.status_changed`.

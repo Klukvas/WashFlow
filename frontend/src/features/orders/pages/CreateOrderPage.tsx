@@ -1,3 +1,4 @@
+import { QuickOrderForm } from '../components/QuickOrderForm';
 import { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
@@ -76,6 +77,15 @@ function getModeSteps(mode: WizardMode): {
 }
 
 export function CreateOrderPage() {
+  const [params] = useSearchParams();
+  return params.get('mode') === 'wizard' ? (
+    <OrderWizardPage />
+  ) : (
+    <QuickOrderForm />
+  );
+}
+
+function OrderWizardPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useTranslation('orders');

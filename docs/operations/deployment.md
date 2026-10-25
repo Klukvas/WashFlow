@@ -1,0 +1,121 @@
+# P0 application deployment
+
+The existing main CI gates build/test the application, publish full commit-SHA backend and
+frontend images, then run the guarded deployment helpers in `scripts/deploy/`. This route
+requires the existing `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` and Docker Hub image
+configuration. It adds no production secret or environment variable. No workflow has been
+dispatched and no production access is established by local verification.
+
+## Preconditions and read-only gates
+
+The remote user needs Docker/Compose access, Python 3.11+, write access to the existing
+`/opt/washflow` deployment directory, and adequate disk/memory. The existing base files must
+be regular non-symlink `/opt/washflow/docker-compose.yml` and `.env`. Their contents are never
+printed or copied; their hashes and the running project/container/image/mount metadata are
+recorded in a fresh private `releases/<full-sha>-<run-id>-<attempt>/preflight.json`.
+
+Before any app update, the helper requires exactly one healthy running backend/frontend/
+PostgreSQL/Redis service in the same existing Compose project and directory, no other
+container sharing the upload volume or backend image, PostgreSQL 16/UTF8 and matching PG16
+archive tools. A database socket inside the existing PostgreSQL container uses its existing
+authentication context; passwords/connection URLs are never extracted or exported.
+
+`expected.py` applies the repository's migration SQL to a fresh network-none/tmpfs PG16
+reference container on the CI runner. The container is removed by exact task-owned name.
+It records every migration's full SHA256 and a canonical public-schema catalog fingerprint.
+Production checks use read-only transactions: all expected successful migration names and
+checksums must match exactly, with no pending, unresolved failed or duplicate successful
+entries. Explicitly rolled-back historical attempts are ignored. Catalog checks cover table,
+column/type/default/nullability, constraint/index, enum, trigger and routine metadata; physical
+column order is ignored. Unexpected public objects or drift fail closed. No application rows
+are inspected and no production migration/schema command is run.
+
+The full-SHA images are pulled while the old app is running. Their OCI revision, Docker
+platform, immutable image IDs and repository digests are checked/recorded. An architecture
+mismatch refuses deployment; this route does not introduce multi-platform builds. Free space
+must cover twice the database plus upload size and 2 GiB headroom, both before and after pulls;
+available memory must be at least 256 MiB. These conservative checks may require an operator
+capacity decision; the script does not delete anything to free space.
+
+## Paired backup and cutover
+
+Main workflow runs are not cancelled by newer main commits. A host file lock serializes
+deployments. A heartbeat pipe detects SSH EOF or 30 seconds of silence; interrupted commands
+are bounded and recovery is attempted. An abrupt host/process kill can still prevent recovery.
+
+The existing backend receives a 45-second graceful stop. That stops its HTTP, cron and BullMQ
+writers together and leaves frontend/PostgreSQL/Redis running. The helper rechecks topology,
+requires no other database client sessions, and repeats schema/configuration checks. This
+blocks the app's ingress through the stopped backend; the checks assume there are no hidden
+host/external upload writers. Unknown writers or client sessions refuse cutover.
+
+While the backend remains stopped, a fresh private `backup/` receives a PostgreSQL custom
+dump and the stopped backend's uploads tar through Docker. The helper validates `pg_restore
+--list`, every tar member/path/type and readable file bytes, then records and rechecks SHA256
+digests in a completed backup manifest. Symlinks/hardlinks/special/traversal/duplicate archive
+members are refused. No archive is extracted. A failed/partial bundle remains private and is
+not an eligible verified backup. A backup/stop failure recreates **both** old immutable image
+IDs with the node-only rollback override and bounded health checks, refreshing frontend DNS.
+It never uses `docker start` to rerun a legacy migration-bearing backend command.
+
+Only after backup verification does an override select the two recorded immutable image IDs.
+The existing `.env` and base Compose remain byte-identical. The narrowly explicit P0 runtime
+override uses `node dist/main.js` for backend: startup migrations are bypassed **only after the
+zero-pending/schema-parity gate**. The normal base Compose policy is not rewritten. Both app
+services are recreated with `--force-recreate --no-deps --no-build --pull never`, including
+an unchanged frontend image so its DNS and Compose metadata refresh together with backend;
+no infrastructure recreation,
+`remove-orphans`, image pruning, registry reconfiguration, seed or real-data smoke mutation
+occurs. Health checks require the expected image ID as well as healthy status, with deadlines.
+
+Backend startup resumes HTTP, cron and BullMQ together before health is confirmed. There is
+no separate worker pause or notification/provider policy change. Background writes can begin
+immediately. Success/failure output is a bounded status JSON; raw subprocess errors, full
+inspect/config/environment dumps and application logs are withheld.
+
+## Rollback and retained evidence
+
+`rollback.json` retains both old immutable image IDs. The failure phase is set before Compose
+updates, so a partial recreate also attempts app-only rollback and bounded health checks.
+The rollback override also bypasses migration startup with `node dist/main.js`. Subsequent
+deployments accept an owned private `images.json` or `rollback.json` only when its image IDs
+match the running apps and it contains exactly the image/node-command policy above. Old images,
+the live environment/base Compose, database and volumes are never removed or repinned by tag.
+Recovery failure is reported as failure; do not assume that a failed CI job restored health.
+
+An operator may inspect the private `preflight.json`, `images.json`, `rollback.json`, backup
+manifest and `result.json` on the host. Never publish dump/upload contents as CI artifacts.
+For a manually reviewed application rollback, use the recorded project from preflight:
+
+```bash
+docker compose --project-name <recorded-project> --project-directory /opt/washflow \
+  --env-file /opt/washflow/.env -f /opt/washflow/docker-compose.yml \
+  -f /opt/washflow/releases/<recorded-release>/rollback.json \
+  up -d --force-recreate --no-deps --no-build --pull never backend frontend
+```
+
+Verify the exact expected image IDs and both health statuses afterward. App rollback cannot
+undo post-start database writes, queue deliveries or provider effects. There is no automatic
+database restore or migration-down path. Data recovery remains a separately coordinated
+[paired new-target restore](backup-recovery.md), including Redis/external reconciliation.
+Backups here are local, unencrypted, unpruned logical archives; offsite/PITR/retention and
+production-sized recovery objectives are not established by this deployment helper.
+
+## Host trust and local verification
+
+The workflow retains its existing `ssh-keyscan` trust-on-first-use bootstrap because no pinned
+host-key secret is evidenced. This is a documented trust limitation, not independent origin
+authentication. Both SSH commands require strict checking against that collected host key,
+BatchMode, IdentitiesOnly and disabled UpdateHostKeys; no verification bypass is added.
+
+```bash
+WASHFLOW_DEPLOY_DOCKER_TEST=1 python3 -B -m unittest discover -s test/deploy -p 'test_*.py' -v
+actionlint .github/workflows/ci.yml
+git diff --check
+```
+
+Fixtures cover Docker protocol failure ordering, config preservation, backup refusals,
+partial cutover/health/interruption rollback, SSH options and heartbeat EOF/silence. The opt-in
+real PG16 case verifies the 15-migration chain, read-only catalog gate, semantic column-order
+equivalence versus type/null/index drift, and custom dump listing. It uses only newly created
+network-none/tmpfs containers, with no published ports, shared volumes or production network.

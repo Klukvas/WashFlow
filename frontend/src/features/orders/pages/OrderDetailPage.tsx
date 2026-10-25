@@ -1,3 +1,5 @@
+import { OrderPayments } from '@/features/payments/components/OrderPayments';
+import { RescheduleDialog } from '../components/RescheduleDialog';
 import { useParams, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Trash2, RotateCcw } from 'lucide-react';
@@ -27,6 +29,7 @@ export function OrderDetailPage() {
   const { data: order, isLoading } = useOrder(id!);
   const { mutate: deleteOrderMut, isPending: deleting } = useDeleteOrder();
   const { mutate: restoreOrderMut, isPending: restoring } = useRestoreOrder();
+  const [rescheduling, setRescheduling] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   if (isLoading) {
@@ -138,10 +141,12 @@ export function OrderDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <StatusTransition
-                orderId={order.id}
-                currentStatus={order.status}
-              />
+              <PermissionGate permission="orders.update">
+                <StatusTransition
+                  orderId={order.id}
+                  currentStatus={order.status}
+                />
+              </PermissionGate>
             </CardContent>
           </Card>
 
@@ -180,6 +185,9 @@ export function OrderDetailPage() {
               </div>
             </CardContent>
           </Card>
+          <PermissionGate permission="payments.read">
+            <OrderPayments order={order} />
+          </PermissionGate>
         </div>
 
         <div className="space-y-6">
@@ -257,6 +265,18 @@ export function OrderDetailPage() {
                   <span className="font-medium">{order.workPost.name}</span>
                 </div>
               )}
+              {(order.status === 'BOOKED' ||
+                order.status === 'BOOKED_PENDING_CONFIRMATION') && (
+                <PermissionGate permission="orders.update">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setRescheduling(true)}
+                  >
+                    {t('reschedule.title')}
+                  </Button>
+                </PermissionGate>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">
                   {t('fields.source')}
@@ -281,6 +301,13 @@ export function OrderDetailPage() {
         </div>
       </div>
 
+      {rescheduling && (
+        <RescheduleDialog
+          key={order.updatedAt}
+          order={order}
+          onClose={() => setRescheduling(false)}
+        />
+      )}
       <ConfirmDialog
         open={deleteConfirm}
         onClose={() => setDeleteConfirm(false)}

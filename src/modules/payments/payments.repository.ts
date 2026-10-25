@@ -2,11 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { Order, Prisma } from '@prisma/client';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 
-type LockedOrder = Pick<Order, 'id' | 'status' | 'totalPrice'>;
-type TenantClient = ReturnType<TenantPrismaService['forTenant']>;
-type PaymentTransaction = Parameters<
-  Parameters<TenantClient['$transaction']>[0]
->[0];
+type LockedOrder = Pick<Order, 'id' | 'status' | 'totalPrice' | 'branchId'>;
+type PaymentTransaction = Prisma.TransactionClient;
 
 @Injectable()
 export class PaymentsRepository {
@@ -33,12 +30,12 @@ export class PaymentsRepository {
         // Lock the stable parent row, even when there are no payment rows yet.
         // Raw SQL bypasses tenant/soft-delete extensions, so both filters are explicit.
         const orders = await tx.$queryRaw<LockedOrder[]>`
-          SELECT id, status, "totalPrice" FROM orders
+          SELECT id, status, "totalPrice", "branchId" FROM orders
           WHERE id = ${orderId} AND "tenantId" = ${tenantId}
             AND "deletedAt" IS NULL
           FOR UPDATE
         `;
-        return callback(tx, orders[0] ?? null);
+        return callback(tx as unknown as PaymentTransaction, orders[0] ?? null);
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
     );
@@ -50,6 +47,15 @@ export class PaymentsRepository {
     orderId: string,
   ) {
     return tx.payment.findMany({ where: { tenantId, orderId } });
+  }
+
+  async findByIdTx(
+    tx: PaymentTransaction,
+    tenantId: string,
+    orderId: string,
+    id: string,
+  ) {
+    return tx.payment.findFirst({ where: { id, tenantId, orderId } });
   }
 
   async createTx(

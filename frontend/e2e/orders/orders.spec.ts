@@ -38,7 +38,7 @@ test.describe('Orders list', () => {
 
 test.describe('Create Order wizard', () => {
   test('shows mode selector', async ({ page }) => {
-    await page.goto('/orders/create');
+    await page.goto('/orders/create?mode=wizard');
     await page.waitForLoadState('networkidle');
 
     // Mode selector should show 3 mode cards
@@ -50,7 +50,7 @@ test.describe('Create Order wizard', () => {
   test('next button disabled until branch + client selected', async ({
     page,
   }) => {
-    await page.goto('/orders/create');
+    await page.goto('/orders/create?mode=wizard');
     await page.waitForLoadState('networkidle');
 
     // Select client-first mode

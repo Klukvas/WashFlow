@@ -147,7 +147,7 @@ sequenceDiagram
   participant G3 as TenantGuard (APP_GUARD)
   participant G4 as PermissionsGuard (per controller)
   participant P as ValidationPipe
-  participant I as Interceptors (Metrics, Transform, Idempotency*)
+  participant I as Interceptors (Metrics, Transform)
   participant CT as Controller
   participant SV as Service
   participant RP as Repository
@@ -174,8 +174,15 @@ sequenceDiagram
   I-->>C: 2xx JSON
 ```
 
-`*` `IdempotencyInterceptor` is applied per handler (`@UseInterceptors(IdempotencyInterceptor)`),
-currently only on `POST /orders/:orderId/payments`.
+Request-aware idempotency runs inside order/payment service transactions, after current
+scope checks and before a new mutation. No HTTP route currently uses the legacy
+`IdempotencyInterceptor`; the module still exports it for compatibility.
+
+Reschedule/status changes lock and re-read the active scoped order inside the bounded
+reservation transaction. Reschedule then reserves target post/employee capacity excluding
+its own id, preserving stored money and duration. Branch-day schedule is a minimal projection;
+day-summary aggregates sales and PAID receipts in a repeatable-read snapshot with explicit
+tenant/branch predicates. Shared branch-calendar helpers independently convert local midnights.
 
 ### Guards, in order
 
@@ -286,11 +293,12 @@ flowchart TB
 
 ### Event catalogue
 
-`EventType` (`src/common/events/event-types.ts`) — 18 values:
+`EventType` (`src/common/events/event-types.ts`) — 19 values:
 
 | Event key                       | Emitted by                                                      | Consumed by                                                                             |
 | ------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | `order.created`                 | `OrdersService.create`                                          | `AuditSubscriber`, `RealtimeSubscriber`, `JobsSubscriber`                               |
+| `order.rescheduled`             | `OrdersService.reschedule`                                      | `AuditSubscriber`, `RealtimeSubscriber`; no job/notification handler |
 | `order.status_changed`          | `OrdersService.updateStatus`                                    | `AuditSubscriber`, `RealtimeSubscriber`, `JobsSubscriber`                               |
 | `order.cancelled`               | `OrdersService.updateStatus` when the new status is `CANCELLED` | `AuditSubscriber`, `RealtimeSubscriber`                                                 |
 | `order.updated`                 | declared in `EventType`, **no dispatch site in `src/`**         | —                                                                                       |
@@ -418,8 +426,8 @@ with stable work-post locks before employee locks and bounded retry; payment cre
 lock covering quota check and mutation. See the
 [business rules](./business-logic.md) for each invariant. Raw settings resolution uses a
 compound tenant/branch key for overrides; order reservation separately validates the active
-parent and resources. Branch-scoped order and work-post operations apply the user's branch
-as an additional boundary.
+parent and resources. Branch-scoped order, payment and work-post operations apply the user's branch
+as an additional boundary. Authenticated availability rejects a mismatched requested branch.
 
 ---
 
@@ -484,7 +492,7 @@ Full import graph and per-module detail: [modules.md](./modules.md).
 | Employee auto-assignment inside the same transaction                        | Removes the TOCTOU window between "slot free" and "worker free"    | Order creation holds locks slightly longer                                                                                                                            |
 | Domain events via `EventEmitter2`                                           | Audit / realtime / queueing decoupled from the request path        | In-process only — events are lost on crash; not a durable outbox                                                                                                      |
 | BullMQ on Redis for side effects                                            | Retries, backoff, delayed jobs                                     | Redis becomes a hard runtime dependency                                                                                                                               |
-| Hybrid idempotency (service-level + interceptor)                            | Transactional endpoints need the key inside their own transaction  | Two mechanisms to understand; see [business-logic.md](./business-logic.md#idempotency)                                                                                |
+| Transactional request-aware idempotency                                     | Transactional endpoints need the key inside their own transaction  | Versioned actor/route/payload identities; historical unversioned keys fail closed with 409; see [business-logic.md](./business-logic.md#idempotency)                  |
 | Global `JwtAuthGuard` + `@Public()`                                         | New endpoints are protected by default                             | Public routes need explicit throttling, added by hand                                                                                                                 |
 | Soft delete + restore on 9 models                                           | Operator mistakes are recoverable                                  | Every query path must respect `deletedAt`; uniqueness interacts with it (see below)                                                                                   |
 | Zod-validated env at startup                                                | Misconfiguration fails immediately with a readable error           | Adding a variable means touching `env.validation.ts` **and** `configuration.ts`                                                                                       |
@@ -517,7 +525,7 @@ unique per tenant; the tenant-level row (`branchId = NULL`) is not constrained a
 ## 8. Degraded behaviour
 
 | Missing configuration                                   | Effect                                                                                                                                                                                                                                                                    |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `RESEND_API_KEY` empty                                  | `EmailService` logs at debug and returns; no email is sent. Never throws.                                                                                                                                                                                                 |
 | Resend failing repeatedly                               | `CircuitBreaker` (`src/common/utils/circuit-breaker.ts`, threshold 5, reset 30 s) opens; sends are skipped with a warning                                                                                                                                                 |
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_SUPPORT_CHAT_ID` empty | `SupportService` warns "request dropped"; `POST /support` still returns success                                                                                                                                                                                           |

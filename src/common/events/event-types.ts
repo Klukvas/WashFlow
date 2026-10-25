@@ -1,5 +1,6 @@
 export enum EventType {
   ORDER_CREATED = 'order.created',
+  ORDER_RESCHEDULED = 'order.rescheduled',
   ORDER_UPDATED = 'order.updated',
   ORDER_STATUS_CHANGED = 'order.status_changed',
   ORDER_CANCELLED = 'order.cancelled',

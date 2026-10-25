@@ -1,3 +1,6 @@
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -55,7 +58,7 @@ describe('PaymentsList', () => {
   it('shows empty state when no payments', () => {
     mockData = [];
     render(<PaymentsList orderId="o1" />, { wrapper: createWrapper() });
-    expect(screen.getByText('No payments recorded')).toBeInTheDocument();
+    expect(screen.getByText('payment.empty')).toBeInTheDocument();
   });
 
   it('renders payment rows with amount, datetime, method, status', () => {
@@ -78,12 +81,12 @@ describe('PaymentsList', () => {
 
     render(<PaymentsList orderId="o1" />, { wrapper: createWrapper() });
 
-    expect(screen.getByText('$100.00')).toBeInTheDocument();
-    expect(screen.getByText('$50.00')).toBeInTheDocument();
-    expect(screen.getByText('CASH')).toBeInTheDocument();
-    expect(screen.getByText('CARD')).toBeInTheDocument();
-    expect(screen.getByText('PAID')).toBeInTheDocument();
-    expect(screen.getByText('PENDING')).toBeInTheDocument();
+    expect(screen.getByText('100.00 ₴')).toBeInTheDocument();
+    expect(screen.getByText('50.00 ₴')).toBeInTheDocument();
+    expect(screen.getByText('payment.method.CASH')).toBeInTheDocument();
+    expect(screen.getByText('payment.method.CARD')).toBeInTheDocument();
+    expect(screen.getByText('payment.status.PAID')).toBeInTheDocument();
+    expect(screen.getByText('payment.status.PENDING')).toBeInTheDocument();
   });
 
   it('formats datetime', () => {
@@ -104,6 +107,6 @@ describe('PaymentsList', () => {
   it('shows empty state when data is null', () => {
     mockData = undefined;
     render(<PaymentsList orderId="o1" />, { wrapper: createWrapper() });
-    expect(screen.getByText('No payments recorded')).toBeInTheDocument();
+    expect(screen.getByText('payment.empty')).toBeInTheDocument();
   });
 });

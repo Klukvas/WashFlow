@@ -1,4 +1,12 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { branchDayRange } from '../../common/utils/branch-day.util';
+import { DaySummaryQueryDto } from './dto/day-summary-query.dto';
 import { AnalyticsRepository } from './analytics.repository';
 import { AnalyticsQueryDto } from './dto/analytics-query.dto';
 
@@ -23,6 +31,62 @@ export class AnalyticsService {
         'You do not have access to the requested branch',
       );
     }
+  }
+
+  async getDaySummary(
+    tenantId: string,
+    query: DaySummaryQueryDto,
+    userBranchId: string | null = null,
+  ) {
+    this.validateBranchScope(userBranchId, query);
+    const branchId = userBranchId ?? query.branchId;
+    if (!branchId)
+      throw new BadRequestException('A single branchId is required');
+    const branch = await this.analyticsRepo.findDaySummaryBranch(
+      tenantId,
+      branchId,
+    );
+    if (!branch) throw new NotFoundException('Branch not found');
+    const timezone = branch.timezone ?? 'UTC';
+    const range = branchDayRange(query.date, timezone);
+    const { sales, receipts } = await this.analyticsRepo.getDaySummary(
+      tenantId,
+      branchId,
+      range,
+    );
+    const zero = () => new Prisma.Decimal(0);
+    const completed = sales.find((row) => row.status === 'COMPLETED');
+    return {
+      branchId,
+      date: query.date,
+      timezone,
+      range,
+      sales: {
+        orderCount: sales.reduce((sum, row) => sum + row._count._all, 0),
+        completedCount: completed?._count._all ?? 0,
+        scheduledTotal: sales
+          .filter((row) => !['CANCELLED', 'NO_SHOW'].includes(row.status))
+          .reduce((sum, row) => sum.plus(row._sum.totalPrice ?? 0), zero())
+          .toFixed(2),
+        completedTotal: (completed?._sum.totalPrice ?? zero()).toFixed(2),
+        byStatus: sales.map((row) => ({
+          status: row.status,
+          count: row._count._all,
+          total: (row._sum.totalPrice ?? zero()).toFixed(2),
+        })),
+      },
+      receipts: {
+        count: receipts.reduce((sum, row) => sum + row._count._all, 0),
+        total: receipts
+          .reduce((sum, row) => sum.plus(row._sum.amount ?? 0), zero())
+          .toFixed(2),
+        byMethod: receipts.map((row) => ({
+          method: row.method,
+          count: row._count._all,
+          total: (row._sum.amount ?? zero()).toFixed(2),
+        })),
+      },
+    };
   }
 
   async getDashboard(

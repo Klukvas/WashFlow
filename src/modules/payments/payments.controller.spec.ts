@@ -37,8 +37,12 @@ describe('PaymentsController', () => {
     it('should delegate to service.findByOrderId with tenantId and orderId', async () => {
       const expected = [{ id: 'pay-1', amount: 100 }];
       service.findByOrderId.mockResolvedValue(expected);
-      const result = await controller.findByOrder(tenantId, orderId);
-      expect(service.findByOrderId).toHaveBeenCalledWith(tenantId, orderId);
+      const result = await controller.findByOrder(tenantId, orderId, null);
+      expect(service.findByOrderId).toHaveBeenCalledWith(
+        tenantId,
+        orderId,
+        null,
+      );
       expect(result).toEqual(expected);
     });
   });
@@ -49,12 +53,20 @@ describe('PaymentsController', () => {
       const user = { sub: 'user-123' };
       const expected = { id: 'pay-2', ...dto };
       service.create.mockResolvedValue(expected);
-      const result = await controller.create(tenantId, orderId, dto, user);
+      const result = await controller.create(
+        tenantId,
+        orderId,
+        dto,
+        user,
+        null,
+      );
       expect(service.create).toHaveBeenCalledWith(
         tenantId,
         orderId,
         dto,
         user.sub,
+        undefined,
+        null,
       );
       expect(result).toEqual(expected);
     });

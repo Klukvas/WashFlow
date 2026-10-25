@@ -10,24 +10,24 @@ What WashFlow does, and every screen that exposes it. Product-level view — for
 
 ## Backend capabilities
 
-| Capability              | Summary                                                                                                                                                |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Multi-tenant CRUD       | Tenants, users, roles, permissions, branches, work posts, services, clients, vehicles                                                                  |
-| Order management        | State machine, transactional slot reservation, workforce auto-assignment, idempotent creation, restore                                                 |
-| Scheduling              | Slot generation from booking settings, buffer handling, work-post + workforce capacity, `FOR UPDATE` locking                                           |
-| Workforce               | `EmployeeProfile` per user with working hours; drives availability and auto-assignment                                                                 |
-| Payments                | Decimal payment totals; order-row locking prevents concurrent overpayment; idempotent via `idempotency-key`                                                                                            |
-| Analytics               | Dashboard summary, KPIs, live operations, revenue, popular services, per-branch and per-employee stats, anomaly alerts, online-booking mix, CSV export |
-| Audit                   | Event-driven, append-only log with entity/action/date filtering                                                                                        |
-| Subscriptions & billing | Plan catalogue, usage and limits, add-ons, Paddle checkout + webhooks, trial lifecycle                                                                 |
-| Public booking          | Two `@Public()` surfaces (tenant slug and `x-carwash-tenant-id` header) over one service                                                               |
-| Realtime                | Socket.IO `/events` namespace, JWT handshake, tenant/branch rooms                                                                                      |
-| Background jobs         | Three BullMQ queues with retry/backoff; email side effects                                                                                             |
-| Idempotency             | Service-level (orders, booking) and interceptor-level (payments), 24 h TTL, hourly cleanup                                                             |
-| Soft delete + cleanup   | Nine models, restore endpoints, daily hard-delete cron                                                                                                 |
-| Operational endpoints   | `GET /health` (PostgreSQL, Redis, BullMQ), `GET /metrics` (Prometheus, token-guarded)                                                                  |
-| Support                 | `POST /support` — public, 3/min, relays to Telegram, works anonymously                                                                                 |
-| API docs                | Swagger UI at `/api/docs` — **non-production only**                                                                                                    |
+| Capability              | Summary                                                                                                                                                                                                      |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Multi-tenant CRUD       | Tenants, users, roles, permissions, branches, work posts, services, clients, vehicles                                                                                                                        |
+| Order management        | State machine, transactional slot reservation, workforce auto-assignment, idempotent creation, restore, booked/pending reschedule preserving services/prices/payments/status                                 |
+| Scheduling              | Slot generation from booking settings, buffer handling, work-post + workforce capacity, `FOR UPDATE` locking, branch-local full-day order projection                                                         |
+| Workforce               | `EmployeeProfile` per user with working hours; drives availability and auto-assignment                                                                                                                       |
+| Payments                | Decimal payment totals; order-row locking prevents concurrent overpayment; idempotent via `idempotency-key`                                                                                                  |
+| Analytics               | Dashboard summary, KPIs, live operations, revenue, popular services, per-branch and per-employee stats, anomaly alerts, online-booking mix, CSV export, separate scheduled sales / paid receipts day summary |
+| Audit                   | Event-driven, append-only log with entity/action/date filtering                                                                                                                                              |
+| Subscriptions & billing | Plan catalogue, usage and limits, add-ons, Paddle checkout + webhooks, trial lifecycle                                                                                                                       |
+| Public booking          | Two `@Public()` surfaces (tenant slug and `x-carwash-tenant-id` header) over one service                                                                                                                     |
+| Realtime                | Socket.IO `/events` namespace, JWT handshake, tenant/branch rooms                                                                                                                                            |
+| Background jobs         | Three BullMQ queues with retry/backoff; email side effects                                                                                                                                                   |
+| Idempotency             | Service-level transaction-bound keys for orders, booking and payments, 24 h TTL, hourly cleanup                                                                                                              |
+| Soft delete + cleanup   | Nine models, restore endpoints, daily hard-delete cron                                                                                                                                                       |
+| Operational endpoints   | `GET /health` (PostgreSQL, Redis, BullMQ), `GET /metrics` (Prometheus, token-guarded)                                                                                                                        |
+| Support                 | `POST /support` — public, 3/min, relays to Telegram, works anonymously                                                                                                                                       |
+| API docs                | Swagger UI at `/api/docs` — **non-production only**                                                                                                                                                          |
 
 ---
 
@@ -35,36 +35,45 @@ What WashFlow does, and every screen that exposes it. Product-level view — for
 
 All under `/` → `AppShell` → `DashboardLayout` → `SubscriptionGate`.
 
-| Route                   | Page           | What it does                                                                                                                                       |
-| ----------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/dashboard`            | Dashboard      | KPI cards, live operations panel, revenue chart, branch and employee performance tables, alerts, online-booking chart                              |
-| `/orders`               | Orders         | Orders table/cards with status and branch filters and pagination, plus a schedule view (work posts × time slots) that links into the create wizard |
-| `/orders/create`        | Create Order   | Multi-step wizard — branch/client, vehicle, services, time slot, worker, review. Accepts URL prefill from the schedule view                        |
-| `/orders/:id`           | Order Detail   | Status transitions, service list, client/vehicle info, payments, delete/restore                                                                    |
-| `/clients`              | Clients        | Search, create dialog, pagination, merge dialog                                                                                                    |
-| `/clients/:id`          | Client Detail  | Inline edit, vehicles, delete/restore                                                                                                              |
-| `/vehicles`             | Vehicles       | List + create dialog with a client combobox                                                                                                        |
-| `/vehicles/:id`         | Vehicle Detail | Single-vehicle view                                                                                                                                |
-| `/services`             | Services       | Inline edit/delete, active badge, sort order                                                                                                       |
-| `/branches`             | Branches       | List + create dialog                                                                                                                               |
-| `/branches/:id`         | Branch Detail  | Inline edit, work posts, booking-settings form, delete/restore                                                                                     |
-| `/work-posts`           | Work Posts     | Branch filter, create dialog                                                                                                                       |
-| `/users`                | Users          | Create/edit dialogs, role + branch, admin password reset                                                                                           |
-| `/roles`                | Roles          | List + create dialog with permission counts                                                                                                        |
-| `/roles/:id`            | Role Detail    | Permission assignment UI                                                                                                                           |
-| `/analytics`            | Analytics      | Revenue and popular-services charts with date/branch filters                                                                                       |
-| `/audit`                | Audit Log      | Filter by action, entity and date; colour-coded badges                                                                                             |
-| `/workforce`            | Workforce      | Employee profiles with working hours; create, edit, activate/deactivate                                                                            |
-| `/subscription`         | Subscription   | Plan/status badges, usage cards, trial banner, add-on manager, cancel. **Requires `tenants.read`**                                                 |
-| `/subscription/plans`   | Plans          | Tier cards, monthly/yearly toggle, Paddle checkout. **Requires `tenants.read`**                                                                    |
-| `/subscription/billing` | Billing        | Billing summary and transaction history. **Requires `tenants.read`**                                                                               |
-| `/how-to`               | How-To (wiki)  | Redirects to `/how-to/getting-started`; 12 reference topics + 5 step-by-step flows, TOC sidebar, EN + UK                                           |
-| `/how-to/:topicSlug`    | How-To topic   | Individual topic or flow                                                                                                                           |
-| `/403`, `/404`, `*`     | Error pages    | `*` redirects to `/404`                                                                                                                            |
+| Route                   | Page           | What it does                                                                                                                                                                         |
+| ----------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/dashboard`            | Dashboard      | KPI cards, live operations panel, revenue chart, branch and employee performance tables, alerts, online-booking chart                                                                |
+| `/orders`               | Orders         | Orders table/cards with status and branch filters and pagination, plus full-day schedule cards, local now/overdue warnings, quick-intake slot links and permission-gated day summary |
+| `/orders/create`        | Create Order   | Quick one-page intake with phone/plate lookup, inline client/vehicle creation, services and earliest valid post; `?mode=wizard` retains guided modes; both accept schedule prefill   |
+| `/orders/:id`           | Order Detail   | Permission-gated status transitions and booked/pending reschedule; service/client/vehicle info; payment received/remaining/history and guarded partial collection; delete/restore    |
+| `/clients`              | Clients        | Search, create dialog, pagination, merge dialog                                                                                                                                      |
+| `/clients/:id`          | Client Detail  | Inline edit, vehicles, delete/restore                                                                                                                                                |
+| `/vehicles`             | Vehicles       | List + create dialog with a client combobox                                                                                                                                          |
+| `/vehicles/:id`         | Vehicle Detail | Single-vehicle view                                                                                                                                                                  |
+| `/services`             | Services       | Inline edit/delete, active badge, sort order                                                                                                                                         |
+| `/branches`             | Branches       | List + create dialog                                                                                                                                                                 |
+| `/branches/:id`         | Branch Detail  | Inline edit, work posts, booking-settings form, delete/restore                                                                                                                       |
+| `/work-posts`           | Work Posts     | Branch filter, create dialog                                                                                                                                                         |
+| `/users`                | Users          | Create/edit dialogs, role + branch, admin password reset                                                                                                                             |
+| `/roles`                | Roles          | List + create dialog with permission counts                                                                                                                                          |
+| `/roles/:id`            | Role Detail    | Permission assignment UI                                                                                                                                                             |
+| `/analytics`            | Analytics      | Revenue and popular-services charts with date/branch filters                                                                                                                         |
+| `/audit`                | Audit Log      | Filter by action, entity and date; colour-coded badges                                                                                                                               |
+| `/workforce`            | Workforce      | Employee profiles with working hours; create, edit, activate/deactivate                                                                                                              |
+| `/subscription`         | Subscription   | Plan/status badges, usage cards, trial banner, add-on manager, cancel. **Requires `tenants.read`**                                                                                   |
+| `/subscription/plans`   | Plans          | Tier cards, monthly/yearly toggle, Paddle checkout. **Requires `tenants.read`**                                                                                                      |
+| `/subscription/billing` | Billing        | Billing summary and transaction history. **Requires `tenants.read`**                                                                                                                 |
+| `/how-to`               | How-To (wiki)  | Redirects to `/how-to/getting-started`; 12 reference topics + 5 step-by-step flows, TOC sidebar, EN + UK                                                                             |
+| `/how-to/:topicSlug`    | How-To topic   | Individual topic or flow                                                                                                                                                             |
+| `/403`, `/404`, `*`     | Error pages    | `*` redirects to `/404`                                                                                                                                                              |
 
 Only the three `/subscription*` routes are wrapped in a router-level `PermissionGate`. Every
 other dashboard route is reachable by any authenticated user; the backend enforces
 `@Permissions` per endpoint, and `PermissionGate` hides individual actions inside pages.
+
+The quick-intake pilot target is at most 30 seconds for a known client/vehicle; no measured
+operator timing is claimed. Availability still enforces duration, branch calendar, workforce
+and reservation rules. Occupied cards represent orders, not inferred workforce unavailability.
+Rescheduling preserves omitted assignments and excludes its own reservation during availability.
+Payment entry is available before completion/cancellation/no-show; PAID receipts, unpaid balance
+and all-status cap reservation are shown separately without adding refund/status actions.
+Day summary distinguishes scheduled-date sales from PAID-created-date receipts by method, using
+branch-local day bounds and exact decimal strings; it is outside payroll/accounting scope.
 
 ---
 

@@ -1,3 +1,4 @@
+import { IdempotencyService } from '../idempotency/idempotency.service';
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
@@ -79,6 +80,10 @@ describe('PaymentsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PaymentsService,
+        {
+          provide: IdempotencyService,
+          useValue: { requestIdentity: jest.fn() },
+        },
         { provide: PaymentsRepository, useValue: paymentsRepo },
         { provide: TenantPrismaService, useValue: tenantPrisma },
         { provide: EventDispatcherService, useValue: eventDispatcher },

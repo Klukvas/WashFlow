@@ -1,3 +1,4 @@
+import { IdempotencyService } from '../idempotency/idempotency.service';
 import { PaymentMethod, PaymentStatus, Prisma } from '@prisma/client';
 import { EventDispatcherService } from '../../common/events/event-dispatcher.service';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
@@ -48,6 +49,7 @@ function createHarness(
     new PaymentsRepository(tenantPrisma),
     tenantPrisma,
     { dispatch } as unknown as EventDispatcherService,
+    { requestIdentity: () => undefined } as unknown as IdempotencyService,
   );
   return { service, create, dispatch };
 }
