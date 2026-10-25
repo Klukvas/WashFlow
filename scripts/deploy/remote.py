@@ -13,7 +13,7 @@ import signal
 import sys
 import threading
 
-from common import (Refusal, catalog_hash, digest, private_directory, private_path,
+from common import (FRONTEND_HEALTH_TEST, Refusal, catalog_hash, digest, frontend_localhost_exception, private_directory, private_path,
                     require, run, save_json, verify_uploads, wait_until)
 
 META = '''{"id":{{json .Id}},"image":{{json .Image}},"running":{{json .State.Running}},
@@ -124,8 +124,13 @@ class Deployment:
                                   self.old['backend']['id']]))
         require(command in [['sh', '-c', 'npx prisma migrate deploy && node dist/main.js'],
                             ['node', 'dist/main.js']], 'unknown_backend_command')
+        require(all(c['health'] == 'healthy' for c in current if c['service'] != 'frontend'),
+                'existing_stack_not_healthy')
+        frontend = self.old['frontend']
+        require(frontend['health'] == 'healthy' or (frontend['running'] and frontend['health'] == 'unhealthy'
+                and frontend_localhost_exception(frontend['id'])), 'existing_stack_not_healthy')
         for c in current:
-            require(c['health'] == 'healthy' and c['oneoff'] == 'False', 'existing_stack_not_healthy')
+            require(c['oneoff'] == 'False', 'existing_stack_not_healthy')
             require(c['directory'] == str(self.root), 'project_directory_mismatch')
         files = self.old['backend']['files']
         require(files == self.old['frontend']['files'], 'app_compose_files_differ')
@@ -139,8 +144,10 @@ class Deployment:
             doc = json.loads(path.read_bytes())
             require(set(doc) == {'services'} and set(doc['services']) == {'backend', 'frontend'},
                     'non_image_existing_override')
+            front_policy = doc['services']['frontend']
             require(set(doc['services']['backend']) == {'image', 'command'} and
-                    set(doc['services']['frontend']) == {'image'} and
+                    (set(front_policy) == {'image'} or (set(front_policy) == {'image', 'healthcheck'}
+                     and front_policy['healthcheck'] == {'test': list(FRONTEND_HEALTH_TEST)})) and
                     doc['services']['backend']['command'] == ['node', 'dist/main.js'],
                     'unknown_existing_runtime_policy')
             require(all(re.fullmatch(r'sha256:[0-9a-f]{64}', doc['services'][service]['image'])
@@ -196,7 +203,7 @@ class Deployment:
         path = self.release / name
         save_json(path, {'services': {
             'backend': {'image': images['backend'], 'command': ['node', 'dist/main.js']},
-            'frontend': {'image': images['frontend']},
+            'frontend': {'image': images['frontend'], 'healthcheck': {'test': list(FRONTEND_HEALTH_TEST)}},
         }})
         return path
 

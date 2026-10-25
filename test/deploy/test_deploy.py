@@ -48,6 +48,8 @@ class DockerFixture:
         self.generation = 0
         self.commands = {'backend': ['sh', '-c', 'npx prisma migrate deploy && node dist/main.js'],
                          'frontend': ['nginx', '-g', 'daemon off;']}
+        self.frontend_test = ['CMD', 'wget', '-qO-', 'http://localhost:80/']
+        self.health_recent = [{'exit_code': 1, 'connection_refused': True}]
         for name in ['backend', 'frontend', 'postgres', 'redis']:
             self.items[name] = {'id': name, 'image': OLD.get(name, name + '-image'),
                                 'running': True, 'health': 'healthy', 'project': 'washflow',
@@ -66,6 +68,9 @@ class DockerFixture:
             result = self.items[service]['id'].encode() if self.items[service]['running'] else b''
         elif args[:2] == ['docker', 'inspect']:
             item = next(x for x in self.items.values() if x['id'] == args[-1])
+            if args[3] == common.FRONTEND_HEALTH_PROOF:
+                return json.dumps({'known_localhost_wget': self.frontend_test ==
+                    ['CMD', 'wget', '-qO-', 'http://localhost:80/'], 'recent': self.health_recent}).encode()
             result = json.dumps(self.commands[item['service']]
                                 if args[3] == '{{json .Config.Cmd}}' else item).encode()
             if self.fail == 'health' and item['image'] in NEW.values():
@@ -78,7 +83,9 @@ class DockerFixture:
                                  'revision': SHA, 'digests': ['repo@sha256:' + '5' * 64]}).encode()
         elif args[:2] == ['docker', 'exec']:
             command = ' '.join(args)
-            if 'psql' in command:
+            if args[3:] == ['wget', '-q', '-O', '-', '-T', '5', 'http://127.0.0.1:80/']:
+                if self.fail == 'ipv4': raise common.Refusal('synthetic_ipv4_get_failure')
+            elif 'psql' in command:
                 if b'pg_database_size' in data:
                     result = json.dumps({'major': 16, 'size': 1000, 'encoding': 'UTF8',
                                          'other_sessions': self.sessions}).encode()
@@ -110,13 +117,19 @@ class DockerFixture:
             self.generation += 1
             for service in ['backend', 'frontend']:
                 command = value[service].get('command', self.commands[service])
+                health_test = value[service].get('healthcheck', {}).get('test',
+                    ['CMD', 'wget', '-qO-', 'http://localhost:80/']) if service == 'frontend' else None
                 changed = (self.items[service]['image'] != value[service]['image'] or
-                           self.commands[service] != command)
+                           self.commands[service] != command or
+                           (service == 'frontend' and self.frontend_test != health_test))
                 if changed or '--force-recreate' in args:
                     self.items[service]['image'] = value[service]['image']
                     self.items[service]['id'] = service + '-' + str(self.generation)
                     self.items[service]['files'] = str(self.root / 'docker-compose.yml') + ',' + str(override)
                     self.commands[service] = command
+                    if service == 'frontend':
+                        self.frontend_test = health_test
+                        self.items[service]['health'] = 'healthy'
                 self.items[service]['running'] = True
                 # A real partial recreate can replace backend and fail before frontend.
                 if service == 'backend' and self.fail in {'compose', 'interrupt'} and override.name == 'images.json':
@@ -153,6 +166,7 @@ class DeploymentTests(unittest.TestCase):
                                              'owner/frontend:' + SHA, SHA, self.root)
         self.addCleanup(patch.stopall)
         patch('remote.run', side_effect=self.fixture).start()
+        patch('common.run', side_effect=self.fixture).start()
         patch('remote.shutil.disk_usage', return_value=argparse.Namespace(free=20 * 1024**3)).start()
         patch('remote.os.sysconf', side_effect=lambda key: 1024**3 if key == 'SC_AVPHYS_PAGES' else 1).start()
         def wait(check, **_):
@@ -172,6 +186,39 @@ class DeploymentTests(unittest.TestCase):
             self.assertEqual(self.fixture.items[service]['image'], OLD[service])
         self.assertEqual(self.fixture.commands['backend'], ['node', 'dist/main.js'])
         self.assertNotEqual(self.fixture.items['frontend']['id'], 'frontend')
+        self.assertEqual(self.fixture.frontend_test, list(common.FRONTEND_HEALTH_TEST))
+
+    def legacy_frontend_defect(self):
+        self.fixture.items['frontend'].update({'id': '6' * 64, 'health': 'unhealthy'})
+
+    def test_proven_localhost_defect_uses_fixed_health_for_new_and_rollback(self):
+        self.legacy_frontend_defect()
+        self.deployment.execute()
+        for name in ['images.json', 'rollback.json']:
+            value = json.loads((self.release/name).read_text())['services']
+            self.assertEqual(value['frontend']['healthcheck'], {'test': list(common.FRONTEND_HEALTH_TEST)})
+            self.assertEqual(value['backend']['command'], ['node', 'dist/main.js'])
+        calls = self.fixture.calls
+        get = next(i for i,c in enumerate(calls) if c[:3] == ['docker','exec','6'*64])
+        stop = next(i for i,c in enumerate(calls) if c[:2] == ['docker','stop'])
+        self.assertLess(get, stop)
+
+    def test_health_exception_is_narrow_and_all_other_services_must_be_healthy(self):
+        for failure in ['unknown_cmd','other_error','empty','wrong_exit','ipv4','backend','postgres','redis']:
+            with self.subTest(failure=failure):
+                self.setUp()
+                self.legacy_frontend_defect()
+                if failure == 'unknown_cmd': self.fixture.frontend_test = ['CMD-SHELL','arbitrary']
+                if failure == 'other_error': self.fixture.health_recent[0]['connection_refused'] = False
+                if failure == 'empty': self.fixture.health_recent = []
+                if failure == 'wrong_exit': self.fixture.health_recent[0]['exit_code'] = True
+                if failure == 'ipv4': self.fixture.fail = 'ipv4'
+                if failure in {'backend','postgres','redis'}: self.fixture.items[failure]['health'] = 'unhealthy'
+                with self.assertRaisesRegex(common.Refusal, 'existing_stack_not_healthy'):
+                    self.deployment.execute()
+                self.no_update()
+                if failure in {'backend','postgres','redis'}:
+                    self.assertFalse(any(c[3:4] == [common.FRONTEND_HEALTH_PROOF] for c in self.fixture.calls))
 
     def test_success_backup_precedes_app_only_update_and_preserves_config(self):
         self.deployment.execute()
@@ -283,6 +330,7 @@ class DeploymentTests(unittest.TestCase):
             self.assertEqual(self.fixture.items[service]['image'], NEW[service])
             self.assertEqual(self.fixture.items[service]['files'],
                              str(self.root/'docker-compose.yml')+','+str(self.release/'images.json'))
+        self.assertEqual(self.fixture.frontend_test, list(common.FRONTEND_HEALTH_TEST))
 
     def test_rollback_metadata_allows_fresh_deployment(self):
         self.fixture.fail='compose'
@@ -292,10 +340,21 @@ class DeploymentTests(unittest.TestCase):
         self.retry_release()
 
     def test_failed_backup_recovery_metadata_allows_retry(self):
+        self.legacy_frontend_defect()
         self.fixture.fail='dump'
         with self.assertRaises(common.Refusal):self.deployment.execute()
         self.assert_original()
         self.assertTrue(self.fixture.items['backend']['files'].endswith('/rollback.json'))
+        self.retry_release()
+
+    def test_legacy_image_only_private_override_remains_accepted(self):
+        self.fixture.fail = 'dump'
+        with self.assertRaises(common.Refusal): self.deployment.execute()
+        path = self.release/'rollback.json'
+        value = json.loads(path.read_text())
+        del value['services']['frontend']['healthcheck']
+        path.write_text(json.dumps(value))
+        self.fixture.frontend_test = ['CMD', 'wget', '-qO-', 'http://localhost:80/']
         self.retry_release()
 
     def test_multi_generation_partial_rollback_refreshes_frontend_before_next_deploy(self):
@@ -324,11 +383,13 @@ class DeploymentTests(unittest.TestCase):
         with self.assertRaises(common.Refusal):self.deployment.execute()
         path=self.release/'rollback.json'
         original=json.loads(path.read_text())
-        for mutation in ['command','image','extra']:
+        for mutation in ['command','image','extra','health_extra','health_url']:
             value=copy.deepcopy(original)
             if mutation=='command':value['services']['backend']['command']=['sh','-c','npx prisma migrate deploy && node dist/main.js']
             if mutation=='image':value['services']['frontend']['image']='owner/frontend:latest'
             if mutation=='extra':value['services']['frontend']['environment']={'UNOWNED':'value'}
+            if mutation=='health_extra':value['services']['frontend']['healthcheck']['interval']='1s'
+            if mutation=='health_url':value['services']['frontend']['healthcheck']['test'][-1]='http://localhost:80/'
             path.write_text(json.dumps(value))
             with self.assertRaises(common.Refusal):self.deployment.preflight()
         path.write_text(json.dumps(original))

@@ -14,11 +14,20 @@ be regular non-symlink `/opt/washflow/docker-compose.yml` and `.env`. Their cont
 printed or copied; their hashes and the running project/container/image/mount metadata are
 recorded in a fresh private `releases/<full-sha>-<run-id>-<attempt>/preflight.json`.
 
-Before any app update, the helper requires exactly one healthy running backend/frontend/
+Before any app update, the helper requires exactly one running backend/frontend/
 PostgreSQL/Redis service in the same existing Compose project and directory, no other
 container sharing the upload volume or backend image, PostgreSQL 16/UTF8 and matching PG16
 archive tools. A database socket inside the existing PostgreSQL container uses its existing
 authentication context; passwords/connection URLs are never extracted or exported.
+
+Backend, PostgreSQL and Redis must all be healthy. Frontend must also be healthy, with one
+narrow exception for the observed legacy check: a running/unhealthy frontend whose health
+test is exactly `['CMD','wget','-qO-','http://localhost:80/']`, whose one-to-five retained recent
+checks all exited 1 with the exact known connection-refused message, and whose bounded
+`http://127.0.0.1:80/` GET succeeds. Docker returns only a command-match boolean and static
+error classification; raw health output is withheld. Unknown commands/errors, missing checks,
+failed IPv4 GET or an unhealthy other service still refuse before stopping the backend. This
+proves the localhost-check defect; IPv6/address selection remains an explanation, not direct proof.
 
 `expected.py` applies the repository's migration SQL to a fresh network-none/tmpfs PG16
 reference container on the CI runner. The container is removed by exact task-owned name.
@@ -61,7 +70,10 @@ It never uses `docker start` to rerun a legacy migration-bearing backend command
 Only after backup verification does an override select the two recorded immutable image IDs.
 The existing `.env` and base Compose remain byte-identical. The narrowly explicit P0 runtime
 override uses `node dist/main.js` for backend: startup migrations are bypassed **only after the
-zero-pending/schema-parity gate**. The normal base Compose policy is not rewritten. Both app
+zero-pending/schema-parity gate**. Both new and rollback overrides set only frontend
+`healthcheck.test` to `['CMD','wget','-qO-','http://127.0.0.1:80/']`, inheriting the existing
+interval, timeout and retry settings. The live base Compose and environment remain unchanged.
+Both app
 services are recreated with `--force-recreate --no-deps --no-build --pull never`, including
 an unchanged frontend image so its DNS and Compose metadata refresh together with backend;
 no infrastructure recreation,
@@ -79,7 +91,9 @@ inspect/config/environment dumps and application logs are withheld.
 updates, so a partial recreate also attempts app-only rollback and bounded health checks.
 The rollback override also bypasses migration startup with `node dist/main.js`. Subsequent
 deployments accept an owned private `images.json` or `rollback.json` only when its image IDs
-match the running apps and it contains exactly the image/node-command policy above. Old images,
+match the running apps and it contains exactly the image/node-command policy above, with
+either the legacy frontend image-only shape or the exact fixed IPv4 test-only healthcheck.
+Arbitrary healthcheck fields, URLs and runtime policy remain forbidden. Old images,
 the live environment/base Compose, database and volumes are never removed or repinned by tag.
 Recovery failure is reported as failure; do not assume that a failed CI job restored health.
 

@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
+import re
 import signal
 import subprocess
 import tarfile
@@ -11,6 +12,36 @@ import time
 
 class Refusal(Exception):
     pass
+
+
+FRONTEND_HEALTH_TEST = ('CMD', 'wget', '-qO-', 'http://127.0.0.1:80/')
+LOCALHOST_TEST = json.dumps(['CMD', 'wget', '-qO-', 'http://localhost:80/'], separators=(',', ':'))
+FRONTEND_HEALTH_PROOF = ('{"known_localhost_wget":{{if .Config.Healthcheck}}'
+    '{{eq (json .Config.Healthcheck.Test) ' + json.dumps(LOCALHOST_TEST) + '}}{{else}}false{{end}},'
+    '"recent":[{{if .State.Health}}{{range $i,$entry := .State.Health.Log}}{{if lt $i 5}}{{if $i}},{{end}}'
+    '{"exit_code":{{json $entry.ExitCode}},"connection_refused":'
+    '{{eq $entry.Output "wget: can\'t connect to remote host: Connection refused\\n"}}}'
+    '{{end}}{{end}}{{end}}]}')
+
+
+def frontend_localhost_exception(container: str) -> bool:
+    """Prove only the observed legacy localhost-wget defect; never return raw health data."""
+    if not re.fullmatch(r'[0-9a-f]{64}', container):
+        return False
+    try:
+        detail = json.loads(run(['docker', 'inspect', '--format', FRONTEND_HEALTH_PROOF, container], timeout=10))
+        recent = detail.get('recent')
+        if (detail.get('known_localhost_wget') is not True or not isinstance(recent, list)
+                or not 1 <= len(recent) <= 5 or not all(isinstance(x, dict)
+                and type(x.get('exit_code')) is int and x['exit_code'] == 1
+                and x.get('connection_refused') is True for x in recent)):
+            return False
+        with open(os.devnull, 'wb') as sink:
+            run(['docker', 'exec', container, 'wget', '-q', '-O', '-', '-T', '5',
+                 'http://127.0.0.1:80/'], output=sink, timeout=8)
+        return True
+    except (Refusal, OSError, ValueError, TypeError, AttributeError):
+        return False
 
 
 def require(condition, code):
