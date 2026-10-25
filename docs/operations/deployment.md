@@ -103,6 +103,44 @@ production-sized recovery objectives are not established by this deployment help
 
 ## Host trust and local verification
 
+### Read-only diagnostic branch
+
+The existing registered `ci.yml` also accepts `diagnostic_only=true` on a reviewed `codex/`
+branch. [GitHub supports selecting a non-default ref](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)
+for a workflow already registered on the default branch:
+
+```bash
+gh workflow run ci.yml --repo Klukvas/WashFlow --ref <reviewed-codex-branch> -f diagnostic_only=true
+```
+
+This mode disables every normal lint/test/build/publish/deploy job and runs only the bounded
+read-only probe using the existing repository `DEPLOY_*` secrets. It creates no GitHub
+production deployment record. A normal main run with the default false input retains every
+release gate; diagnostic mode cannot skip tests into a release. Branch publication and dispatch
+remain separate authorized actions; this command is not an instruction to dispatch automatically.
+
+The probe executes standard-library Python through SSH stdin with `python3 -B - --probe`;
+it uploads no files and imports no deployment/bootstrap helper. It only runs selected Docker
+version, Compose version, container-list and formatted-inspect commands scoped to the existing
+`/opt/washflow` Compose working-directory label. It never pulls, stops, starts, backs up,
+locks, migrates, queries the database or changes files. Its portable syntax can report an older
+Python version even when the deployment's Python 3.11 prerequisite fails.
+
+Output contains numeric versions, selected app running/health/image IDs, and allowlisted
+file-presence/private-path/hash-match booleans for the failed release
+`b672d6b9dc2f0c07ed3eea6efb753c0afb5f9eb6-40234261128-1`. Configuration bytes may be hashed
+internally against its recorded preflight hashes; contents, hashes, paths from untrusted JSON,
+environment values, host/user metadata and subprocess stderr are never forwarded. Unknown
+JSON fields and arbitrary strings are discarded or rejected by a second local projection.
+Observed prerequisite refusals describe current state. File presence alone cannot establish
+historic stop/cutover, successful rollback or backup integrity; missing/invalid metadata remains
+unknown. No dump or upload archive contents are read by this probe.
+
+Transport failures now expose only static `stage` (`validation`, `bootstrap`, `remote`) and
+allowlisted `reason` codes. Diagnostic access failures distinguish validation, SSH command and
+interpreter/protocol stages using static codes. These codes do not include raw errors, secrets
+or remote exception messages; a generic code still requires investigation rather than a retry.
+
 The workflow retains its existing `ssh-keyscan` trust-on-first-use bootstrap because no pinned
 host-key secret is evidenced. This is a documented trust limitation, not independent origin
 authentication. Both SSH commands require strict checking against that collected host key,

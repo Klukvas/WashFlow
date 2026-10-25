@@ -359,10 +359,10 @@ class ProtocolTests(unittest.TestCase):
             args=argparse.Namespace(host='deploy.example.test',user='deploy',key=Path('/existing-key'),
                 revision=SHA,attempt='1-1',backend='owner/backend:'+SHA,frontend='owner/frontend:'+SHA,expected=p)
             calls=[]
-            def denied(command,**kwargs):
+            def denied(command,*_,**kwargs):
                 calls.append(command)
                 raise common.Refusal('synthetic_ssh_denied')
-            with patch('transport.run',side_effect=denied):
+            with patch('transport.bootstrap_run',side_effect=denied):
                 with self.assertRaises(common.Refusal):transport.connect(args)
             text=' '.join(calls[0])
             for value in ['BatchMode=yes','IdentitiesOnly=yes','StrictHostKeyChecking=yes','UpdateHostKeys=no','ConnectTimeout=10']:

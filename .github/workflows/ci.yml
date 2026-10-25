@@ -7,6 +7,10 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      diagnostic_only:
+        description: 'Read-only production metadata on a reviewed codex branch; no release jobs'
+        type: boolean
+        default: false
       skip_unit_tests:
         description: 'Skip unit tests (backend + frontend)'
         type: boolean
@@ -36,6 +40,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────
   backend-lint:
     name: Backend Lint
+    if: ${{ !inputs.diagnostic_only }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -58,6 +63,7 @@ jobs:
 
   frontend-lint:
     name: Frontend Lint
+    if: ${{ !inputs.diagnostic_only }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -86,7 +92,7 @@ jobs:
   backend-test:
     name: Backend Unit Tests
     runs-on: ubuntu-latest
-    if: ${{ !inputs.skip_unit_tests }}
+    if: ${{ !inputs.diagnostic_only && !inputs.skip_unit_tests }}
     needs: [backend-lint]
     steps:
       - uses: actions/checkout@v4
@@ -118,7 +124,7 @@ jobs:
   frontend-test:
     name: Frontend Unit Tests
     runs-on: ubuntu-latest
-    if: ${{ !inputs.skip_unit_tests }}
+    if: ${{ !inputs.diagnostic_only && !inputs.skip_unit_tests }}
     needs: [frontend-lint]
     defaults:
       run:
@@ -148,7 +154,7 @@ jobs:
     runs-on: ubuntu-latest
     # Override implicit success() only for unit jobs deliberately skipped by input.
     if: |
-      always() && !cancelled() && !inputs.skip_e2e &&
+      always() && !cancelled() && !inputs.diagnostic_only && !inputs.skip_e2e &&
       needs.backend-lint.result == 'success' &&
       needs.frontend-lint.result == 'success' &&
       (needs.backend-test.result == 'success' ||
@@ -224,7 +230,7 @@ jobs:
     name: Frontend E2E Tests
     runs-on: ubuntu-latest
     if: |
-      always() && !cancelled() && !inputs.skip_e2e &&
+      always() && !cancelled() && !inputs.diagnostic_only && !inputs.skip_e2e &&
       needs.backend-lint.result == 'success' &&
       needs.frontend-lint.result == 'success' &&
       (needs.backend-test.result == 'success' ||
@@ -359,7 +365,7 @@ jobs:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
     if: |
-      always() && !cancelled() &&
+      always() && !cancelled() && !inputs.diagnostic_only &&
       github.ref == 'refs/heads/main' &&
       needs.backend-lint.result == 'success' &&
       needs.frontend-lint.result == 'success' &&
@@ -439,7 +445,7 @@ jobs:
     name: Deploy to Hetzner
     runs-on: ubuntu-latest
     if: |
-      always() &&
+      always() && !inputs.diagnostic_only &&
       github.ref == 'refs/heads/main' &&
       needs.build-and-push.result == 'success'
     needs: [build-and-push]
@@ -487,3 +493,33 @@ jobs:
       - name: Cleanup ephemeral deployment key
         if: always()
         run: rm -f "$RUNNER_TEMP/washflow-deploy-key"
+
+  diagnose:
+    name: Read-only deployment diagnostic
+    if: github.event_name == 'workflow_dispatch' && inputs.diagnostic_only && startsWith(github.ref, 'refs/heads/codex/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup existing diagnostic SSH access
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          [[ "$DEPLOY_HOST" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]]
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$RUNNER_TEMP/washflow-diagnostic-key"
+          # Same documented TOFU baseline; subsequent SSH requires strict verification.
+          ssh-keyscan -T 10 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Inspect selected metadata without remote writes
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          python3 -B scripts/deploy/diagnose.py --host "$DEPLOY_HOST" --user "$DEPLOY_USER" \
+            --key "$RUNNER_TEMP/washflow-diagnostic-key"
+      - name: Cleanup ephemeral diagnostic key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/washflow-diagnostic-key"
