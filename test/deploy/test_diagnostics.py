@@ -23,6 +23,11 @@ SENTINEL = 'PRIVATE_CREDENTIAL_NEVER_PRINT'
 IMAGE = 'sha256:' + '1' * 64
 
 
+def database_sample(total=0):
+    return {'total': total, **{group: {name: total if index == 0 else 0 for index, name in enumerate(names)}
+                              for group, names in diagnose.DB_GROUPS.items()}}
+
+
 class DiagnosticTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(dir=ROOT / 'test/deploy')
@@ -43,9 +48,14 @@ class DiagnosticTests(unittest.TestCase):
         if args[:2] == ['docker', 'ps']:
             self.assertIn('label=com.docker.compose.project.working_dir=/opt/washflow', args)
             return ('2' * 64).encode()
+        if args[:3] == ['docker', 'exec', '-i']:
+            self.assertEqual(args, ['docker','exec','-i','2'*64,'sh','-c',diagnose.PG_COMMAND])
+            self.assertEqual(_['data'], diagnose.CLIENT_COUNTS_SQL)
+            self.assertEqual(_['timeout'], 8)
+            return json.dumps(database_sample()).encode()
         if args[:2] == ['docker', 'inspect']:
             if args[3] == diagnose.HEALTH_DETAIL:
-                return json.dumps({'known_localhost_wget': True,
+                return json.dumps({'known_localhost_wget': True, 'known_ipv4_wget': False,
                     'recent': [{'exit_code': 1, 'failure_class': 'connection_refused', 'Output': SENTINEL}],
                     'command': SENTINEL}).encode()
             self.assertEqual(args[2:4], ['--format', diagnose.META])
@@ -57,7 +67,7 @@ class DiagnosticTests(unittest.TestCase):
         def get(container, url):
             self.requests.append((container, url))
             return 'ok' if url == diagnose.GET_URLS[1] else 'nonzero'
-        with patch('diagnose.capture', side_effect=self.fixture), patch('diagnose.http_get', side_effect=get):
+        with patch('diagnose.capture', side_effect=self.fixture), patch('diagnose.http_get', side_effect=get), patch('diagnose.time.sleep'):
             return diagnose.probe(self.root)
 
     def test_probe_only_selected_reads_and_no_remote_writes(self):
@@ -67,14 +77,14 @@ class DiagnosticTests(unittest.TestCase):
         self.assertEqual(value['docker'], '27.5.1')
         self.assertEqual(value['apps']['backend'][0]['image'], IMAGE)
         self.assertEqual({str(p.relative_to(self.root)) for p in self.root.rglob('*')}, before)
-        self.assertEqual(len(self.calls), 7)
-        self.assertTrue(all(c[1] in {'version', 'compose', 'ps', 'inspect'} for c in self.calls))
+        self.assertEqual(len(self.calls), 11)
+        self.assertTrue(all(c[1] in {'version', 'compose', 'ps', 'inspect', 'exec'} for c in self.calls))
         self.assertEqual([url for _, url in self.requests], list(diagnose.GET_URLS))
         self.assertNotIn(SENTINEL, json.dumps(value))
 
     def test_frontend_health_only_closed_classes_codes_and_fixed_get_results(self):
         detail = self.report()['apps']['frontend'][0]['healthcheck']
-        self.assertEqual(detail, {'known_localhost_wget': True,
+        self.assertEqual(detail, {'known_localhost_wget': True, 'known_ipv4_wget': False,
             'recent': [{'exit_code': 1, 'failure_class': 'connection_refused'}],
             'localhost_get': 'nonzero', 'ipv4_get': 'ok'})
         malicious = {'known_localhost_wget': SENTINEL, 'recent': [
@@ -89,6 +99,8 @@ class DiagnosticTests(unittest.TestCase):
         self.assertNotIn('{{json $entry.Output}}', diagnose.HEALTH_DETAIL)
         self.assertIn('"connection_refused"', diagnose.HEALTH_DETAIL)
         self.assertIn('eq (json .Config.Healthcheck.Test)', diagnose.HEALTH_DETAIL)
+        self.assertIn('known_ipv4_wget', diagnose.HEALTH_DETAIL)
+        self.assertTrue(diagnose.filter_health_detail({'known_ipv4_wget':True})['known_ipv4_wget'])
 
     def test_http_get_exact_allowlist_discards_bodies_and_errors(self):
         container = '2' * 64
@@ -150,7 +162,53 @@ class DiagnosticTests(unittest.TestCase):
         self.assertIsNone(diagnose.bounded_bytes(1, 0))
         self.assertEqual(diagnose.filter_capacity({'cpu_count':65536})['cpu_count'], 65536)
         self.assertNotIn(SENTINEL, json.dumps(diagnose.filter_capacity(SENTINEL)))
-        self.assertEqual(diagnose.FAILED_RELEASE, '209758a00089c0e48d26dd01c7c8e96868d440cd-40237451282-1')
+        self.assertEqual(diagnose.FAILED_RELEASE, '67493a6a4aedbfb5f193de08403989ebf9c462ef-40240991478-1')
+
+    def test_database_sql_is_fixed_read_only_current_database_aggregate(self):
+        sql = diagnose.CLIENT_COUNTS_SQL.decode()
+        self.assertTrue(sql.startswith("BEGIN READ ONLY; SET LOCAL statement_timeout='3s';"))
+        self.assertTrue(sql.endswith('COMMIT;'))
+        self.assertIn('FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid()', sql)
+        self.assertNotRegex(sql, r'(?i)\b(?:INSERT|UPDATE|DELETE|ALTER|DROP|CREATE|COPY|pg_terminate_backend|pg_cancel_backend|query|usename|client_hostname)\b')
+        for literal in ["application_name='pg_isready'", "application_name='psql'", 'client_addr IS NULL', 'count(*)']:
+            self.assertIn(literal, sql)
+
+    def test_database_count_projection_rejects_bad_counts_and_drops_raw_fields(self):
+        value = database_sample(2)
+        value.update({'query':SENTINEL, 'application_name':SENTINEL, 'client_addr':SENTINEL})
+        value['by_state']['private'] = SENTINEL
+        filtered = diagnose.filter_db_sample(value)
+        self.assertNotIn(SENTINEL, json.dumps(filtered))
+        for invalid in [None, -1, True, 0.5, SENTINEL, 1000001]:
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(ValueError): diagnose.filter_db_sample({**database_sample(), 'total':invalid})
+                bad = database_sample();bad['by_state']['idle'] = invalid
+                with self.assertRaises(ValueError): diagnose.filter_db_sample(bad)
+        for malformed in [None, {}, {'total':0}, {**database_sample(), 'by_state':SENTINEL}, database_sample(1000001)]:
+            with self.assertRaises(ValueError): diagnose.filter_db_sample(malformed)
+        inconsistent = database_sample(2);inconsistent['by_client_addr']['null'] = 1
+        with self.assertRaises(ValueError): diagnose.filter_db_sample(inconsistent)
+        with self.assertRaises(ValueError): diagnose.filter_database({'status':'ok','samples':[]})
+        self.assertEqual(diagnose.filter_database({'status':SENTINEL}), {'status':'unavailable','samples':[]})
+
+    def test_database_samples_are_three_bounded_reads_and_two_one_second_gaps(self):
+        responses = [('2'*64).encode(), *[json.dumps(database_sample(n)).encode() for n in [2,2,0]]]
+        with patch('diagnose.capture', side_effect=responses) as capture, patch('diagnose.time.sleep') as sleep:
+            result = diagnose.database_samples()
+        self.assertEqual(result['status'],'ok')
+        self.assertEqual([x['total'] for x in result['samples']], [2,2,0])
+        self.assertEqual(sleep.call_args_list, [unittest.mock.call(1),unittest.mock.call(1)])
+        for call in capture.call_args_list[1:]:
+            self.assertEqual(call.args[0], ['docker','exec','-i','2'*64,'sh','-c',diagnose.PG_COMMAND])
+            self.assertEqual(call.kwargs, {'data':diagnose.CLIENT_COUNTS_SQL,'timeout':8})
+        report = self.report();report['database'] = {**result, 'private':SENTINEL}
+        self.assertNotIn(SENTINEL, json.dumps(diagnose.filter_report(report)))
+
+    def test_database_sample_failure_is_static_and_never_returns_partial_or_raw_data(self):
+        for responses in [[b''], [b'bad-id'], [('2'*64).encode(), SENTINEL.encode()],
+                          [('2'*64).encode(), json.dumps(database_sample()).encode(), ValueError(SENTINEL)]]:
+            with patch('diagnose.capture', side_effect=responses), patch('diagnose.time.sleep'):
+                self.assertEqual(diagnose.database_samples(), {'status':'unavailable','samples':[]})
 
     def test_python_old_version_still_reports_known_bootstrap_refusal(self):
         with patch('diagnose.sys.version_info', (3, 8, 10)):

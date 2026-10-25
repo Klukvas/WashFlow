@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only, portable SSH probe; no deployment imports, uploads or database access."""
+"""Portable SSH probe with bounded read-only PostgreSQL metadata queries; no mutations, deployment imports or uploads."""
 import argparse
 import hashlib
 import json
@@ -10,9 +10,10 @@ import shlex
 import signal
 import subprocess
 import sys
+import time
 from typing import Any, Optional
 
-FAILED_RELEASE = '209758a00089c0e48d26dd01c7c8e96868d440cd-40237451282-1'
+FAILED_RELEASE = '67493a6a4aedbfb5f193de08403989ebf9c462ef-40240991478-1'
 FILES = ('payload.json', 'expected.json', 'preflight.json', 'images.json', 'rollback.json',
          'backup/database.dump', 'backup/uploads.tar', 'backup/manifest.json', 'result.json')
 HEALTH = ('healthy', 'unhealthy', 'starting', 'none', 'unknown')
@@ -30,7 +31,10 @@ MEMINFO_KEYS = {'MemTotal': 'memory_total_bytes', 'MemFree': 'memory_free_bytes'
 # returned to Python/CI. Only exact known BusyBox messages receive a named classification.
 KNOWN_TEST = json.dumps(['CMD', 'wget', '-qO-', GET_URLS[0]], separators=(',', ':'))
 HEALTH_DETAIL = ('{"known_localhost_wget":{{if .Config.Healthcheck}}{{eq (json .Config.Healthcheck.Test) '
-                + json.dumps(KNOWN_TEST) + '}}{{else}}false{{end}},"recent":['
+                + json.dumps(KNOWN_TEST) + '}}{{else}}false{{end}},"known_ipv4_wget":'
+                '{{if .Config.Healthcheck}}{{eq (json .Config.Healthcheck.Test) '
+                + json.dumps(json.dumps(['CMD', 'wget', '-qO-', GET_URLS[1]], separators=(',', ':')))
+                + '}}{{else}}false{{end}},"recent":['
                 '{{if .State.Health}}{{range $i,$entry := .State.Health.Log}}{{if lt $i 5}}{{if $i}},{{end}}'
                 '{"exit_code":{{json $entry.ExitCode}},"failure_class":'
                 '{{if eq $entry.ExitCode 0}}"ok"'
@@ -40,6 +44,33 @@ HEALTH_DETAIL = ('{"known_localhost_wget":{{if .Config.Healthcheck}}{{eq (json .
                 '{{else}}"unknown_failure"{{end}}}{{end}}{{end}}{{end}}]}')
 FAILURES = {'validation': 'invalid_access_metadata', 'ssh': 'ssh_command_failed',
             'protocol': 'interpreter_or_protocol_failed'}
+DB_GROUPS = {'by_state': ('active', 'idle', 'idle_in_transaction', 'aborted_transaction', 'disabled', 'other'),
+             'by_backend_type': ('client_backend', 'autovacuum_worker', 'logical_replication_worker', 'parallel_worker', 'other'),
+             'by_client_addr': ('null', 'present'), 'by_application': ('pg_isready', 'psql', 'other')}
+PG_COMMAND = ('exec psql -XqAt --no-password -v ON_ERROR_STOP=1 '
+              '-U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-postgres}"')
+CLIENT_COUNTS_SQL = b'''BEGIN READ ONLY; SET LOCAL statement_timeout='3s';
+SELECT json_build_object('total',count(*),
+ 'by_state',json_build_object(
+  'active',count(*) FILTER (WHERE state='active'),
+  'idle',count(*) FILTER (WHERE state='idle'),
+  'idle_in_transaction',count(*) FILTER (WHERE state='idle in transaction'),
+  'aborted_transaction',count(*) FILTER (WHERE state='idle in transaction (aborted)'),
+  'disabled',count(*) FILTER (WHERE state='disabled'),
+  'other',count(*) FILTER (WHERE state IS NULL OR state NOT IN ('active','idle','idle in transaction','idle in transaction (aborted)','disabled'))),
+ 'by_backend_type',json_build_object(
+  'client_backend',count(*) FILTER (WHERE backend_type='client backend'),
+  'autovacuum_worker',count(*) FILTER (WHERE backend_type='autovacuum worker'),
+  'logical_replication_worker',count(*) FILTER (WHERE backend_type='logical replication worker'),
+  'parallel_worker',count(*) FILTER (WHERE backend_type='parallel worker'),
+  'other',count(*) FILTER (WHERE backend_type IS NULL OR backend_type NOT IN ('client backend','autovacuum worker','logical replication worker','parallel worker'))),
+ 'by_client_addr',json_build_object('null',count(*) FILTER (WHERE client_addr IS NULL),
+                                  'present',count(*) FILTER (WHERE client_addr IS NOT NULL)),
+ 'by_application',json_build_object('pg_isready',count(*) FILTER (WHERE application_name='pg_isready'),
+                                  'psql',count(*) FILTER (WHERE application_name='psql'),
+                                  'other',count(*) FILTER (WHERE application_name IS NULL OR application_name NOT IN ('pg_isready','psql'))))
+FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid();
+COMMIT;'''
 
 
 class ProbeFailure(ValueError):
@@ -70,6 +101,52 @@ def capture(args: list, data: Optional[bytes] = None, timeout: int = 10) -> byte
 def version(raw: bytes) -> Optional[str]:
     text = raw.decode('ascii', errors='replace').strip()
     return text if re.fullmatch(r'[0-9]{1,4}(\.[0-9]{1,4}){1,3}', text) else None
+
+
+def filter_db_sample(value: dict) -> dict:
+    def count(number: Any) -> int:
+        if type(number) is not int or not 0 <= number <= 1000000:
+            raise ValueError('invalid_diagnostic_protocol')
+        return number
+    if not isinstance(value, dict):
+        raise ValueError('invalid_diagnostic_protocol')
+    result = {'total': count(value.get('total'))}
+    for group, names in DB_GROUPS.items():
+        source = value.get(group)
+        if not isinstance(source, dict):
+            raise ValueError('invalid_diagnostic_protocol')
+        result[group] = {name: count(source.get(name)) for name in names}
+        if sum(result[group].values()) != result['total']:
+            raise ValueError('invalid_diagnostic_protocol')
+    return result
+
+
+def database_samples() -> dict:
+    try:
+        ids = capture(['docker', 'ps', '-q', '--no-trunc', '--filter',
+            'label=com.docker.compose.project.working_dir=/opt/washflow', '--filter',
+            'label=com.docker.compose.service=postgres']).decode('ascii').split()
+        if len(ids) != 1 or not re.fullmatch(r'[0-9a-f]{64}', ids[0]):
+            raise ValueError('ambiguous_database_container')
+        samples = []
+        for index in range(3):
+            if index:
+                time.sleep(1)
+            raw = capture(['docker', 'exec', '-i', ids[0], 'sh', '-c', PG_COMMAND],
+                          data=CLIENT_COUNTS_SQL, timeout=8)
+            samples.append(filter_db_sample(json.loads(raw)))
+        return {'status': 'ok', 'samples': samples}
+    except (OSError, ValueError, TypeError, UnicodeError):
+        return {'status': 'unavailable', 'samples': []}
+
+
+def filter_database(value: Any) -> dict:
+    if not isinstance(value, dict) or value.get('status') != 'ok':
+        return {'status': 'unavailable', 'samples': []}
+    samples = value.get('samples')
+    if not isinstance(samples, list) or len(samples) != 3:
+        raise ValueError('invalid_diagnostic_protocol')
+    return {'status': 'ok', 'samples': [filter_db_sample(sample) for sample in samples]}
 
 
 def bounded_bytes(value: Any, unit: Any = 1) -> Optional[int]:
@@ -148,6 +225,7 @@ def filter_health_detail(value: dict) -> dict:
     if not isinstance(recent, list) or len(recent) > 5 or not all(isinstance(x, dict) for x in recent):
         raise ValueError('invalid_diagnostic_protocol')
     return {'known_localhost_wget': value.get('known_localhost_wget') is True,
+            'known_ipv4_wget': value.get('known_ipv4_wget') is True,
             'recent': [{'exit_code': x.get('exit_code') if type(x.get('exit_code')) is int
                         and -1 <= x['exit_code'] <= 255 else None,
                         'failure_class': x.get('failure_class') if x.get('failure_class') in HEALTH_CLASSES
@@ -233,7 +311,7 @@ def probe(root: Path = Path('/opt/washflow')) -> dict:
         refusals.append(REFUSALS[2])
     report = {'format': 'washflow-readonly-diagnostic-v1', 'python': list(sys.version_info[:3]),
               'docker': None, 'compose': None, 'apps': {'backend': [], 'frontend': []},
-              'release': state, 'capacity': host_capacity(root),
+              'release': state, 'capacity': host_capacity(root), 'database': {'status': 'unavailable', 'samples': []},
               'observed_prerequisite_refusals': refusals, 'docker_probe_ok': False}
     try:
         report['docker'] = version(capture(['docker', 'version', '--format', '{{.Server.Version}}']))
@@ -249,6 +327,7 @@ def probe(root: Path = Path('/opt/washflow')) -> dict:
                 report['apps'][service] = [{**app, 'healthcheck': frontend_health(container)}
                                            for app, container in zip(report['apps'][service], ids)]
         report['docker_probe_ok'] = True
+        report['database'] = database_samples()
     except (OSError, ValueError, TypeError, UnicodeError):
         report['docker_probe_ok'] = False
     return filter_report(report)
@@ -266,6 +345,7 @@ def filter_report(value: dict) -> dict:
               'compose': version(str(value.get('compose')).encode()),
               'docker_probe_ok': value.get('docker_probe_ok') is True,
               'capacity': filter_capacity(value.get('capacity')),
+              'database': filter_database(value.get('database')),
               'apps': {}, 'release': {}, 'observed_prerequisite_refusals': []}
     apps_by_service = value.get('apps')
     state = value.get('release')

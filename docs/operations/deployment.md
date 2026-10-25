@@ -137,15 +137,16 @@ release gate; diagnostic mode cannot skip tests into a release. Branch publicati
 remain separate authorized actions; this command is not an instruction to dispatch automatically.
 
 The probe executes standard-library Python through SSH stdin with `python3 -B - --probe`;
-it uploads no files and imports no deployment/bootstrap helper. It only runs selected Docker
+it uploads no files and imports no deployment/bootstrap helper. It runs selected Docker
 version, Compose version, container-list and formatted-inspect commands scoped to the existing
-`/opt/washflow` Compose working-directory label. It never pulls, stops, starts, backs up,
-locks, migrates, queries the database or changes files. Its portable syntax can report an older
+`/opt/washflow` Compose working-directory label, plus bounded fixed read-only aggregate
+PostgreSQL metadata queries. It never pulls, stops, starts, backs up, locks, migrates,
+mutates the database or changes files. Its portable syntax can report an older
 Python version even when the deployment's Python 3.11 prerequisite fails.
 
 Output contains numeric versions, selected app running/health/image IDs, and allowlisted
 file-presence/private-path/hash-match booleans for the failed release
-`209758a00089c0e48d26dd01c7c8e96868d440cd-40237451282-1`. Configuration bytes may be hashed
+`67493a6a4aedbfb5f193de08403989ebf9c462ef-40240991478-1`. Configuration bytes may be hashed
 internally against its recorded preflight hashes; contents, hashes, paths from untrusted JSON,
 environment values, host/user metadata and subprocess stderr are never forwarded. Unknown
 JSON fields and arbitrary strings are discarded or rejected by a second local projection.
@@ -156,6 +157,13 @@ Frontend diagnostics also expose at most five recent health exit codes and exact
 failure classes, a boolean matching the known localhost-wget test, and bounded GET outcomes
 for only `http://localhost:80/` and `http://127.0.0.1:80/`. Raw health output, configured commands,
 response bodies and stderr are discarded; these probes do not change the healthcheck or restart apps.
+The frontend formatter also reports a boolean matching the exact fixed IPv4-wget healthcheck.
+Three one-second-separated read-only PostgreSQL metadata samples use the existing container's
+authentication context. Only current-database counts excluding the probe's own PID are returned,
+grouped by fixed state/backend-type categories, address-nullness and exact pg_isready/psql/other
+application categories. No query text, raw application/user/address values or environment values
+are returned. Samples describe the currently running pool; they cannot identify historical
+clients present while the backend was stopped. Failed/invalid samples return only unavailable.
 
 Capacity diagnostics add only CPU count, sysconf free-memory bytes, selected `/proc/meminfo`
 MemTotal/MemFree/MemAvailable bytes, and deployment-filesystem total/free/available bytes.
