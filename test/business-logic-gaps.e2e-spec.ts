@@ -308,12 +308,16 @@ describe('Business Logic Gaps (e2e)', () => {
 
     beforeAll(async () => {
       const start = nextWorkday(10, 22);
+      // Weekday normalization may map daysAhead 21 and 22 to the same Monday.
+      const paymentPost = await prisma.workPost.create({
+        data: { tenantId, branchId, name: 'Payment Edge Cases Post' },
+      });
       const res = await api('post', '/orders')
         .send({
           branchId,
           clientId,
           vehicleId,
-          workPostId,
+          workPostId: paymentPost.id,
           scheduledStart: start.toISOString(),
           serviceIds: [serviceActiveId],
         })

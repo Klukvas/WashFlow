@@ -2035,6 +2035,7 @@ describe('Scheduling Slots Deep Coverage (e2e)', () => {
 
     it('default workingDays [1,2,3,4,5,6] rejects Sunday', async () => {
       const sunday = new Date();
+      sunday.setUTCDate(sunday.getUTCDate() + 1);
       while (sunday.getUTCDay() !== 0) {
         sunday.setUTCDate(sunday.getUTCDate() + 1);
       }

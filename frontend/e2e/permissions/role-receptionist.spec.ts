@@ -70,7 +70,10 @@ test.describe('Receptionist Role Permissions', () => {
     await page.waitForLoadState('networkidle');
 
     // Receptionist has orders.create permission
-    const createButton = page.getByRole('button', { name: /create order/i });
+    const createButton = page.getByRole('button', { name: /^quick order$/i });
     await expect(createButton).toBeVisible({ timeout: 15_000 });
+    await createButton.click();
+    await expect(page).toHaveURL(/\/orders\/create$/);
+    await expect(page.getByRole('heading', { name: /^quick order$/i })).toBeVisible();
   });
 });

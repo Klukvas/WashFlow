@@ -551,6 +551,7 @@ describe('Scheduling Flows (e2e)', () => {
     it('rejects booking on Sunday (non-working day)', async () => {
       // Find the next Sunday
       const sunday = new Date();
+      sunday.setUTCDate(sunday.getUTCDate() + 1);
       while (sunday.getUTCDay() !== 0) {
         sunday.setUTCDate(sunday.getUTCDate() + 1);
       }

@@ -106,8 +106,11 @@ test.describe('Operator Role Permissions', () => {
     await page.goto('/orders');
     await page.waitForLoadState('networkidle');
 
-    // Create Order button should be visible
-    const createButton = page.getByRole('button', { name: /create order/i });
+    // Operator retains the orders.create entry point in the quick-order flow.
+    const createButton = page.getByRole('button', { name: /^quick order$/i });
     await expect(createButton).toBeVisible({ timeout: 15_000 });
+    await createButton.click();
+    await expect(page).toHaveURL(/\/orders\/create$/);
+    await expect(page.getByRole('heading', { name: /^quick order$/i })).toBeVisible();
   });
 });
