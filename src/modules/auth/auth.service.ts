@@ -141,11 +141,13 @@ export class AuthService {
           )
         : [];
 
+    const tokens = await this.generateTokens(user, permissions);
+
     this.eventDispatcher.dispatch(
       new AuthLoginEvent(user.tenantId, { userId: user.id, email: user.email }),
     );
 
-    return this.generateTokens(user, permissions);
+    return tokens;
   }
 
   async register(
@@ -347,22 +349,6 @@ export class AuthService {
       throw new UnauthorizedException('Token has been revoked');
     }
 
-    // If the user has a branchId, verify the branch still exists
-    let branchId = user.branchId;
-    if (branchId) {
-      const branch = await this.prisma.branch.findFirst({
-        where: { id: branchId, tenantId: user.tenantId },
-      });
-      if (!branch || branch.deletedAt) {
-        // Branch was deleted — clear it so the new tokens omit the stale reference
-        await this.prisma.user.update({
-          where: { id: user.id },
-          data: { branchId: null },
-        });
-        branchId = null;
-      }
-    }
-
     const permissions =
       user.role && !user.role.deletedAt
         ? user.role.permissions.map(
@@ -370,7 +356,7 @@ export class AuthService {
           )
         : [];
 
-    return this.generateTokens({ ...user, branchId }, permissions);
+    return this.generateTokens(user, permissions);
   }
 
   async forgotPassword(dto: ForgotPasswordDto): Promise<void> {
@@ -480,7 +466,7 @@ export class AuthService {
     this.eventDispatcher.dispatch(new AuthLogoutEvent(tenantId, { userId }));
   }
 
-  private generateTokens(
+  private async generateTokens(
     user: {
       id: string;
       tenantId: string;
@@ -492,7 +478,16 @@ export class AuthService {
       tokenVersion: number;
     },
     permissions: string[],
-  ): { response: AuthResponseDto; refreshToken: string } {
+  ): Promise<{ response: AuthResponseDto; refreshToken: string }> {
+    if (user.branchId !== null) {
+      const branch = await this.prisma.branch.findFirst({
+        where: { id: user.branchId, tenantId: user.tenantId },
+      });
+      if (!branch || branch.deletedAt || !branch.isActive) {
+        throw new UnauthorizedException('Assigned branch is unavailable');
+      }
+    }
+
     const basePayload = {
       sub: user.id,
       tenantId: user.tenantId,

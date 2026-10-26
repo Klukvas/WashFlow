@@ -118,7 +118,14 @@ export class OrdersRepository {
     query: OrderQueryDto,
     branchId: string | null = null,
   ) {
-    const { skip, take, orderBy } = buildPaginationArgs(query);
+    const { skip, take, orderBy } = buildPaginationArgs(query, [
+      'createdAt',
+      'updatedAt',
+      'status',
+      'scheduledStart',
+      'scheduledEnd',
+      'totalPrice',
+    ] as const satisfies readonly (keyof Prisma.OrderOrderByWithRelationInput)[]);
 
     let where: Prisma.OrderWhereInput & { _includeDeleted?: boolean } = {};
     if (query.includeDeleted) {

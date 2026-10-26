@@ -32,7 +32,9 @@ export class AuditRepository {
     query: AuditQueryDto,
     branchId: string | null = null,
   ) {
-    const { skip, take } = buildPaginationArgs(query);
+    const { skip, take } = buildPaginationArgs(query, [
+      'createdAt',
+    ] as const satisfies readonly (keyof Prisma.AuditLogOrderByWithRelationInput)[]);
 
     const where: Prisma.AuditLogWhereInput = {};
     if (query.entityType) where.entityType = query.entityType;

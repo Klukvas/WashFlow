@@ -18,7 +18,14 @@ export class ClientsRepository {
   }
 
   async findAll(tenantId: string, query: ClientQueryDto) {
-    const { skip, take, orderBy } = buildPaginationArgs(query);
+    const { skip, take, orderBy } = buildPaginationArgs(query, [
+      'createdAt',
+      'updatedAt',
+      'firstName',
+      'lastName',
+      'email',
+      'phone',
+    ] as const satisfies readonly (keyof Prisma.ClientOrderByWithRelationInput)[]);
 
     const where: Prisma.ClientWhereInput & { _includeDeleted?: boolean } = {};
     if (query.includeDeleted) {

@@ -28,7 +28,14 @@ export class UsersRepository {
     userBranchId: string | null = null,
   ) {
     const prisma = this.db(tenantId);
-    const { skip, take, orderBy } = buildPaginationArgs(query);
+    const { skip, take, orderBy } = buildPaginationArgs(query, [
+      'createdAt',
+      'updatedAt',
+      'firstName',
+      'lastName',
+      'email',
+      'phone',
+    ] as const satisfies readonly (keyof Prisma.UserOrderByWithRelationInput)[]);
     const base: Prisma.UserWhereInput & { _includeDeleted?: boolean } =
       query.includeDeleted ? { _includeDeleted: true } : {};
     const where = applyBranchScope(
@@ -86,18 +93,33 @@ export class UsersRepository {
     return stripSensitive(user);
   }
 
-  async update(tenantId: string, id: string, data: Prisma.UserUpdateInput) {
+  async update(
+    tenantId: string,
+    id: string,
+    data: Prisma.UserUpdateInput,
+    userBranchId: string | null = null,
+  ) {
     const user = await this.db(tenantId).user.update({
-      where: { id } as Prisma.UserWhereUniqueInput,
+      where: {
+        id,
+        ...(userBranchId !== null && { branchId: userBranchId }),
+      } as Prisma.UserWhereUniqueInput,
       data,
       include: { role: true, branch: true },
     });
     return stripSensitive(user);
   }
 
-  async softDelete(tenantId: string, id: string) {
+  async softDelete(
+    tenantId: string,
+    id: string,
+    userBranchId: string | null = null,
+  ) {
     const user = await this.db(tenantId).user.update({
-      where: { id } as Prisma.UserWhereUniqueInput,
+      where: {
+        id,
+        ...(userBranchId !== null && { branchId: userBranchId }),
+      } as Prisma.UserWhereUniqueInput,
       data: { deletedAt: new Date() },
     });
     return stripSensitive(user);
@@ -107,21 +129,29 @@ export class UsersRepository {
     tenantId: string,
     id: string,
     tx?: Prisma.TransactionClient,
+    userBranchId: string | null = null,
   ) {
     const user = await (tx ?? this.db(tenantId)).user.findFirst({
-      where: (tx
-        ? { id, tenantId }
-        : { id, _includeDeleted: true }) as Prisma.UserWhereInput,
+      where: {
+        ...(tx ? { id, tenantId } : { id, _includeDeleted: true }),
+        ...(userBranchId !== null && { branchId: userBranchId }),
+      } as Prisma.UserWhereInput,
       include: { role: true, branch: true },
     });
     return user ? stripSensitive(user) : null;
   }
 
-  async restore(tenantId: string, id: string, tx?: Prisma.TransactionClient) {
+  async restore(
+    tenantId: string,
+    id: string,
+    tx?: Prisma.TransactionClient,
+    userBranchId: string | null = null,
+  ) {
     const user = await (tx ?? this.db(tenantId)).user.update({
-      where: (tx
-        ? { id, tenantId, deletedAt: { not: null } }
-        : { id }) as Prisma.UserWhereUniqueInput,
+      where: {
+        ...(tx ? { id, tenantId, deletedAt: { not: null } } : { id }),
+        ...(userBranchId !== null && { branchId: userBranchId }),
+      } as Prisma.UserWhereUniqueInput,
       data: { deletedAt: null },
       include: { role: true, branch: true },
     });

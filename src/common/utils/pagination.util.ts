@@ -1,34 +1,21 @@
 import { PaginationDto } from './pagination.dto';
 
-const ALLOWED_SORT_FIELDS = new Set([
-  'createdAt',
-  'updatedAt',
-  'name',
-  'firstName',
-  'lastName',
-  'email',
-  'phone',
-  'status',
-  'scheduledStart',
-  'scheduledEnd',
-  'totalPrice',
-  'price',
-  'sortOrder',
-  'durationMin',
-  'licensePlate',
-  'make',
-  'model',
-]);
-
-export function buildPaginationArgs(dto: PaginationDto) {
+export function buildPaginationArgs<const T extends string>(
+  dto: PaginationDto,
+  allowedSortFields: readonly T[],
+) {
   const skip = (dto.page - 1) * dto.limit;
   const take = dto.limit;
 
   const sortField =
-    dto.sortBy && ALLOWED_SORT_FIELDS.has(dto.sortBy) ? dto.sortBy : undefined;
+    dto.sortBy && allowedSortFields.some((field) => field === dto.sortBy)
+      ? (dto.sortBy as T)
+      : undefined;
 
   const orderBy = sortField
-    ? { [sortField]: dto.sortOrder || 'asc' }
+    ? ({ [sortField]: dto.sortOrder || 'asc' } as Partial<
+        Record<T, 'asc' | 'desc'>
+      >)
     : { createdAt: 'desc' as const };
 
   return { skip, take, orderBy };

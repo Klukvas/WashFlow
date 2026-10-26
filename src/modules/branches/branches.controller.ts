@@ -59,8 +59,9 @@ export class BranchesController {
     @CurrentTenant() tenantId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateBranchDto,
+    @CurrentBranch() branchId: string | null = null,
   ) {
-    return this.branchesService.update(tenantId, id, dto);
+    return this.branchesService.update(tenantId, id, dto, branchId);
   }
 
   @Delete(':id')
@@ -68,8 +69,9 @@ export class BranchesController {
   remove(
     @CurrentTenant() tenantId: string,
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentBranch() branchId: string | null = null,
   ) {
-    return this.branchesService.softDelete(tenantId, id);
+    return this.branchesService.softDelete(tenantId, id, branchId);
   }
 
   @Patch(':id/restore')
@@ -77,8 +79,9 @@ export class BranchesController {
   restore(
     @CurrentTenant() tenantId: string,
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentBranch() branchId: string | null = null,
   ) {
-    return this.branchesService.restore(tenantId, id);
+    return this.branchesService.restore(tenantId, id, branchId);
   }
 
   @Get(':id/booking-settings')
@@ -86,8 +89,9 @@ export class BranchesController {
   getBookingSettings(
     @CurrentTenant() tenantId: string,
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentBranch() branchId: string | null = null,
   ) {
-    return this.branchesService.getBookingSettings(tenantId, id);
+    return this.branchesService.getBookingSettings(tenantId, id, branchId);
   }
 
   @Patch(':id/booking-settings')
@@ -96,7 +100,13 @@ export class BranchesController {
     @CurrentTenant() tenantId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateBookingSettingsDto,
+    @CurrentBranch() branchId: string | null = null,
   ) {
-    return this.branchesService.updateBookingSettings(tenantId, id, dto);
+    return this.branchesService.updateBookingSettings(
+      tenantId,
+      id,
+      dto,
+      branchId,
+    );
   }
 }

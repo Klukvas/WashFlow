@@ -125,4 +125,17 @@ describe('OrdersRepository', () => {
       expect(findByIdInclude).toEqual(findAllInclude);
     });
   });
+
+  it.each([
+    ['name', { createdAt: 'desc' }],
+    ['scheduledStart', { scheduledStart: 'asc' }],
+  ])('uses only model-valid ordering for %s', async (sortBy, expected) => {
+    await Reflect.apply(repo.findAll, repo, [
+      'tenant-1',
+      { page: 1, limit: 10, sortBy, sortOrder: 'asc' },
+    ]);
+    expect(tenantClient.order.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: expected }),
+    );
+  });
 });

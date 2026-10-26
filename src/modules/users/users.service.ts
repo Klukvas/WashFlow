@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { UsersRepository } from './users.repository';
@@ -40,6 +41,15 @@ export class UsersService {
     return user;
   }
 
+  private validateBranchAssignment(
+    scope: string | null,
+    assignment: string | null,
+  ): void {
+    if (scope !== null && assignment !== scope) {
+      throw new ForbiddenException('Cannot assign users outside your branch');
+    }
+  }
+
   private async validateRoleBelongsToTenant(
     tenantId: string,
     roleId: string,
@@ -64,17 +74,28 @@ export class UsersService {
     }
   }
 
-  async create(tenantId: string, dto: CreateUserDto) {
+  async create(
+    tenantId: string,
+    dto: CreateUserDto,
+    branchId: string | null = null,
+  ) {
+    const assignedBranchId =
+      dto.branchId === undefined ? branchId : dto.branchId;
+    this.validateBranchAssignment(branchId, assignedBranchId);
+    const scopedDto =
+      assignedBranchId === null && dto.branchId === undefined
+        ? dto
+        : { ...dto, branchId: assignedBranchId };
     if (dto.roleId) {
       await this.validateRoleBelongsToTenant(tenantId, dto.roleId);
     }
-    if (dto.branchId) {
-      await this.validateBranchBelongsToTenant(tenantId, dto.branchId);
+    if (scopedDto.branchId) {
+      await this.validateBranchBelongsToTenant(tenantId, scopedDto.branchId);
     }
 
     const passwordHash = await argon2.hash(dto.password);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, ...rest } = dto;
+    const { password, ...rest } = scopedDto;
 
     return this.limits.withResourceLimit(tenantId, 'users', (tx) =>
       this.usersRepo.create(
@@ -88,8 +109,15 @@ export class UsersService {
     );
   }
 
-  async update(tenantId: string, id: string, dto: UpdateUserDto) {
-    await this.findById(tenantId, id);
+  async update(
+    tenantId: string,
+    id: string,
+    dto: UpdateUserDto,
+    branchId: string | null = null,
+  ) {
+    await this.findById(tenantId, id, branchId);
+    if (dto.branchId !== undefined)
+      this.validateBranchAssignment(branchId, dto.branchId);
 
     if (dto.roleId) {
       await this.validateRoleBelongsToTenant(tenantId, dto.roleId);
@@ -110,34 +138,49 @@ export class UsersService {
     const { password, ...rest } = raw;
     const merged = { ...rest, ...updateData };
 
-    return this.usersRepo.update(tenantId, id, merged);
+    return this.usersRepo.update(tenantId, id, merged, branchId);
   }
 
-  async resetPassword(tenantId: string, id: string, dto: ResetPasswordDto) {
-    await this.findById(tenantId, id);
+  async resetPassword(
+    tenantId: string,
+    id: string,
+    dto: ResetPasswordDto,
+    branchId: string | null = null,
+  ) {
+    await this.findById(tenantId, id, branchId);
     const passwordHash = await argon2.hash(dto.newPassword);
     // Increment tokenVersion to invalidate all existing refresh tokens
-    await this.usersRepo.update(tenantId, id, {
-      passwordHash,
-      tokenVersion: { increment: 1 },
-    });
+    await this.usersRepo.update(
+      tenantId,
+      id,
+      {
+        passwordHash,
+        tokenVersion: { increment: 1 },
+      },
+      branchId,
+    );
   }
 
-  async softDelete(tenantId: string, id: string) {
-    await this.findById(tenantId, id);
-    return this.usersRepo.softDelete(tenantId, id);
+  async softDelete(
+    tenantId: string,
+    id: string,
+    branchId: string | null = null,
+  ) {
+    await this.findById(tenantId, id, branchId);
+    return this.usersRepo.softDelete(tenantId, id, branchId);
   }
 
-  async restore(tenantId: string, id: string) {
+  async restore(tenantId: string, id: string, branchId: string | null = null) {
     return this.limits.withResourceLimit(tenantId, 'users', async (tx) => {
       const user = await this.usersRepo.findByIdIncludeDeleted(
         tenantId,
         id,
         tx,
+        branchId,
       );
       if (!user) throw new NotFoundException('User not found');
       if (!user.deletedAt) throw new BadRequestException('User is not deleted');
-      return this.usersRepo.restore(tenantId, id, tx);
+      return this.usersRepo.restore(tenantId, id, tx, branchId);
     });
   }
 }

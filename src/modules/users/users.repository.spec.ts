@@ -127,4 +127,48 @@ describe('UsersRepository', () => {
       });
     });
   });
+
+  it('scopes include-deleted lookup inside quota transactions', async () => {
+    await Reflect.apply(repo.findByIdIncludeDeleted, repo, [
+      tenantId,
+      userId,
+      { user: tenantClient.user },
+      branchId,
+    ]);
+    expect(tenantClient.user.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ tenantId, id: userId, branchId }),
+      }),
+    );
+  });
+  it.each(['update', 'softDelete', 'restore'] as const)(
+    'keeps branch predicate on %s write',
+    async (method) => {
+      const args =
+        method === 'update'
+          ? [tenantId, userId, {}, branchId]
+          : method === 'restore'
+            ? [tenantId, userId, undefined, branchId]
+            : [tenantId, userId, branchId];
+      await Reflect.apply(repo[method], repo, args);
+      expect(tenantClient.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ branchId }),
+        }),
+      );
+    },
+  );
+
+  it.each([
+    ['name', { createdAt: 'desc' }],
+    ['firstName', { firstName: 'asc' }],
+  ])('uses only model-valid ordering for %s', async (sortBy, expected) => {
+    await Reflect.apply(repo.findAll, repo, [
+      tenantId,
+      { page: 1, limit: 10, sortBy, sortOrder: 'asc' },
+    ]);
+    expect(tenantClient.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: expected }),
+    );
+  });
 });

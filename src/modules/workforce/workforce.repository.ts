@@ -22,7 +22,10 @@ export class WorkforceRepository {
   // ─── Employee Profiles ────────────────────────────────────────
 
   async findProfiles(tenantId: string, query: EmployeeProfileQueryDto) {
-    const { skip, take, orderBy } = buildPaginationArgs(query);
+    const { skip, take, orderBy } = buildPaginationArgs(query, [
+      'createdAt',
+      'updatedAt',
+    ] as const satisfies readonly (keyof Prisma.EmployeeProfileOrderByWithRelationInput)[]);
     const where: Prisma.EmployeeProfileWhereInput = {
       ...(query.branchId !== undefined && { branchId: query.branchId }),
       ...(query.active !== undefined && { active: query.active }),

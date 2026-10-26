@@ -229,7 +229,12 @@ describe('BranchesService', () => {
       await service.update(tenantId, branchId, dto as any);
 
       expect(repo.findById).toHaveBeenCalledWith(tenantId, branchId, null);
-      expect(repo.update).toHaveBeenCalledWith(tenantId, branchId, { ...dto });
+      expect(repo.update).toHaveBeenCalledWith(
+        tenantId,
+        branchId,
+        { ...dto },
+        null,
+      );
     });
 
     it('should return the updated branch from repo', async () => {
@@ -270,9 +275,14 @@ describe('BranchesService', () => {
       const dto = { isActive: false };
       await service.update(tenantId, branchId, dto as any);
 
-      expect(repo.update).toHaveBeenCalledWith(tenantId, branchId, {
-        isActive: false,
-      });
+      expect(repo.update).toHaveBeenCalledWith(
+        tenantId,
+        branchId,
+        {
+          isActive: false,
+        },
+        null,
+      );
     });
   });
 
@@ -281,7 +291,7 @@ describe('BranchesService', () => {
       await service.softDelete(tenantId, branchId);
 
       expect(repo.findById).toHaveBeenCalledWith(tenantId, branchId, null);
-      expect(repo.softDelete).toHaveBeenCalledWith(tenantId, branchId);
+      expect(repo.softDelete).toHaveBeenCalledWith(tenantId, branchId, null);
     });
 
     it('should return the soft-deleted branch from repo', async () => {
@@ -322,8 +332,14 @@ describe('BranchesService', () => {
         tenantId,
         branchId,
         quotaTx,
+        null,
       );
-      expect(repo.restore).toHaveBeenCalledWith(tenantId, branchId, quotaTx);
+      expect(repo.restore).toHaveBeenCalledWith(
+        tenantId,
+        branchId,
+        quotaTx,
+        null,
+      );
     });
 
     it('should return the restored branch from repo', async () => {
@@ -463,7 +479,11 @@ describe('BranchesService', () => {
     it('should call repo.getBookingSettings with tenantId and branchId', async () => {
       await service.getBookingSettings(tenantId, branchId);
 
-      expect(repo.getBookingSettings).toHaveBeenCalledWith(tenantId, branchId);
+      expect(repo.getBookingSettings).toHaveBeenCalledWith(
+        tenantId,
+        branchId,
+        null,
+      );
     });
 
     it('should throw NotFoundException when branch does not exist', async () => {
@@ -546,5 +566,76 @@ describe('BranchesService', () => {
 
       expect(repo.upsertBookingSettings).not.toHaveBeenCalled();
     });
+  });
+
+  describe('mutation and booking branch scope', () => {
+    it.each([
+      'update',
+      'softDelete',
+      'getBookingSettings',
+      'updateBookingSettings',
+    ] as const)('rejects %s outside caller branch', async (method) => {
+      repo.findById.mockImplementation(
+        (_tenant: string, _id: string, scope: string | null) =>
+          Promise.resolve(scope === 'another-branch' ? null : mockBranch),
+      );
+      repo.getBookingSettings = jest.fn();
+      repo.upsertBookingSettings = jest.fn();
+      const args =
+        method === 'update' || method === 'updateBookingSettings'
+          ? [tenantId, branchId, {}, 'another-branch']
+          : [tenantId, branchId, 'another-branch'];
+      await expect(
+        Reflect.apply(service[method], service, args),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.update).not.toHaveBeenCalled();
+      expect(repo.softDelete).not.toHaveBeenCalled();
+      expect(repo.getBookingSettings).not.toHaveBeenCalled();
+      expect(repo.upsertBookingSettings).not.toHaveBeenCalled();
+    });
+    it('rejects restoration outside caller branch', async () => {
+      repo.findByIdIncludeDeleted.mockImplementation(
+        (_tenant: string, _id: string, _tx: unknown, scope: string | null) =>
+          Promise.resolve(
+            scope === 'another-branch'
+              ? null
+              : { ...mockBranch, deletedAt: new Date() },
+          ),
+      );
+      await expect(
+        Reflect.apply(service.restore, service, [
+          tenantId,
+          branchId,
+          'another-branch',
+        ]),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.restore).not.toHaveBeenCalled();
+    });
+  });
+
+  it.each([
+    'update',
+    'softDelete',
+    'restore',
+    'getBookingSettings',
+    'updateBookingSettings',
+  ] as const)('allows %s in caller branch', async (method) => {
+    repo.findByIdIncludeDeleted.mockResolvedValue({
+      ...mockBranch,
+      deletedAt: new Date(),
+    });
+    repo.getBookingSettings = jest.fn().mockResolvedValue({ slotDuration: 30 });
+    repo.upsertBookingSettings = jest.fn();
+    const args =
+      method === 'update' || method === 'updateBookingSettings'
+        ? [tenantId, branchId, {}, branchId]
+        : [tenantId, branchId, branchId];
+    await Reflect.apply(service[method], service, args);
+    const target =
+      repo[
+        method === 'updateBookingSettings' ? 'upsertBookingSettings' : method
+      ];
+    expect(target).toHaveBeenCalled();
+    expect(target.mock.calls[0].at(-1)).toBe(branchId);
   });
 });

@@ -141,4 +141,17 @@ describe('VehiclesRepository', () => {
       });
     });
   });
+
+  it.each([
+    ['name', { createdAt: 'desc' }],
+    ['licensePlate', { licensePlate: 'asc' }],
+  ])('uses only model-valid ordering for %s', async (sortBy, expected) => {
+    await Reflect.apply(repo.findAll, repo, [
+      tenantId,
+      { page: 1, limit: 10, sortBy, sortOrder: 'asc' },
+    ]);
+    expect(tenantClient.vehicle.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: expected }),
+    );
+  });
 });

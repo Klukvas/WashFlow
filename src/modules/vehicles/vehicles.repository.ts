@@ -13,7 +13,13 @@ export class VehiclesRepository {
   }
 
   async findAll(tenantId: string, query: VehicleQueryDto) {
-    const { skip, take, orderBy } = buildPaginationArgs(query);
+    const { skip, take, orderBy } = buildPaginationArgs(query, [
+      'createdAt',
+      'updatedAt',
+      'licensePlate',
+      'make',
+      'model',
+    ] as const satisfies readonly (keyof Prisma.VehicleOrderByWithRelationInput)[]);
 
     const where: Prisma.VehicleWhereInput & { _includeDeleted?: boolean } = {};
     if (query.includeDeleted) {

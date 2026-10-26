@@ -243,4 +243,17 @@ describe('ClientsRepository', () => {
       expect(result).toEqual(mockClient);
     });
   });
+
+  it.each([
+    ['name', { createdAt: 'desc' }],
+    ['firstName', { firstName: 'asc' }],
+  ])('uses only model-valid ordering for %s', async (sortBy, expected) => {
+    await Reflect.apply(repo.findAll, repo, [
+      tenantId,
+      { page: 1, limit: 10, sortBy, sortOrder: 'asc' },
+    ]);
+    expect(tenantClient.client.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: expected }),
+    );
+  });
 });

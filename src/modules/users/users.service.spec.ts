@@ -395,6 +395,7 @@ describe('UsersService', () => {
         TENANT_ID,
         USER_ID,
         expect.objectContaining({ firstName: 'Updated' }),
+        null,
       );
       expect(result).toEqual(updated);
     });
@@ -414,6 +415,7 @@ describe('UsersService', () => {
         TENANT_ID,
         USER_ID,
         expect.objectContaining({ passwordHash: '$argon2id$new-hash' }),
+        null,
       );
     });
 
@@ -470,7 +472,7 @@ describe('UsersService', () => {
       const result = await service.softDelete(TENANT_ID, USER_ID);
 
       expect(repo.findById).toHaveBeenCalledWith(TENANT_ID, USER_ID, null);
-      expect(repo.softDelete).toHaveBeenCalledWith(TENANT_ID, USER_ID);
+      expect(repo.softDelete).toHaveBeenCalledWith(TENANT_ID, USER_ID, null);
       expect(result).toEqual(deletedUser);
     });
 
@@ -503,8 +505,14 @@ describe('UsersService', () => {
         TENANT_ID,
         USER_ID,
         quotaTx,
+        null,
       );
-      expect(repo.restore).toHaveBeenCalledWith(TENANT_ID, USER_ID, quotaTx);
+      expect(repo.restore).toHaveBeenCalledWith(
+        TENANT_ID,
+        USER_ID,
+        quotaTx,
+        null,
+      );
       expect(result).toEqual(restoredUser);
     });
 
@@ -578,4 +586,120 @@ describe('UsersService', () => {
       expect(repo.restore).not.toHaveBeenCalled();
     });
   });
+
+  describe('mutation branch scope', () => {
+    it.each(['update', 'resetPassword', 'softDelete'] as const)(
+      'rejects %s outside caller branch before writing',
+      async (method) => {
+        repo.findById.mockImplementation(
+          (_tenant: string, _id: string, scope: string | null) =>
+            Promise.resolve(scope === BRANCH_ID ? null : makeUser()),
+        );
+        const args =
+          method === 'softDelete'
+            ? [TENANT_ID, USER_ID, BRANCH_ID]
+            : [
+                TENANT_ID,
+                USER_ID,
+                method === 'update'
+                  ? { firstName: 'Changed' }
+                  : { newPassword: 'replacement' },
+                BRANCH_ID,
+              ];
+        await expect(
+          Reflect.apply(service[method], service, args),
+        ).rejects.toThrow(NotFoundException);
+        expect(repo.update).not.toHaveBeenCalled();
+        expect(repo.softDelete).not.toHaveBeenCalled();
+      },
+    );
+    it('rejects restoration outside caller branch', async () => {
+      repo.findByIdIncludeDeleted.mockImplementation(
+        (_tenant: string, _id: string, _tx: unknown, scope: string | null) =>
+          Promise.resolve(
+            scope === BRANCH_ID ? null : makeUser({ deletedAt: new Date() }),
+          ),
+      );
+      await expect(
+        Reflect.apply(service.restore, service, [
+          TENANT_ID,
+          USER_ID,
+          BRANCH_ID,
+        ]),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.restore).not.toHaveBeenCalled();
+    });
+    it.each([null, 'another-branch'])(
+      'rejects create assignment outside scope: %p',
+      async (branchId) => {
+        const dto = {
+          email: 'scoped@example.com',
+          password: 'synthetic',
+          firstName: 'Scoped',
+          lastName: 'User',
+          branchId,
+        };
+        await expect(
+          Reflect.apply(service.create, service, [TENANT_ID, dto, BRANCH_ID]),
+        ).rejects.toThrow(ForbiddenException);
+        expect(repo.create).not.toHaveBeenCalled();
+      },
+    );
+    it('defaults omitted create assignment to caller branch', async () => {
+      await Reflect.apply(service.create, service, [
+        TENANT_ID,
+        {
+          email: 'scoped@example.com',
+          password: 'synthetic',
+          firstName: 'Scoped',
+          lastName: 'User',
+        },
+        BRANCH_ID,
+      ]);
+      expect(repo.create).toHaveBeenCalledWith(
+        TENANT_ID,
+        expect.objectContaining({ branchId: BRANCH_ID }),
+        quotaTx,
+      );
+    });
+    it.each([null, 'another-branch'])(
+      'rejects update assignment outside scope: %p',
+      async (branchId) => {
+        repo.findById.mockResolvedValue(makeUser({ branchId: BRANCH_ID }));
+        await expect(
+          Reflect.apply(service.update, service, [
+            TENANT_ID,
+            USER_ID,
+            { branchId },
+            BRANCH_ID,
+          ]),
+        ).rejects.toThrow(ForbiddenException);
+        expect(repo.update).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  it.each(['update', 'resetPassword', 'softDelete', 'restore'] as const)(
+    'allows %s in the caller branch',
+    async (method) => {
+      const user = makeUser({
+        branchId: BRANCH_ID,
+        deletedAt: method === 'restore' ? new Date() : null,
+      });
+      repo.findById.mockResolvedValue(user);
+      repo.findByIdIncludeDeleted.mockResolvedValue(user);
+      const args =
+        method === 'update'
+          ? [TENANT_ID, USER_ID, { firstName: 'Scoped' }, BRANCH_ID]
+          : method === 'resetPassword'
+            ? [TENANT_ID, USER_ID, { newPassword: 'synthetic' }, BRANCH_ID]
+            : [TENANT_ID, USER_ID, BRANCH_ID];
+      await expect(
+        Reflect.apply(service[method], service, args),
+      ).resolves.toBeUndefined();
+      const target = method === 'resetPassword' ? repo.update : repo[method];
+      expect(target).toHaveBeenCalled();
+      expect(target.mock.calls[0].at(-1)).toBe(BRANCH_ID);
+    },
+  );
 });

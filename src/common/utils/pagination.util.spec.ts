@@ -6,6 +6,26 @@ import {
   paginatedResponse,
 } from './pagination.util';
 
+const TEST_SORT_FIELDS = [
+  'createdAt',
+  'updatedAt',
+  'name',
+  'firstName',
+  'lastName',
+  'email',
+  'phone',
+  'status',
+  'scheduledStart',
+  'scheduledEnd',
+  'totalPrice',
+  'price',
+  'sortOrder',
+  'durationMin',
+  'licensePlate',
+  'make',
+  'model',
+] as const;
+
 function buildDto(overrides: Partial<PaginationDto> = {}): PaginationDto {
   return Object.assign(new PaginationDto(), {
     page: 1,
@@ -19,25 +39,25 @@ describe('buildPaginationArgs', () => {
   describe('skip calculation', () => {
     it('returns skip=0 for the first page', () => {
       const dto = buildDto({ page: 1, limit: 20 });
-      const { skip } = buildPaginationArgs(dto);
+      const { skip } = buildPaginationArgs(dto, TEST_SORT_FIELDS);
       expect(skip).toBe(0);
     });
 
     it('returns skip=20 for page 2 with limit 20', () => {
       const dto = buildDto({ page: 2, limit: 20 });
-      const { skip } = buildPaginationArgs(dto);
+      const { skip } = buildPaginationArgs(dto, TEST_SORT_FIELDS);
       expect(skip).toBe(20);
     });
 
     it('returns skip=40 for page 3 with limit 20', () => {
       const dto = buildDto({ page: 3, limit: 20 });
-      const { skip } = buildPaginationArgs(dto);
+      const { skip } = buildPaginationArgs(dto, TEST_SORT_FIELDS);
       expect(skip).toBe(40);
     });
 
     it('uses custom limit when calculating skip', () => {
       const dto = buildDto({ page: 4, limit: 10 });
-      const { skip } = buildPaginationArgs(dto);
+      const { skip } = buildPaginationArgs(dto, TEST_SORT_FIELDS);
       expect(skip).toBe(30);
     });
   });
@@ -45,13 +65,13 @@ describe('buildPaginationArgs', () => {
   describe('take value', () => {
     it('sets take equal to the dto limit', () => {
       const dto = buildDto({ limit: 20 });
-      const { take } = buildPaginationArgs(dto);
+      const { take } = buildPaginationArgs(dto, TEST_SORT_FIELDS);
       expect(take).toBe(20);
     });
 
     it('reflects a custom limit in take', () => {
       const dto = buildDto({ limit: 50 });
-      const { take } = buildPaginationArgs(dto);
+      const { take } = buildPaginationArgs(dto, TEST_SORT_FIELDS);
       expect(take).toBe(50);
     });
   });
@@ -59,13 +79,13 @@ describe('buildPaginationArgs', () => {
   describe('orderBy — no sortBy provided', () => {
     it('defaults to createdAt desc when sortBy is absent', () => {
       const dto = buildDto();
-      const { orderBy } = buildPaginationArgs(dto);
+      const { orderBy } = buildPaginationArgs(dto, TEST_SORT_FIELDS);
       expect(orderBy).toEqual({ createdAt: 'desc' });
     });
 
     it('defaults to createdAt desc when sortBy is undefined', () => {
       const dto = buildDto({ sortBy: undefined });
-      const { orderBy } = buildPaginationArgs(dto);
+      const { orderBy } = buildPaginationArgs(dto, TEST_SORT_FIELDS);
       expect(orderBy).toEqual({ createdAt: 'desc' });
     });
   });
@@ -73,13 +93,13 @@ describe('buildPaginationArgs', () => {
   describe('orderBy — sortBy provided', () => {
     it('uses the provided sortBy field as the key', () => {
       const dto = buildDto({ sortBy: 'name', sortOrder: 'asc' });
-      const { orderBy } = buildPaginationArgs(dto);
+      const { orderBy } = buildPaginationArgs(dto, TEST_SORT_FIELDS);
       expect(orderBy).toEqual({ name: 'asc' });
     });
 
     it('respects sortOrder desc when sortBy is provided', () => {
       const dto = buildDto({ sortBy: 'createdAt', sortOrder: 'desc' });
-      const { orderBy } = buildPaginationArgs(dto);
+      const { orderBy } = buildPaginationArgs(dto, TEST_SORT_FIELDS);
       expect(orderBy).toEqual({ createdAt: 'desc' });
     });
 
@@ -87,7 +107,7 @@ describe('buildPaginationArgs', () => {
       const dto = buildDto({ sortBy: 'updatedAt' });
       // Simulate the edge case: sortOrder is omitted after object construction
       delete (dto as Partial<PaginationDto>).sortOrder;
-      const { orderBy } = buildPaginationArgs(dto);
+      const { orderBy } = buildPaginationArgs(dto, TEST_SORT_FIELDS);
       expect(orderBy).toEqual({ updatedAt: 'asc' });
     });
   });
@@ -95,13 +115,13 @@ describe('buildPaginationArgs', () => {
   describe('orderBy — disallowed sortBy', () => {
     it('falls back to createdAt desc when sortBy is not in allowed list', () => {
       const dto = buildDto({ sortBy: 'hackerField' });
-      const { orderBy } = buildPaginationArgs(dto);
+      const { orderBy } = buildPaginationArgs(dto, TEST_SORT_FIELDS);
       expect(orderBy).toEqual({ createdAt: 'desc' });
     });
 
     it('falls back to createdAt desc for SQL-injection-like sortBy', () => {
       const dto = buildDto({ sortBy: 'name; DROP TABLE users' });
-      const { orderBy } = buildPaginationArgs(dto);
+      const { orderBy } = buildPaginationArgs(dto, TEST_SORT_FIELDS);
       expect(orderBy).toEqual({ createdAt: 'desc' });
     });
   });
@@ -129,7 +149,7 @@ describe('buildPaginationArgs', () => {
 
     it.each(allowedFields)('accepts "%s" as a valid sort field', (field) => {
       const dto = buildDto({ sortBy: field, sortOrder: 'desc' });
-      const { orderBy } = buildPaginationArgs(dto);
+      const { orderBy } = buildPaginationArgs(dto, TEST_SORT_FIELDS);
       expect(orderBy).toEqual({ [field]: 'desc' });
     });
   });
@@ -137,7 +157,7 @@ describe('buildPaginationArgs', () => {
   describe('return shape', () => {
     it('returns an object with exactly skip, take, and orderBy keys', () => {
       const dto = buildDto();
-      const result = buildPaginationArgs(dto);
+      const result = buildPaginationArgs(dto, TEST_SORT_FIELDS);
       expect(Object.keys(result)).toEqual(['skip', 'take', 'orderBy']);
     });
   });
@@ -251,5 +271,14 @@ describe('paginatedResponse', () => {
     const original = [...items];
     paginatedResponse(items, 1, dto);
     expect(items).toEqual(original);
+  });
+});
+
+describe('model-specific sort allowlist', () => {
+  it('rejects a field allowed by a different model', () => {
+    expect(
+      buildPaginationArgs(buildDto({ sortBy: 'email' }), ['createdAt', 'name'])
+        .orderBy,
+    ).toEqual({ createdAt: 'desc' });
   });
 });

@@ -226,4 +226,17 @@ describe('WorkforceRepository', () => {
       expect(result).toEqual([]);
     });
   });
+
+  it.each([
+    ['firstName', { createdAt: 'desc' }],
+    ['createdAt', { createdAt: 'asc' }],
+  ])('uses only model-valid ordering for %s', async (sortBy, expected) => {
+    await Reflect.apply(repo.findProfiles, repo, [
+      tenantId,
+      { page: 1, limit: 10, sortBy, sortOrder: 'asc' },
+    ]);
+    expect(tenantClient.employeeProfile.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: expected }),
+    );
+  });
 });

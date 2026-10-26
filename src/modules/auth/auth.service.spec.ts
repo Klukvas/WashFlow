@@ -122,12 +122,16 @@ describe('AuthService', () => {
         findUnique: jest.fn(),
       },
       branch: {
-        findUnique: jest
-          .fn()
-          .mockResolvedValue({ id: BRANCH_ID, deletedAt: null }),
-        findFirst: jest
-          .fn()
-          .mockResolvedValue({ id: BRANCH_ID, deletedAt: null }),
+        findUnique: jest.fn().mockResolvedValue({
+          id: BRANCH_ID,
+          deletedAt: null,
+          isActive: true,
+        }),
+        findFirst: jest.fn().mockResolvedValue({
+          id: BRANCH_ID,
+          deletedAt: null,
+          isActive: true,
+        }),
       },
       passwordResetToken: {
         findUnique: jest.fn(),
@@ -1295,5 +1299,40 @@ describe('AuthService', () => {
         service.resetPassword({ token: 'invalid', newPassword: 'NewPass123!' }),
       ).rejects.toThrow(BadRequestException);
     });
+  });
+
+  describe('assigned branch token issuance', () => {
+    it.each([
+      null,
+      { deletedAt: new Date(), isActive: true },
+      { deletedAt: null, isActive: false },
+    ])(
+      'rejects refresh and preserves assignment when branch is unavailable: %p',
+      async (branch) => {
+        prisma.user.findUnique.mockResolvedValue(buildUser());
+        prisma.branch.findFirst.mockResolvedValue(branch);
+        await expect(service.refreshTokens(JWT_PAYLOAD)).rejects.toThrow(
+          UnauthorizedException,
+        );
+        expect(prisma.user.update).not.toHaveBeenCalled();
+        expect(jwtService.sign).not.toHaveBeenCalled();
+      },
+    );
+    it.each([
+      null,
+      { deletedAt: new Date(), isActive: true },
+      { deletedAt: null, isActive: false },
+    ])(
+      'rejects login when assigned branch is unavailable: %p',
+      async (branch) => {
+        prisma.user.findUnique.mockResolvedValue(buildUser());
+        prisma.branch.findFirst.mockResolvedValue(branch);
+        mockedArgon2.verify.mockResolvedValue(true);
+        await expect(service.login(LOGIN_DTO)).rejects.toThrow(
+          UnauthorizedException,
+        );
+        expect(jwtService.sign).not.toHaveBeenCalled();
+      },
+    );
   });
 });

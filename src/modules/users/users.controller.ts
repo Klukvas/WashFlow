@@ -51,8 +51,12 @@ export class UsersController {
 
   @Post()
   @Permissions('users.create')
-  create(@CurrentTenant() tenantId: string, @Body() dto: CreateUserDto) {
-    return this.usersService.create(tenantId, dto);
+  create(
+    @CurrentTenant() tenantId: string,
+    @Body() dto: CreateUserDto,
+    @CurrentBranch() branchId: string | null = null,
+  ) {
+    return this.usersService.create(tenantId, dto, branchId);
   }
 
   @Patch(':id')
@@ -61,8 +65,9 @@ export class UsersController {
     @CurrentTenant() tenantId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserDto,
+    @CurrentBranch() branchId: string | null = null,
   ) {
-    return this.usersService.update(tenantId, id, dto);
+    return this.usersService.update(tenantId, id, dto, branchId);
   }
 
   @Patch(':id/reset-password')
@@ -72,8 +77,9 @@ export class UsersController {
     @CurrentTenant() tenantId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ResetPasswordDto,
+    @CurrentBranch() branchId: string | null = null,
   ) {
-    return this.usersService.resetPassword(tenantId, id, dto);
+    return this.usersService.resetPassword(tenantId, id, dto, branchId);
   }
 
   @Delete(':id')
@@ -81,8 +87,9 @@ export class UsersController {
   remove(
     @CurrentTenant() tenantId: string,
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentBranch() branchId: string | null = null,
   ) {
-    return this.usersService.softDelete(tenantId, id);
+    return this.usersService.softDelete(tenantId, id, branchId);
   }
 
   @Patch(':id/restore')
@@ -90,7 +97,8 @@ export class UsersController {
   restore(
     @CurrentTenant() tenantId: string,
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentBranch() branchId: string | null = null,
   ) {
-    return this.usersService.restore(tenantId, id);
+    return this.usersService.restore(tenantId, id, branchId);
   }
 }

@@ -80,7 +80,7 @@ describe('BranchesController', () => {
 
       await controller.update(tenantId, itemId, dto);
 
-      expect(service.update).toHaveBeenCalledWith(tenantId, itemId, dto);
+      expect(service.update).toHaveBeenCalledWith(tenantId, itemId, dto, null);
     });
   });
 
@@ -88,7 +88,7 @@ describe('BranchesController', () => {
     it('should delegate to service.softDelete with tenantId and id', async () => {
       await controller.remove(tenantId, itemId);
 
-      expect(service.softDelete).toHaveBeenCalledWith(tenantId, itemId);
+      expect(service.softDelete).toHaveBeenCalledWith(tenantId, itemId, null);
     });
   });
 
@@ -96,7 +96,7 @@ describe('BranchesController', () => {
     it('should delegate to service.restore with tenantId and id', async () => {
       await controller.restore(tenantId, itemId);
 
-      expect(service.restore).toHaveBeenCalledWith(tenantId, itemId);
+      expect(service.restore).toHaveBeenCalledWith(tenantId, itemId, null);
     });
   });
 
@@ -104,7 +104,11 @@ describe('BranchesController', () => {
     it('should delegate to service.getBookingSettings with tenantId and id', async () => {
       await controller.getBookingSettings(tenantId, itemId);
 
-      expect(service.getBookingSettings).toHaveBeenCalledWith(tenantId, itemId);
+      expect(service.getBookingSettings).toHaveBeenCalledWith(
+        tenantId,
+        itemId,
+        null,
+      );
     });
   });
 
@@ -120,7 +124,26 @@ describe('BranchesController', () => {
         tenantId,
         itemId,
         dto,
+        null,
       );
     });
+  });
+
+  it.each([
+    'update',
+    'remove',
+    'restore',
+    'getBookingSettings',
+    'updateBookingSettings',
+  ] as const)('forwards caller branch for %s', async (method) => {
+    const dto = { name: 'Scoped' };
+    const args =
+      method === 'update' || method === 'updateBookingSettings'
+        ? [tenantId, itemId, dto, branchId]
+        : [tenantId, itemId, branchId];
+    await Reflect.apply(controller[method], controller, args);
+    expect(
+      service[method === 'remove' ? 'softDelete' : method],
+    ).toHaveBeenCalledWith(...args);
   });
 });

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -17,12 +17,23 @@ export class BranchesRepository {
     return this.tenantPrisma.forTenant(tenantId);
   }
 
+  private assertBranchScope(id: string, userBranchId: string | null): void {
+    if (userBranchId !== null && id !== userBranchId) {
+      throw new NotFoundException('Branch not found');
+    }
+  }
+
   async findAll(
     tenantId: string,
     query: PaginationDto,
     userBranchId: string | null = null,
   ) {
-    const { skip, take, orderBy } = buildPaginationArgs(query);
+    const { skip, take, orderBy } = buildPaginationArgs(query, [
+      'createdAt',
+      'updatedAt',
+      'name',
+      'phone',
+    ] as const satisfies readonly (keyof Prisma.BranchOrderByWithRelationInput)[]);
     const base: Record<string, unknown> = query.includeDeleted
       ? { _includeDeleted: true }
       : {};
@@ -75,14 +86,25 @@ export class BranchesRepository {
     });
   }
 
-  async update(tenantId: string, id: string, data: Prisma.BranchUpdateInput) {
+  async update(
+    tenantId: string,
+    id: string,
+    data: Prisma.BranchUpdateInput,
+    userBranchId: string | null = null,
+  ) {
+    this.assertBranchScope(id, userBranchId);
     return this.db(tenantId).branch.update({
       where: { id } as Prisma.BranchWhereUniqueInput,
       data,
     });
   }
 
-  async softDelete(tenantId: string, id: string) {
+  async softDelete(
+    tenantId: string,
+    id: string,
+    userBranchId: string | null = null,
+  ) {
+    this.assertBranchScope(id, userBranchId);
     return this.db(tenantId).branch.update({
       where: { id } as Prisma.BranchWhereUniqueInput,
       data: { deletedAt: new Date() },
@@ -93,7 +115,9 @@ export class BranchesRepository {
     tenantId: string,
     id: string,
     tx?: Prisma.TransactionClient,
+    userBranchId: string | null = null,
   ) {
+    if (userBranchId !== null && id !== userBranchId) return null;
     return (tx ?? this.db(tenantId)).branch.findFirst({
       where: (tx
         ? { id, tenantId }
@@ -102,7 +126,13 @@ export class BranchesRepository {
     });
   }
 
-  async restore(tenantId: string, id: string, tx?: Prisma.TransactionClient) {
+  async restore(
+    tenantId: string,
+    id: string,
+    tx?: Prisma.TransactionClient,
+    userBranchId: string | null = null,
+  ) {
+    this.assertBranchScope(id, userBranchId);
     return (tx ?? this.db(tenantId)).branch.update({
       where: (tx
         ? { id, tenantId, deletedAt: { not: null } }
@@ -112,7 +142,12 @@ export class BranchesRepository {
     });
   }
 
-  async getBookingSettings(tenantId: string, branchId: string) {
+  async getBookingSettings(
+    tenantId: string,
+    branchId: string,
+    userBranchId: string | null = null,
+  ) {
+    this.assertBranchScope(branchId, userBranchId);
     return this.prisma.bookingSettings.findUnique({
       where: { tenantId_branchId: { tenantId, branchId } },
     });
@@ -122,7 +157,9 @@ export class BranchesRepository {
     tenantId: string,
     branchId: string,
     data: Record<string, unknown>,
+    userBranchId: string | null = null,
   ) {
+    this.assertBranchScope(branchId, userBranchId);
     return this.prisma.bookingSettings.upsert({
       where: { tenantId_branchId: { tenantId, branchId } },
       update: data as Prisma.BookingSettingsUpdateInput,

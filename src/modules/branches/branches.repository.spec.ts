@@ -180,4 +180,47 @@ describe('BranchesRepository', () => {
       expect(result).toEqual(mockSettings);
     });
   });
+
+  it('does not read another branch during restoration', async () => {
+    const result = await Reflect.apply(repo.findByIdIncludeDeleted, repo, [
+      tenantId,
+      branchId,
+      undefined,
+      otherBranchId,
+    ]);
+    expect(result).toBeNull();
+    expect(tenantClient.branch.findFirst).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['email', { createdAt: 'desc' }],
+    ['name', { name: 'asc' }],
+  ])('uses only model-valid ordering for %s', async (sortBy, expected) => {
+    await Reflect.apply(repo.findAll, repo, [
+      tenantId,
+      { page: 1, limit: 10, sortBy, sortOrder: 'asc' },
+    ]);
+    expect(tenantClient.branch.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: expected }),
+    );
+  });
+
+  it.each([
+    'update',
+    'softDelete',
+    'restore',
+    'getBookingSettings',
+    'upsertBookingSettings',
+  ] as const)('rejects direct %s outside caller branch', async (method) => {
+    const args =
+      method === 'update' || method === 'upsertBookingSettings'
+        ? [tenantId, branchId, {}, otherBranchId]
+        : method === 'restore'
+          ? [tenantId, branchId, undefined, otherBranchId]
+          : [tenantId, branchId, otherBranchId];
+    await expect(Reflect.apply(repo[method], repo, args)).rejects.toThrow(
+      'Branch not found',
+    );
+    expect(tenantClient.branch.update).not.toHaveBeenCalled();
+  });
 });
