@@ -15,13 +15,15 @@ import {
 export const serviceKeys = {
   all: ['services'] as const,
   lists: () => [...serviceKeys.all, 'list'] as const,
-  list: (params: ServiceQueryParams) => [...serviceKeys.lists(), params] as const,
+  list: (params: ServiceQueryParams) =>
+    [...serviceKeys.lists(), params] as const,
   details: () => [...serviceKeys.all, 'detail'] as const,
   detail: (id: string) => [...serviceKeys.details(), id] as const,
 };
 
-export function useServices(params: ServiceQueryParams) {
+export function useServices(params: ServiceQueryParams, enabled = true) {
   return useQuery({
+    enabled,
     queryKey: serviceKeys.list(params),
     queryFn: () => fetchServices(params),
   });
@@ -56,7 +58,9 @@ export function useUpdateService() {
       updateService(id, payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: serviceKeys.all });
-      queryClient.invalidateQueries({ queryKey: serviceKeys.detail(variables.id) });
+      queryClient.invalidateQueries({
+        queryKey: serviceKeys.detail(variables.id),
+      });
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to update service');

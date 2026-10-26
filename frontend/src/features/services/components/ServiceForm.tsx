@@ -93,106 +93,117 @@ export function ServiceForm({
   };
 
   return (
-    <Dialog open={open} onClose={onClose}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      dismissable={!loading}
+      className="max-h-[90vh] overflow-y-auto"
+    >
       <DialogHeader>
         <DialogTitle>
           {isEdit ? t('editService') : t('createService')}
         </DialogTitle>
       </DialogHeader>
 
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-        <div>
-          <Label htmlFor="name">{t('fields.name')}</Label>
-          <Input
-            id="name"
-            {...register('name')}
-            error={errors.name?.message ? t(errors.name.message) : undefined}
-            placeholder={t('placeholders.name')}
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="description">{t('fields.description')}</Label>
-          <Input
-            id="description"
-            {...register('description')}
-            error={errors.description?.message}
-            placeholder={t('placeholders.description')}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
+      <form onSubmit={handleSubmit(handleFormSubmit)}>
+        <fieldset disabled={loading} className="min-w-0 space-y-4">
           <div>
-            <Label htmlFor="durationMin">{t('fields.duration')}</Label>
+            <Label htmlFor="name">{t('fields.name')}</Label>
             <Input
-              id="durationMin"
-              type="number"
-              min={1}
-              {...register('durationMin', { valueAsNumber: true })}
-              error={
-                errors.durationMin?.message
-                  ? t(errors.durationMin.message)
-                  : undefined
-              }
-              placeholder={t('placeholders.duration')}
+              id="name"
+              {...register('name')}
+              error={errors.name?.message ? t(errors.name.message) : undefined}
+              placeholder={t('placeholders.name')}
             />
           </div>
 
           <div>
-            <Label htmlFor="price">{t('fields.price')}</Label>
+            <Label htmlFor="description">{t('fields.description')}</Label>
             <Input
-              id="price"
-              type="number"
-              min={0}
-              step="0.01"
-              {...register('price', { valueAsNumber: true })}
-              error={
-                errors.price?.message ? t(errors.price.message) : undefined
-              }
-              placeholder={t('placeholders.price')}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="sortOrder">{t('fields.sortOrder')}</Label>
-            <Input
-              id="sortOrder"
-              type="number"
-              min={0}
-              {...register('sortOrder', { valueAsNumber: true })}
-              error={errors.sortOrder?.message}
+              id="description"
+              {...register('description')}
+              error={errors.description?.message}
+              placeholder={t('placeholders.description')}
             />
           </div>
 
-          <div className="flex items-end pb-1">
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
-                {...register('isActive')}
-                className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="durationMin">{t('fields.duration')}</Label>
+              <Input
+                id="durationMin"
+                type="number"
+                min={1}
+                {...register('durationMin', { valueAsNumber: true })}
+                error={
+                  errors.durationMin?.message
+                    ? t(errors.durationMin.message)
+                    : undefined
+                }
+                placeholder={t('placeholders.duration')}
               />
-              <span className="text-sm font-medium">
-                {t('fields.isActive')}
-              </span>
-            </label>
-          </div>
-        </div>
+            </div>
 
-        <DialogFooter>
-          <Button
-            variant="outline"
-            type="button"
-            onClick={onClose}
-            disabled={loading}
-          >
-            {tCommon('actions.cancel')}
-          </Button>
-          <Button type="submit" loading={loading} disabled={isEdit && !isDirty}>
-            {isEdit ? tCommon('actions.save') : tCommon('actions.create')}
-          </Button>
-        </DialogFooter>
+            <div>
+              <Label htmlFor="price">{t('fields.price')}</Label>
+              <Input
+                id="price"
+                type="number"
+                min={0}
+                step="0.01"
+                {...register('price', { valueAsNumber: true })}
+                error={
+                  errors.price?.message ? t(errors.price.message) : undefined
+                }
+                placeholder={t('placeholders.price')}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="sortOrder">{t('fields.sortOrder')}</Label>
+              <Input
+                id="sortOrder"
+                type="number"
+                min={0}
+                {...register('sortOrder', { valueAsNumber: true })}
+                error={errors.sortOrder?.message}
+              />
+            </div>
+
+            <div className="flex items-end pb-1">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  {...register('isActive')}
+                  className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
+                />
+                <span className="text-sm font-medium">
+                  {t('fields.isActive')}
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+            >
+              {tCommon('actions.cancel')}
+            </Button>
+            <Button
+              type="submit"
+              loading={loading}
+              disabled={isEdit && !isDirty}
+            >
+              {isEdit ? tCommon('actions.save') : tCommon('actions.create')}
+            </Button>
+          </DialogFooter>
+        </fieldset>
       </form>
     </Dialog>
   );

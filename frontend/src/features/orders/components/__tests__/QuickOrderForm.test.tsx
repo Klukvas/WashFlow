@@ -46,17 +46,15 @@ vi.mock('@/shared/components/PermissionGate', () => ({
   PermissionGate: ({ children }: { children: ReactNode }) => children,
 }));
 vi.mock('@/features/branches/hooks/useBranches', () => ({
-  useBranches: () => ({
-    data: {
-      items: [
-        {
-          id: '11111111-1111-4111-8111-111111111111',
-          name: 'Branch',
-          timezone: 'Europe/Kyiv',
-          isActive: true,
-        },
-      ],
-    },
+  useAllBranches: () => ({
+    data: [
+      {
+        id: '11111111-1111-4111-8111-111111111111',
+        name: 'Branch',
+        timezone: 'Europe/Kyiv',
+        isActive: true,
+      },
+    ],
   }),
 }));
 vi.mock('@/features/services/hooks/useServices', () => ({

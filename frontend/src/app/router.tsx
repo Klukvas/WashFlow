@@ -51,6 +51,11 @@ const ResetPasswordPage = lazy(() =>
     default: m.ResetPasswordPage,
   })),
 );
+const SetupPage = lazy(() =>
+  import('@/features/setup/pages/SetupPage').then((m) => ({
+    default: m.SetupPage,
+  })),
+);
 const DashboardPage = lazy(() =>
   import('@/features/dashboard/pages/DashboardPage').then((m) => ({
     default: m.DashboardPage,
@@ -342,6 +347,14 @@ export const router = createBrowserRouter([
         element: (
           <SuspenseWrapper>
             <DashboardPage />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: 'setup',
+        element: (
+          <SuspenseWrapper>
+            <SetupPage />
           </SuspenseWrapper>
         ),
       },

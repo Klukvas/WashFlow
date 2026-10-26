@@ -79,7 +79,7 @@ flowchart LR
 | Permissions / permission modules           | 47 / 14                                              |
 | Domain event types                         | 19                                                   |
 | BullMQ queues / cron jobs                  | 3 / 3                                                |
-| Frontend feature folders / i18n namespaces | 21 / 18 per language (EN, UK)                        |
+| Frontend feature folders / i18n namespaces | 22 / 18 per language (EN, UK)                        |
 
 Recount them with the commands in
 [agent-playbook.md](docs/context/agent-playbook.md#useful-search-commands) rather than editing
@@ -123,6 +123,12 @@ these by hand.
 ---
 
 ## Operator workflow
+
+The voluntary `/setup` page, linked independently from dashboard analytics, checks four saved
+basics for a selected accessible branch: timezone, working hours, active work post and an eligible
+tenant-wide service. It resumes from real resources, gates reads/actions by capabilities and
+passes that branch to quick order. Basic completion does not guarantee a booking slot; staff
+and online booking remain optional. No onboarding redirect is imposed.
 
 Operators can create a quick walk-in order on one page with phone/plate lookup, inline client
 and vehicle creation, services and the earliest valid duration-aware work post. The guided

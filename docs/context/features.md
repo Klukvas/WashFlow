@@ -37,7 +37,8 @@ All under `/` → `AppShell` → `DashboardLayout` → `SubscriptionGate`.
 
 | Route                   | Page           | What it does                                                                                                                                                                         |
 | ----------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/dashboard`            | Dashboard      | KPI cards, live operations panel, revenue chart, branch and employee performance tables, alerts, online-booking chart                                                                |
+| `/dashboard`            | Dashboard      | Setup entry for every authenticated user; analytics panels mount only with analytics access                                                                |
+| `/setup`                | Setup          | Voluntary branch/timezone, persisted hours, active post and tenant-global service checks; permission-aware forms and selected-branch quick-order handoff |
 | `/orders`               | Orders         | Orders table/cards with status and branch filters and pagination, plus full-day schedule cards, local now/overdue warnings, quick-intake slot links and permission-gated day summary |
 | `/orders/create`        | Create Order   | Quick one-page intake with phone/plate lookup, inline client/vehicle creation, services and earliest valid post; `?mode=wizard` retains guided modes; both accept schedule prefill   |
 | `/orders/:id`           | Order Detail   | Permission-gated status transitions and booked/pending reschedule; service/client/vehicle info; payment received/remaining/history and guarded partial collection; delete/restore    |
@@ -65,6 +66,12 @@ All under `/` → `AppShell` → `DashboardLayout` → `SubscriptionGate`.
 Only the three `/subscription*` routes are wrapped in a router-level `PermissionGate`. Every
 other dashboard route is reachable by any authenticated user; the backend enforces
 `@Permissions` per endpoint, and `PermissionGate` hides individual actions inside pages.
+
+Setup resumes from persisted resources after reload. Its four facts distinguish loading/refetch,
+incomplete, unavailable and error/retry states; legacy unsaved booking defaults do not count as
+saved hours. A complete basic setup does not promise an available slot. Staff and online booking
+are optional. Scoped URLs and read capabilities gate requests before they start; inaccessible
+changes explain the required capability. Existing resources remain usable without create rights.
 
 The quick-intake pilot target is at most 30 seconds for a known client/vehicle; no measured
 operator timing is claimed. Availability still enforces duration, branch calendar, workforce

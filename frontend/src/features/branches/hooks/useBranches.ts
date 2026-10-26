@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   fetchBranches,
+  fetchAllBranches,
   fetchBranch,
   createBranch,
   updateBranch,
@@ -28,8 +29,9 @@ export const bookingSettingsKeys = {
   detail: (branchId: string) => [...bookingSettingsKeys.all, branchId] as const,
 };
 
-export function useBranches(params: BranchQueryParams) {
+export function useBranches(params: BranchQueryParams, enabled = true) {
   return useQuery({
+    enabled,
     queryKey: branchKeys.list(params),
     queryFn: () => fetchBranches(params),
   });
@@ -101,11 +103,11 @@ export function useRestoreBranch() {
   });
 }
 
-export function useBranchBookingSettings(branchId: string) {
+export function useBranchBookingSettings(branchId: string, enabled = true) {
   return useQuery({
     queryKey: bookingSettingsKeys.detail(branchId),
     queryFn: () => fetchBranchBookingSettings(branchId),
-    enabled: !!branchId,
+    enabled: !!branchId && enabled,
     staleTime: 60 * 1000,
   });
 }
@@ -126,5 +128,13 @@ export function useUpdateBranchBookingSettings() {
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to update booking settings');
     },
+  });
+}
+
+export function useAllBranches(enabled = true) {
+  return useQuery({
+    queryKey: [...branchKeys.lists(), 'all-pages'],
+    queryFn: fetchAllBranches,
+    enabled,
   });
 }

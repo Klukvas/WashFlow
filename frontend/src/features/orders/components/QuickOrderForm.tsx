@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
-import { useBranches } from '@/features/branches/hooks/useBranches';
+import { useAllBranches } from '@/features/branches/hooks/useBranches';
 import { fetchClients } from '@/features/clients/api/clients.api';
 import { fetchVehicles } from '@/features/vehicles/api/vehicles.api';
 import { useCreateClient } from '@/features/clients/hooks/useClients';
@@ -48,8 +48,8 @@ export function QuickOrderForm() {
   const [params] = useSearchParams();
   const scope = useBranchScope();
   const { hasPermission } = usePermissions();
-  const branchesQuery = useBranches({ limit: 100 });
-  const branches = (branchesQuery.data?.items ?? []).filter(
+  const branchesQuery = useAllBranches(hasPermission('branches.read'));
+  const branches = (branchesQuery.data ?? []).filter(
     (b) =>
       b.isActive &&
       !b.deletedAt &&

@@ -125,6 +125,8 @@ export interface Service {
 }
 
 export interface WorkPost {
+  isActive?: boolean;
+  deletedAt?: string | null;
   id: string;
   tenantId: string;
   branchId: string;

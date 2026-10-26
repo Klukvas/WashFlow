@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -25,7 +25,7 @@ const bookingSettingsSchema = z
       .number()
       .int()
       .min(0, 'validation.min0')
-      .max(120, 'validation.max120'),
+      .max(60, 'validation.max60'),
     maxAdvanceBookingDays: z.coerce
       .number()
       .int()
@@ -79,19 +79,22 @@ export function BookingSettingsForm({
     },
   });
 
+  const identity = settings ? `${settings.branchId}:${settings.id}` : 'unsaved';
+  const previousIdentity = useRef(identity);
   useEffect(() => {
-    if (settings) {
+    if (previousIdentity.current !== identity || (settings && !isDirty)) {
       reset({
-        workingHoursStart: settings.workingHoursStart,
-        workingHoursEnd: settings.workingHoursEnd,
-        slotDurationMinutes: settings.slotDurationMinutes,
-        bufferTimeMinutes: settings.bufferTimeMinutes,
-        maxAdvanceBookingDays: settings.maxAdvanceBookingDays,
-        allowOnlineBooking: settings.allowOnlineBooking,
-        workingDays: settings.workingDays,
+        workingHoursStart: settings?.workingHoursStart ?? '08:00',
+        workingHoursEnd: settings?.workingHoursEnd ?? '20:00',
+        slotDurationMinutes: settings?.slotDurationMinutes ?? 30,
+        bufferTimeMinutes: settings?.bufferTimeMinutes ?? 10,
+        maxAdvanceBookingDays: settings?.maxAdvanceBookingDays ?? 30,
+        allowOnlineBooking: settings?.allowOnlineBooking ?? true,
+        workingDays: settings?.workingDays ?? [1, 2, 3, 4, 5, 6],
       });
     }
-  }, [settings, reset]);
+    previousIdentity.current = identity;
+  }, [settings, reset, isDirty, identity]);
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -103,6 +106,7 @@ export function BookingSettingsForm({
           <Input
             id="workingHoursStart"
             type="time"
+            className="dark:[color-scheme:dark]"
             error={
               errors.workingHoursStart?.message
                 ? t(errors.workingHoursStart.message)
@@ -118,6 +122,7 @@ export function BookingSettingsForm({
           <Input
             id="workingHoursEnd"
             type="time"
+            className="dark:[color-scheme:dark]"
             error={
               errors.workingHoursEnd?.message
                 ? t(errors.workingHoursEnd.message)
@@ -154,7 +159,7 @@ export function BookingSettingsForm({
             id="bufferTimeMinutes"
             type="number"
             min={0}
-            max={120}
+            max={60}
             error={
               errors.bufferTimeMinutes?.message
                 ? t(errors.bufferTimeMinutes.message)
@@ -195,6 +200,7 @@ export function BookingSettingsForm({
                   <button
                     key={day}
                     type="button"
+                    aria-pressed={isSelected}
                     className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
                       isSelected
                         ? 'border-primary bg-primary text-primary-foreground'
@@ -249,7 +255,11 @@ export function BookingSettingsForm({
             {tc('actions.cancel')}
           </Button>
         )}
-        <Button type="submit" loading={isPending} disabled={!isDirty}>
+        <Button
+          type="submit"
+          loading={isPending}
+          disabled={!!settings && !isDirty}
+        >
           {tc('actions.save')}
         </Button>
       </div>

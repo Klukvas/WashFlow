@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -42,7 +42,17 @@ const branchSchema = z.object({
     .max(30, 'validation.maxLength')
     .optional()
     .or(z.literal('')),
-  timezone: z.string().min(1, 'validation.required'),
+  timezone: z
+    .string()
+    .min(1, 'validation.required')
+    .refine((value) => {
+      try {
+        new Intl.DateTimeFormat('en', { timeZone: value });
+        return true;
+      } catch {
+        return false;
+      }
+    }, 'validation.required'),
 });
 
 export type BranchFormData = z.infer<typeof branchSchema>;
@@ -80,16 +90,18 @@ export function BranchForm({
     },
   });
 
+  const previousBranchId = useRef(branch?.id);
   useEffect(() => {
-    if (branch) {
+    if (previousBranchId.current !== branch?.id || (branch && !isDirty)) {
       reset({
-        name: branch.name,
-        address: branch.address ?? '',
-        phone: branch.phone ?? '',
-        timezone: branch.timezone ?? '',
+        name: branch?.name ?? '',
+        address: branch?.address ?? '',
+        phone: branch?.phone ?? '',
+        timezone: branch?.timezone ?? '',
       });
     }
-  }, [branch, reset]);
+    previousBranchId.current = branch?.id;
+  }, [branch, reset, isDirty]);
 
   const handleFormSubmit = (data: BranchFormData) => {
     onSubmit({
@@ -141,11 +153,22 @@ export function BranchForm({
         <Label htmlFor="timezone">{t('fields.timezone')} *</Label>
         <Select
           id="timezone"
-          options={TIMEZONE_OPTIONS}
+          options={
+            branch?.timezone &&
+            !TIMEZONE_OPTIONS.some((option) => option.value === branch.timezone)
+              ? [
+                  { value: branch.timezone, label: branch.timezone },
+                  ...TIMEZONE_OPTIONS,
+                ]
+              : TIMEZONE_OPTIONS
+          }
           placeholder={t('placeholders.timezone')}
           value={watch('timezone')}
           onChange={(e) =>
-            setValue('timezone', e.target.value, { shouldValidate: true })
+            setValue('timezone', e.target.value, {
+              shouldValidate: true,
+              shouldDirty: true,
+            })
           }
           error={
             errors.timezone?.message ? t(errors.timezone.message) : undefined

@@ -78,7 +78,7 @@ flowchart TB
   E0 -->|"no, authenticated"| DL["DashboardLayout"]
 
   DL --> SG["SubscriptionGate (Outlet)"]
-  SG --> PAGES["dashboard · orders(+create,:id) · clients(+:id) · vehicles(+:id) ·<br/>services · branches(+:id) · work-posts · users · roles(+:id) ·<br/>analytics · audit · workforce · subscription(+plans,billing) ·<br/>how-to(+:topicSlug) · 403 · 404 · * → /404"]
+  SG --> PAGES["dashboard · setup · orders(+create,:id) · clients(+:id) · vehicles(+:id) ·<br/>services · branches(+:id) · work-posts · users · roles(+:id) ·<br/>analytics · audit · workforce · subscription(+plans,billing) ·<br/>how-to(+:topicSlug) · 403 · 404 · * → /404"]
 ```
 
 Route-level behaviour, precisely:
@@ -101,6 +101,35 @@ Route-level behaviour, precisely:
   `PermissionGate` (`PERMISSIONS.TENANTS.READ`, fallback `Navigate to="/403"`). Every other
   dashboard route is reachable by any authenticated user; the backend still enforces
   `@Permissions`, and `PermissionGate` is used **inside** pages to hide actions.
+
+### Voluntary setup (`/setup`)
+
+The dashboard always shows `SetupEntry` outside `DashboardAnalytics`. The eight analytics
+hooks mount only with `analytics.view`; analytics failures cannot hide setup. There is no
+forced onboarding redirect and no local-storage completion flag.
+
+Setup reloads four facts from existing APIs for a selected active, undeleted branch: a valid
+timezone, persisted working hours/days, an active branch work post, and an eligible tenant-wide
+service with positive duration and finite nonnegative price. “Basic setup complete” describes
+those saved resources, not guaranteed availability. Staff profiles and online booking are
+optional. Loading/refetch, incomplete, unavailable and error/retry states stay distinct;
+unknown/malformed resources cannot become complete.
+
+Branch lists load every validated page at limit 100. A scoped user's forged branch URL is
+rejected before data hooks mount; branch-specific requests wait for an accessible branch.
+Services and posts consume full arrays without inventing pagination or service branch filters.
+Read capabilities gate requests and write capabilities gate forms; missing access is explained
+with localized action names. The first quick-order link additionally requires branch/service,
+client/vehicle, scheduling and order read/create capabilities and preserves the selected branch,
+including branches found on later pages. It does not require client/vehicle create permissions.
+
+Existing branch, booking-settings and service forms are reused; `WorkPostForm` is shared with
+the work-post list and accepts a fixed branch without fetching branches. The known legacy
+booking-settings fallback becomes `null` before rendering the form; malformed or mismatched
+saved settings are errors. First defaults can be saved unchanged, buffer is capped at 60,
+and working-day buttons expose `aria-pressed`. Branch timezone reaches create/update payloads.
+Dirty drafts survive same-resource refetches but reset on identity changes. Branch-specific
+children are keyed, so late requests/mutations cannot replace the next branch's form context.
 
 ### Operator intake, schedule, payments and day totals
 
@@ -171,9 +200,9 @@ frontend/src/
 └── test/                        Vitest setup
 ```
 
-Feature folders (21): `analytics`, `audit`, `auth`, `blog`, `branches`, `clients`, `dashboard`,
+Feature folders (22): `analytics`, `audit`, `auth`, `blog`, `branches`, `clients`, `dashboard`,
 `how-to`, `landing`, `legal`, `orders`, `payments`, `public-booking`, `roles`, `services`,
-`subscription`, `support`, `users`, `vehicles`, `work-posts`, `workforce`.
+`setup`, `subscription`, `support`, `users`, `vehicles`, `work-posts`, `workforce`.
 
 Convention inside a feature: `api/*.api.ts` (raw axios calls + payload types) →
 `hooks/use*.ts` (TanStack Query wrappers, query keys, invalidation) → `components/` and
@@ -335,10 +364,12 @@ Production image: `frontend/Dockerfile` — `node:20-alpine` build stage → `ng
 
 ### Tests
 
-- Isolated P0 verification uses `vite.p0.config.ts` (`envDir: false`, port 5187, no API proxy)
+- Isolated P0/P1 verification uses `vite.p0.config.ts` (`envDir: false`, port 5187, no API proxy)
   and `playwright.p0.config.ts` (`p0-e2e/`, existing local Chrome). The browser suite intercepts
   only `/api/v1/**` with synthetic fixtures; it never loads `.env`/`.env.test` or writes a real
-  backend. Screenshots are retained in `frontend/test-results/p0-evidence/`. Run Vite in tmux,
+  backend. Screenshots are retained in `frontend/test-results/p0-evidence/` and
+  `frontend/test-results/p1-setup/`. The setup browser suite uses the real React routes with
+  intercepted synthetic API responses; it does not verify production authentication or writes. Run Vite in tmux,
   then `pnpm exec playwright test --config playwright.p0.config.ts`; unit tests use
   `pnpm exec vitest run --config vite.p0.config.ts`.
 

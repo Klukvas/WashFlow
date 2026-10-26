@@ -71,5 +71,66 @@
     "allTime": "All time",
     "completionRate": "Completion Rate",
     "thisPeriod": "This period"
+  },
+  "setup": {
+    "entry": "Set up your wash",
+    "entryDescription": "Check your branch, working hours, work posts and services.",
+    "title": "Set up your wash",
+    "description": "Start with one branch. Save the basics, then open a quick order when you are ready. You can leave and return at any time.",
+    "branch": "Branch",
+    "selectBranch": "Choose a branch",
+    "createBranch": "Create branch",
+    "branchDescription": "An active branch with a valid timezone.",
+    "unavailableBranch": "This branch is unavailable in your current access scope. Choose an accessible active branch.",
+    "selectFirst": "Create or select an active branch first.",
+    "progress": "Your basic setup",
+    "complete": "Basic setup complete",
+    "noGuarantee": "You can edit these saved settings at any time.",
+    "count": "{{count}} of 4 basics verified",
+    "hoursDescription": "Choose and save the working hours and days for this branch.",
+    "postDescription": "At least one active work post in this branch.",
+    "serviceDescription": "At least one active service with a positive duration and a valid price. Services are shared across your branches.",
+    "readRequired": "Ask your administrator for access to {{permission}} to verify this item.",
+    "writeRequired": "To make changes, ask your administrator for access to {{permission}}.",
+    "retry": "Try again",
+    "firstOrder": "Your first quick order",
+    "firstOrderDescription": "Find an existing customer and vehicle, choose a service, then check live availability.",
+    "quickOrder": "Open quick order",
+    "finishFirst": "Verify all four basics to open your first quick order here.",
+    "orderPermissions": "Quick order needs these permissions: {{permissions}}.",
+    "optional": "Staff profiles and online booking are optional; set them up later.",
+    "rows": {
+      "branch": "Branch and timezone",
+      "hours": "Working hours",
+      "post": "Work post",
+      "service": "Service"
+    },
+    "actions": {
+      "branch": "Edit branch",
+      "hours": "Set working hours",
+      "post": "Create work post",
+      "service": "Create service"
+    },
+    "states": {
+      "loading": "Checking…",
+      "complete": "Verified",
+      "incomplete": "Not set up yet",
+      "unavailable": "Cannot verify with the available data or access",
+      "error": "Could not verify. Try again."
+    },
+    "capabilities": {
+      "branches_read": "view branches",
+      "branches_create": "create branches",
+      "branches_update": "edit branches",
+      "work_posts_read": "view work posts",
+      "work_posts_create": "create work posts",
+      "services_read": "view services",
+      "services_create": "create services",
+      "clients_read": "view customers",
+      "vehicles_read": "view vehicles",
+      "scheduling_read": "view available times",
+      "orders_create": "create orders",
+      "orders_read": "view orders"
+    }
   }
 }

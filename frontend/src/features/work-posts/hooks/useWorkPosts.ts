@@ -13,8 +13,9 @@ export const workPostKeys = {
   list: (params: WorkPostQueryParams) => [...workPostKeys.all, params] as const,
 };
 
-export function useWorkPosts(params: WorkPostQueryParams) {
+export function useWorkPosts(params: WorkPostQueryParams, enabled = true) {
   return useQuery({
+    enabled,
     queryKey: workPostKeys.list(params),
     queryFn: () => fetchWorkPosts(params),
   });
