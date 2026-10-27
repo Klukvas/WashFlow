@@ -9,7 +9,7 @@ export function LandingHeader() {
   const openModal = useAuthModalStore((s) => s.open);
 
   return (
-    <nav className="landing-nav">
+    <nav className="landing-nav" aria-label="WashFlow">
       <a href="#" className="landing-nav-logo">
         <div className="landing-nav-logo-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -48,7 +48,7 @@ export function LandingHeader() {
             </button>
             <button
               type="button"
-              className="btn-sm-accent"
+              className="btn-sm-accent landing-nav-register"
               onClick={() => openModal('register')}
             >
               {t('header.startTrial')}

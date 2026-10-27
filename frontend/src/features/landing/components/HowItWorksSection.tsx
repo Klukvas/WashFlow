@@ -1,3 +1,4 @@
+import { LockKeyhole } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -90,8 +91,8 @@ export function HowItWorksSection() {
               marginTop: 16, padding: 12, background: 'var(--bg-raised)',
               border: '1px solid rgba(56,189,248,0.2)', borderRadius: 8,
             }}>
-              <div style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: 'var(--accent)', marginBottom: 6 }}>
-                ● {t('howItWorks.visual.lockTitle')}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, fontFamily: "'DM Mono', monospace", color: 'var(--accent)', marginBottom: 6 }}>
+                <LockKeyhole size={12} strokeWidth={1.75} aria-hidden="true" focusable="false" style={{ flexShrink: 0 }} />{t('howItWorks.visual.lockTitle')}
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
                 {t('howItWorks.visual.lockDetail')}

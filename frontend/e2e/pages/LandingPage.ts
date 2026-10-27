@@ -22,7 +22,7 @@ export class LandingPage {
     this.heroHeading = page.locator('section h1').first();
     this.heroCtaButton = page
       .locator('.landing-hero')
-      .getByRole('button', { name: /start free/i });
+      .getByRole('button', { name: /get started/i });
     this.featuresSection = page.locator('#features');
     this.pricingSection = page.locator('#pricing');
   }

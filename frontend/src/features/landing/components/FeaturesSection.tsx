@@ -1,15 +1,16 @@
+import { Building2, CalendarDays, Users, Zap, Globe, CreditCard, ChartColumn, ShieldCheck, ClipboardList } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const FEATURES = [
-  { key: 'multiLocation', emoji: '🏢' },
-  { key: 'scheduling', emoji: '📅' },
-  { key: 'workforce', emoji: '👥' },
-  { key: 'realtime', emoji: '⚡' },
-  { key: 'booking', emoji: '🌐' },
-  { key: 'billing', emoji: '💳' },
-  { key: 'analytics', emoji: '📊' },
-  { key: 'roles', emoji: '🔒' },
-  { key: 'audit', emoji: '📋' },
+  { key: 'multiLocation', icon: Building2 },
+  { key: 'scheduling', icon: CalendarDays },
+  { key: 'workforce', icon: Users },
+  { key: 'realtime', icon: Zap },
+  { key: 'booking', icon: Globe },
+  { key: 'billing', icon: CreditCard },
+  { key: 'analytics', icon: ChartColumn },
+  { key: 'roles', icon: ShieldCheck },
+  { key: 'audit', icon: ClipboardList },
 ] as const;
 
 export function FeaturesSection() {
@@ -27,9 +28,9 @@ export function FeaturesSection() {
           <p className="landing-section-sub">{t('features.subtitle')}</p>
         </div>
         <div className="landing-features-grid reveal">
-          {FEATURES.map(({ key, emoji }) => (
+          {FEATURES.map(({ key, icon: Icon }) => (
             <div key={key} className="landing-feat-card">
-              <div className="landing-feat-icon-wrap">{emoji}</div>
+              <div className="landing-feat-icon-wrap"><Icon size={22} strokeWidth={1.75} aria-hidden="true" focusable="false" style={{ color: 'var(--accent)', flexShrink: 0 }} /></div>
               <div className="landing-feat-title">{t(`features.items.${key}.title`)}</div>
               <div className="landing-feat-desc">{t(`features.items.${key}.desc`)}</div>
               <div className="landing-feat-tag">{t(`features.items.${key}.tag`)}</div>

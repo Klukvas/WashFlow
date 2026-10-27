@@ -1,9 +1,10 @@
+import { CalendarPlus, Settings, CircleCheck, CreditCard, Globe, CircleX, UserRoundPlus, type LucideIcon } from 'lucide-react';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface FeedEvent {
   readonly id: number;
-  readonly icon: string;
+  readonly icon: LucideIcon;
   readonly action: string;
   readonly detail: string;
   readonly badge: string;
@@ -15,21 +16,21 @@ interface FeedEvent {
 type EventTemplate = Omit<FeedEvent, 'id'>;
 
 const SEED_EVENTS: readonly EventTemplate[] = [
-  { icon: '🆕', action: 'New booking', detail: 'Олена М. · Honda CR-V · Express wash', badge: 'BOOKED', badgeBg: 'rgba(56,189,248,0.1)', badgeColor: '#38BDF8', time: 'just now' },
-  { icon: '⚙️', action: 'Status changed', detail: 'BMW X5 · Full detailing → In Progress', badge: 'IN PROGRESS', badgeBg: 'rgba(56,189,248,0.1)', badgeColor: '#38BDF8', time: '1m ago' },
-  { icon: '✅', action: 'Order completed', detail: 'Toyota Camry · Body polishing', badge: 'DONE ₴850', badgeBg: 'rgba(74,222,128,0.1)', badgeColor: '#4ADE80', time: '3m ago' },
-  { icon: '💳', action: 'Payment recorded', detail: 'Андрій К. · Card · ₴1,200', badge: 'PAID', badgeBg: 'rgba(250,204,21,0.1)', badgeColor: '#FACC15', time: '5m ago' },
-  { icon: '🌐', action: 'Web booking', detail: 'Марія С. · Audi A6 · Ceramic coating', badge: 'BOOKED', badgeBg: 'rgba(56,189,248,0.1)', badgeColor: '#38BDF8', time: '7m ago' },
-  { icon: '❌', action: 'Order cancelled', detail: 'Volkswagen Golf · Express wash', badge: 'CANCELLED', badgeBg: 'rgba(248,113,113,0.1)', badgeColor: '#F87171', time: '9m ago' },
-  { icon: '👤', action: 'New client', detail: 'Дмитро Петренко · +380 97 *** 4521', badge: 'CREATED', badgeBg: 'rgba(255,255,255,0.05)', badgeColor: '#94A3B8', time: '12m ago' },
+  { icon: CalendarPlus, action: 'New booking', detail: 'Олена М. · Honda CR-V · Express wash', badge: 'BOOKED', badgeBg: 'rgba(56,189,248,0.1)', badgeColor: '#38BDF8', time: 'just now' },
+  { icon: Settings, action: 'Status changed', detail: 'BMW X5 · Full detailing → In Progress', badge: 'IN PROGRESS', badgeBg: 'rgba(56,189,248,0.1)', badgeColor: '#38BDF8', time: '1m ago' },
+  { icon: CircleCheck, action: 'Order completed', detail: 'Toyota Camry · Body polishing', badge: 'DONE ₴850', badgeBg: 'rgba(74,222,128,0.1)', badgeColor: '#4ADE80', time: '3m ago' },
+  { icon: CreditCard, action: 'Payment recorded', detail: 'Андрій К. · Card · ₴1,200', badge: 'PAID', badgeBg: 'rgba(250,204,21,0.1)', badgeColor: '#FACC15', time: '5m ago' },
+  { icon: Globe, action: 'Web booking', detail: 'Марія С. · Audi A6 · Ceramic coating', badge: 'BOOKED', badgeBg: 'rgba(56,189,248,0.1)', badgeColor: '#38BDF8', time: '7m ago' },
+  { icon: CircleX, action: 'Order cancelled', detail: 'Volkswagen Golf · Express wash', badge: 'CANCELLED', badgeBg: 'rgba(248,113,113,0.1)', badgeColor: '#F87171', time: '9m ago' },
+  { icon: UserRoundPlus, action: 'New client', detail: 'Дмитро Петренко · +380 97 *** 4521', badge: 'CREATED', badgeBg: 'rgba(255,255,255,0.05)', badgeColor: '#94A3B8', time: '12m ago' },
 ];
 
 const LIVE_EVENTS: readonly EventTemplate[] = [
-  { icon: '🆕', action: 'New booking', detail: 'Сергій К. · Mazda CX-5 · Full wash', badge: 'BOOKED', badgeBg: 'rgba(56,189,248,0.1)', badgeColor: '#38BDF8', time: 'just now' },
-  { icon: '⚙️', action: 'Status changed', detail: 'Audi A4 · Express wash → In Progress', badge: 'IN PROGRESS', badgeBg: 'rgba(56,189,248,0.1)', badgeColor: '#38BDF8', time: 'just now' },
-  { icon: '✅', action: 'Order completed', detail: 'Nissan Rogue · Express wash', badge: 'DONE ₴250', badgeBg: 'rgba(74,222,128,0.1)', badgeColor: '#4ADE80', time: 'just now' },
-  { icon: '🌐', action: 'Web booking', detail: 'Ірина В. · Tesla Model 3 · Detailing', badge: 'BOOKED', badgeBg: 'rgba(56,189,248,0.1)', badgeColor: '#38BDF8', time: 'just now' },
-  { icon: '💳', action: 'Payment recorded', detail: 'Олег Б. · Online · ₴3,500', badge: 'PAID', badgeBg: 'rgba(250,204,21,0.1)', badgeColor: '#FACC15', time: 'just now' },
+  { icon: CalendarPlus, action: 'New booking', detail: 'Сергій К. · Mazda CX-5 · Full wash', badge: 'BOOKED', badgeBg: 'rgba(56,189,248,0.1)', badgeColor: '#38BDF8', time: 'just now' },
+  { icon: Settings, action: 'Status changed', detail: 'Audi A4 · Express wash → In Progress', badge: 'IN PROGRESS', badgeBg: 'rgba(56,189,248,0.1)', badgeColor: '#38BDF8', time: 'just now' },
+  { icon: CircleCheck, action: 'Order completed', detail: 'Nissan Rogue · Express wash', badge: 'DONE ₴250', badgeBg: 'rgba(74,222,128,0.1)', badgeColor: '#4ADE80', time: 'just now' },
+  { icon: Globe, action: 'Web booking', detail: 'Ірина В. · Tesla Model 3 · Detailing', badge: 'BOOKED', badgeBg: 'rgba(56,189,248,0.1)', badgeColor: '#38BDF8', time: 'just now' },
+  { icon: CreditCard, action: 'Payment recorded', detail: 'Олег Б. · Online · ₴3,500', badge: 'PAID', badgeBg: 'rgba(250,204,21,0.1)', badgeColor: '#FACC15', time: 'just now' },
 ];
 
 const MAX_EVENTS = 8;
@@ -76,7 +77,7 @@ export function RealtimeSection() {
           <div style={{ marginTop: 32, display: 'flex', flexDirection: 'column', gap: 12 }}>
             {[1, 2, 3].map((i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
-                <span style={{ color: 'var(--accent)', fontSize: 16 }}>⊙</span>
+                <CircleCheck size={16} strokeWidth={1.75} aria-hidden="true" focusable="false" style={{ color: 'var(--accent)', flexShrink: 0 }} />
                 <span dangerouslySetInnerHTML={{ __html: t(`realtime.bullet${i}`) }} />
               </div>
             ))}
@@ -96,21 +97,24 @@ export function RealtimeSection() {
             </span>
           </div>
           <div className="landing-rt-feed">
-            {events.map((ev) => (
-              <div key={ev.id} className="landing-rt-event">
-                <span className="landing-rt-event-icon">{ev.icon}</span>
-                <span className="landing-rt-event-text">
-                  <strong>{ev.action}</strong> — {ev.detail}
-                </span>
-                <span
-                  className="landing-rt-event-badge"
-                  style={{ background: ev.badgeBg, color: ev.badgeColor }}
-                >
-                  {ev.badge}
-                </span>
-                <span className="landing-rt-event-time">{ev.time}</span>
-              </div>
-            ))}
+            {events.map((ev) => {
+              const Icon = ev.icon;
+              return (
+                <div key={ev.id} className="landing-rt-event">
+                  <Icon className="landing-rt-event-icon" size={16} strokeWidth={1.75} aria-hidden="true" focusable="false" style={{ color: ev.badgeColor }} />
+                  <span className="landing-rt-event-text">
+                    <strong>{ev.action}</strong> — {ev.detail}
+                  </span>
+                  <span
+                    className="landing-rt-event-badge"
+                    style={{ background: ev.badgeBg, color: ev.badgeColor }}
+                  >
+                    {ev.badge}
+                  </span>
+                  <span className="landing-rt-event-time">{ev.time}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

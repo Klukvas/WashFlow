@@ -1,3 +1,4 @@
+import { Check, Minus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuthModalStore } from '@/shared/stores/auth-modal.store';
 
@@ -72,11 +73,11 @@ export function PricingSection() {
                 </div>
                 <ul className="landing-plan-features">
                   {features.map((f) => (
-                    <li key={f}>{f}</li>
+                    <li key={f}><Check size={16} strokeWidth={1.75} aria-hidden="true" focusable="false" style={{ color: 'var(--accent)', flexShrink: 0, marginTop: 2 }} />{f}</li>
                   ))}
                   {naFeatures.map((f) => (
                     <li key={f} className="na">
-                      {f}
+                      <Minus size={16} strokeWidth={1.75} aria-hidden="true" focusable="false" style={{ flexShrink: 0, marginTop: 2 }} />{f}
                     </li>
                   ))}
                 </ul>

@@ -1,3 +1,4 @@
+import { TriangleAlert, CircleCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -128,7 +129,7 @@ function MockupSide() {
 
           {/* Anomaly alert */}
           <div style={{ background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.18)', borderRadius: 7, padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 12 }}>⚠️</span>
+            <TriangleAlert size={16} strokeWidth={1.75} aria-hidden="true" focusable="false" style={{ color: '#F87171', flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 9, fontWeight: 700, color: '#F87171', marginBottom: 1 }}>Anomaly detected — Подільський</div>
               <div style={{ fontSize: 8, color: 'var(--text-secondary)' }}>Cancel rate ↑ 18.4% this week vs 3.2% avg — check staffing</div>
@@ -184,13 +185,13 @@ function TextSide() {
       <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 10 }}>
         {bullets.map((b) => (
           <div key={b} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13, color: 'var(--text-secondary)' }}>
-            <span style={{ color: 'var(--accent)', marginTop: 1 }}>◆</span>
+            <CircleCheck size={16} strokeWidth={1.75} aria-hidden="true" focusable="false" style={{ color: 'var(--accent)', marginTop: 2, flexShrink: 0 }} />
             <span>{b}</span>
           </div>
         ))}
       </div>
       <div style={{ marginTop: 28, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <TagBadge color="#F87171" bg="rgba(248,113,113,0.08)" border="rgba(248,113,113,0.2)">⚠ Anomaly alerts</TagBadge>
+        <TagBadge color="#F87171" bg="rgba(248,113,113,0.08)" border="rgba(248,113,113,0.2)"><TriangleAlert size={16} strokeWidth={1.75} aria-hidden="true" focusable="false" style={{ flexShrink: 0 }} />Anomaly alerts</TagBadge>
         <TagBadge color="var(--accent)" bg="rgba(56,189,248,0.08)" border="rgba(56,189,248,0.2)">↓ CSV export</TagBadge>
         <TagBadge color="var(--accent)" bg="rgba(56,189,248,0.08)" border="rgba(56,189,248,0.2)">Branch filter</TagBadge>
       </div>
@@ -223,7 +224,7 @@ function ChartLabel({ children }: { children: ReactNode }) {
 
 function TagBadge({ children, color, bg, border }: { children: ReactNode; color: string; bg: string; border: string }) {
   return (
-    <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", padding: '4px 10px', borderRadius: 5, background: bg, color, border: `1px solid ${border}` }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontFamily: "'DM Mono', monospace", padding: '4px 10px', borderRadius: 5, background: bg, color, border: `1px solid ${border}` }}>
       {children}
     </span>
   );

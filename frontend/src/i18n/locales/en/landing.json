@@ -11,10 +11,30 @@
     "goToPlatform": "Go to Platform"
   },
   "hero": {
-    "badge": "Multi-branch · Smart scheduling · Real-time updates",
-    "title": "The CRM that keeps<br /><em>every wash bay</em> running.",
-    "subtitle": "Full-stack car wash management — bookings, workforce, payments, and analytics — in one platform built for operators who want control.",
-    "cta": "Start free — 30 days"
+    "badge": "Car wash management software",
+    "title": "Your entire car wash.",
+    "titleAccent": "Under control.",
+    "subtitle": "Bookings, bays, team and revenue — manage your working day in one place.",
+    "cta": "Get started",
+    "demoCta": "Explore the interface",
+    "note": "30 days free · No credit card required",
+    "sampleLabel": "Illustrative interface · Sample data",
+    "sampleTitle": "Your working day",
+    "sampleBay": "Bay 02",
+    "sampleService": "Full wash · 30 min",
+    "sampleStatus": "In progress",
+    "demoTitle": "Inside WashFlow",
+    "demoDescription": "Actual product interface with sample data. This preview is shown in English.",
+    "demoAlt": "WashFlow orders screen showing sample bookings, services, times and order statuses.",
+    "closeDemo": "Close interface preview",
+    "sampleVehicle": "Graphite SUV",
+    "wash": {
+      "loading": "Preparing wash",
+      "dirty": "Before · Dirty",
+      "washing": "Washing",
+      "clean": "After · Clean",
+      "replay": "Replay wash"
+    }
   },
   "features": {
     "label": "Features",

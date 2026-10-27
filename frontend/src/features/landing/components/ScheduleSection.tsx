@@ -1,3 +1,4 @@
+import { CircleCheck, Check } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -53,7 +54,7 @@ function TextSide() {
               color: 'var(--text-secondary)',
             }}
           >
-            <span style={{ color: 'var(--accent)', marginTop: 1 }}>◆</span>
+            <CircleCheck size={16} strokeWidth={1.75} aria-hidden="true" focusable="false" style={{ color: 'var(--accent)', marginTop: 2, flexShrink: 0 }} />
             <span>{b}</span>
           </div>
         ))}
@@ -391,7 +392,7 @@ function MockupSide() {
                     >
                       {slot.label && <span>{slot.label}</span>}
                       {slot.type === 'done' && !slot.label && (
-                        <span style={{ fontSize: 7 }}>✓</span>
+                        <Check size={10} strokeWidth={2} aria-hidden="true" focusable="false" style={{ flexShrink: 0 }} />
                       )}
                     </div>
                   );
