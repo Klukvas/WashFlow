@@ -15,6 +15,8 @@ vi.mock('@/shared/utils/format', () => ({
   formatCurrency: (v: number) => `$${v}`,
   formatDateTime: (v: string) => `dt:${v}`,
   formatDuration: (v: number) => `${v}m`,
+  formatFullName: (first?: string | null, last?: string | null) =>
+    [first, last].filter(Boolean).join(' '),
 }));
 
 vi.mock('@/shared/ui/button', () => ({

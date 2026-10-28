@@ -16,6 +16,8 @@ import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { CurrentBranch } from '../../common/decorators/current-branch.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { JwtPayload } from '../../common/types/jwt-payload.type';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -87,9 +89,10 @@ export class UsersController {
   remove(
     @CurrentTenant() tenantId: string,
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
     @CurrentBranch() branchId: string | null = null,
   ) {
-    return this.usersService.softDelete(tenantId, id, branchId);
+    return this.usersService.softDelete(tenantId, id, user.sub, branchId);
   }
 
   @Patch(':id/restore')

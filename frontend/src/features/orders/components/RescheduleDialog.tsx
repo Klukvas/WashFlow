@@ -21,6 +21,7 @@ import {
   branchTime,
   isFutureStart,
 } from '@/shared/utils/branch-time';
+import { formatFullName } from '@/shared/utils/format';
 import { useAvailability, useRescheduleOrder } from '../hooks/useOrders';
 
 export function RescheduleDialog({
@@ -163,7 +164,7 @@ export function RescheduleDialog({
                   .filter((w) => w.isWorker && w.active)
                   .map((w) => ({
                     value: w.id,
-                    label: `${w.user.firstName} ${w.user.lastName}`,
+                    label: formatFullName(w.user.firstName, w.user.lastName),
                   })),
               ]}
               onChange={(e) => {

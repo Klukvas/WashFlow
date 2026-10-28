@@ -51,3 +51,10 @@ export function formatDuration(minutes: number): string {
   if (m === 0) return `${h}h`;
   return `${h}h ${m}m`;
 }
+
+export function formatFullName(
+  firstName?: string | null,
+  lastName?: string | null,
+): string {
+  return [firstName, lastName].filter(Boolean).join(' ');
+}

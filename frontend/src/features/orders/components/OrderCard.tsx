@@ -3,7 +3,7 @@ import { Calendar, MapPin } from 'lucide-react';
 import { Card, CardContent } from '@/shared/ui/card';
 import { StatusBadge } from './StatusBadge';
 import { SoftDeleteBadge } from '@/shared/components/SoftDeleteBadge';
-import { formatDateTime, formatCurrency } from '@/shared/utils/format';
+import { formatDateTime, formatCurrency, formatFullName } from '@/shared/utils/format';
 import type { Order } from '@/shared/types/models';
 
 interface OrderCardProps {
@@ -21,7 +21,7 @@ export function OrderCard({ order, onClick }: OrderCardProps) {
           <div>
             <p className="font-medium">
               {order.client
-                ? `${order.client.firstName} ${order.client.lastName}`
+                ? formatFullName(order.client.firstName, order.client.lastName)
                 : t('fields.client')}
             </p>
             <p className="text-sm text-muted-foreground">

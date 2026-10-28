@@ -164,8 +164,12 @@ export class UsersService {
   async softDelete(
     tenantId: string,
     id: string,
+    performedById: string,
     branchId: string | null = null,
   ) {
+    if (id === performedById) {
+      throw new ForbiddenException('You cannot delete your own account');
+    }
     await this.findById(tenantId, id, branchId);
     return this.usersRepo.softDelete(tenantId, id, branchId);
   }

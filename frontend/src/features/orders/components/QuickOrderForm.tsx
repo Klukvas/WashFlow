@@ -28,6 +28,7 @@ import {
   isFutureStart,
 } from '@/shared/utils/branch-time';
 import { decimalMoney, displayMoney, moneyCents } from '@/shared/utils/money';
+import { formatFullName } from '@/shared/utils/format';
 import { useAvailability, useCreateOrder } from '../hooks/useOrders';
 import { StepVehicle } from './steps/StepVehicle';
 
@@ -249,7 +250,7 @@ export function QuickOrderForm() {
             {client ? (
               <div className="rounded-md bg-muted/50 p-3">
                 <p className="font-medium">
-                  {client.firstName} {client.lastName}
+                  {formatFullName(client.firstName, client.lastName)}
                 </p>
                 <p className="text-sm text-muted-foreground">{client.phone}</p>
               </div>
@@ -274,7 +275,7 @@ export function QuickOrderForm() {
                           className="w-full rounded-md border border-border p-3 text-left hover:bg-accent"
                           onClick={() => selectClient(c)}
                         >
-                          {c.firstName} {c.lastName}
+                          {formatFullName(c.firstName, c.lastName)}{' '}
                           <span className="ml-2 text-sm text-muted-foreground">
                             {c.phone}
                           </span>
@@ -293,7 +294,7 @@ export function QuickOrderForm() {
                           >
                             {v.licensePlate} · {v.make}
                             <span className="ml-2 text-sm text-muted-foreground">
-                              {v.client?.firstName} {v.client?.lastName}
+                              {formatFullName(v.client?.firstName, v.client?.lastName)}
                             </span>
                           </button>
                         ))}

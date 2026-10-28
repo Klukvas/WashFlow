@@ -82,10 +82,16 @@ describe('UsersController', () => {
   });
 
   describe('remove', () => {
-    it('should delegate to service.softDelete with tenantId and id', async () => {
-      await controller.remove(tenantId, userId);
+    it('should delegate to service.softDelete with tenantId, id, branch and user id', async () => {
+      const user = { sub: 'actor-id' } as any;
+      await controller.remove(tenantId, userId, user, branchId);
 
-      expect(service.softDelete).toHaveBeenCalledWith(tenantId, userId, null);
+      expect(service.softDelete).toHaveBeenCalledWith(
+        tenantId,
+        userId,
+        'actor-id',
+        branchId,
+      );
     });
   });
 
@@ -97,7 +103,7 @@ describe('UsersController', () => {
     });
   });
 
-  it.each(['create', 'update', 'resetPassword', 'remove', 'restore'] as const)(
+  it.each(['create', 'update', 'resetPassword', 'restore'] as const)(
     'forwards caller branch for %s',
     async (method) => {
       service.resetPassword = jest.fn();
@@ -105,12 +111,11 @@ describe('UsersController', () => {
       const args =
         method === 'create'
           ? [tenantId, dto, branchId]
-          : method === 'remove' || method === 'restore'
+          : method === 'restore'
             ? [tenantId, userId, branchId]
             : [tenantId, userId, dto, branchId];
       await Reflect.apply(controller[method], controller, args);
-      const target = method === 'remove' ? 'softDelete' : method;
-      expect(service[target]).toHaveBeenCalledWith(...args);
+      expect(service[method]).toHaveBeenCalledWith(...args);
     },
   );
 });
