@@ -14,8 +14,65 @@ import time
 import uuid
 from pathlib import Path
 
+import offsite
+import recover
+from runtime import fresh
+
 ROOT = Path(__file__).resolve().parents[2]
 CLI = ROOT / "scripts/backup/backup.py"
+
+
+def downloaded_fixture(bundle: Path, directory: Path) -> Path:
+    """Synthetic offline transport, separate public-only source and recovery keys."""
+    with tempfile.TemporaryDirectory(prefix=".wfb-", dir=ROOT.parent) as key_directory:
+        return encrypted_fixture(bundle, directory, Path(key_directory))
+
+
+def encrypted_fixture(bundle: Path, directory: Path, key_directory: Path) -> Path:
+    recovery = fresh(key_directory, "r")
+    source = fresh(key_directory, "p")
+    run(["gpg", "--no-options", "--homedir", str(recovery), "--batch", "--pinentry-mode", "loopback",
+         "--passphrase", "", "--quick-generate-key", "WashFlow SYNTHETIC drill", "rsa2048", "encr", "0"])
+    listing = run(offsite.gpg(recovery, "--with-colons", "--fingerprint", "--list-keys"))
+    fingerprint = next(line.split(b":")[9].decode() for line in listing.splitlines() if line.startswith(b"fpr:"))
+    public = run(offsite.gpg(recovery, "--export", fingerprint))
+    run(offsite.gpg(source, "--import"), data=public)
+    remote = fresh(directory, "synthetic-object-store")
+
+    class SyntheticStorage:
+        prefix, endpoint, bucket = "synthetic", "https://synthetic.invalid", "synthetic-fixture"
+
+        def put(self, key: str, path: Path) -> None:
+            target = remote / key.split("/")[-1]
+            with path.open("rb") as src, target.open("xb") as dst:
+                shutil.copyfileobj(src, dst)
+
+        def get(self, key: str, target: Path) -> None:
+            with (remote / key.split("/")[-1]).open("rb") as src, target.open("xb") as dst:
+                shutil.copyfileobj(src, dst)
+
+    storage = SyntheticStorage()
+    try:
+        receipt = offsite.publish(bundle, fresh(directory, "encrypted"), source, fingerprint, storage)
+        tampered = directory / "tampered.gpg"
+        cipher = bytearray((directory / "encrypted/bundle.tar.gpg").read_bytes())
+        cipher[-30] ^= 1
+        tampered.write_bytes(cipher)
+        rejected = fresh(directory, "tamper-check")
+        try:
+            offsite.decrypt(tampered, rejected, recovery)
+        except ValueError:
+            if (rejected / "bundle").exists():
+                raise RuntimeError("Tampered ciphertext reached extraction")
+        else:
+            raise RuntimeError("GPG accepted modified ciphertext")
+        downloaded = offsite.download_verified(storage, receipt["key"], receipt["sha256"],
+                                              fresh(directory, "downloaded"), recovery)
+    finally:
+        for home in (source, recovery):
+            run(["gpgconf", "--homedir", str(home), "--kill", "gpg-agent"])
+    logging.info("ENCRYPTED DOWNLOAD PASS: synthetic object transport + real GPG; not a live offserver transfer")
+    return downloaded
 
 
 def run(command: list[str], *, data: bytes | None = None, success: bool = True) -> bytes:
@@ -72,6 +129,12 @@ def exercise(directory: Path, docker: list[str], container: str) -> None:
     if json.loads(failed_record.read_text())["status"] != "failed":
         raise RuntimeError("Refused backup did not record failure")
     logging.info(run([*common, "verify", "--bundle", str(bundle)]).decode().strip())
+    # Every following restore uses the independently downloaded/decrypted copy.
+    bundle = downloaded_fixture(bundle, directory)
+    report = recover.isolated_restore(bundle, fresh(directory, "isolated-check"), docker)
+    if report["public_tables"] != 3:
+        raise RuntimeError("Isolated recovery command did not restore all three tables")
+    logging.info("ISOLATED RECOVERY CHECK PASS: downloaded bundle, PG16, 3 tables + all upload bytes")
     restored = directory / "restored-uploads"
     restore = [*common, "restore", *connection, "--database", target, "--uploads", str(restored),
                "--bundle", str(bundle), "--approve-target", f"127.0.0.1:5432/{target}"]
@@ -137,7 +200,8 @@ def main() -> None:
             time.sleep(1)
         else:
             raise RuntimeError("Synthetic PostgreSQL did not become ready in 30 seconds")
-        with tempfile.TemporaryDirectory(prefix="drill-", dir=Path(__file__).parent) as temporary:
+        # Short workspace-local paths keep macOS gpg-agent sockets below sockaddr_un's limit.
+        with tempfile.TemporaryDirectory(prefix=".bd-", dir=ROOT) as temporary:
             exercise(Path(temporary), docker, container)
     finally:
         run([*docker, "stop", "--time", "5", created_id])

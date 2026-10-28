@@ -1,8 +1,10 @@
 # Backup and recovery
 
-Status: **local tooling and synthetic PostgreSQL 16 recovery verified; production scheduling,
-encryption and offsite deployment remain operator work.** Nothing here activates a job, contacts
-production, copies secrets or changes infrastructure. This is a logical backup, not PITR.
+Status: **local implementation only; not activated or used in production.** Local capture,
+GPG encryption, explicit S3-compatible transport and downloaded-copy isolated PostgreSQL 16
+recovery tooling are available. The synthetic drill uses a filesystem object-store fixture;
+it does not prove a real offserver upload. No job, storage account, credentials or live schedule
+is configured here. This is a logical backup, not PITR.
 
 ## Recovery objectives and responsibilities
 
@@ -203,3 +205,136 @@ injection, inherited PG settings, preserved uploads targets and attempt records.
 resources, and the temporary fixture directory under `scripts/backup/` is removed. Normal
 completion reports `DRILL PASS` and `CLEANUP OK`; if interrupted beyond cleanup, inspect the
 printed UUID/container ID and remove **only** that owned resource after review.
+
+## Automated encrypted offsite tooling — inactive
+
+`scripts/backup/scheduled.py` implements one attempt. It does not install itself. Its explicit
+private JSON configuration must contain exactly these fields (placeholder shape only):
+
+```json
+{
+  "root": "/opt/washflow",
+  "backup_root": "/PRIVATE/approved-backups",
+  "gpg_home": "/PRIVATE/public-only-keyring",
+  "recipient": "FULL_APPROVED_UPPERCASE_PUBLIC_KEY_FINGERPRINT",
+  "endpoint": "https://APPROVED-S3-ENDPOINT",
+  "bucket": "approved-existing-bucket",
+  "profile": "approved-writer-profile",
+  "prefix": "washflow/backups"
+}
+```
+
+All parent directories and configuration/keyring must be owned by the operator, with private
+permissions (directories 0700, files 0600). No `.env` or default PostgreSQL connection is read.
+Configuration contains no passwords or private key material. Runtime reads a deliberately
+selected AWS named profile; environment AWS credentials/endpoints are removed and instance
+metadata lookup is disabled. Provisioning that profile, recipient keyring and remote policy
+is future operator work. The tool does not create or rotate production keys or buckets.
+
+Capture shares the deployment tool's exact `/opt/washflow/releases/.deploy.lock`. A separate
+`backup_root/.backup.lock` refuses overlapping backup attempts, including their transfers.
+Preflight requires the existing healthy four-service topology, the current immutable backend
+image, exactly `node dist/main.js`, a single known uploads volume, matching PG16 clients/server,
+no other container using that volume/backend image and sufficient local disk. Unknown startup
+commands (including migration-bearing commands) fail before stopping anything. It snapshots
+the backend's identity, image, command, labels and mounts; changed identity refuses recovery.
+
+Only the existing backend container is stopped. With it stopped, the tool requires no other
+database clients, captures a custom PG16 dump and Docker uploads tar, then checks writers again.
+Each child command has a finite timeout and its process group is terminated on timeout or
+ordinary interruption. The same backend ID/image is started and health-checked in `finally`,
+including a failed/partial stop or dump. No images are pulled, containers recreated, migrations
+run, database sessions killed or Compose settings changed. The same container keeps its
+network identity, so frontend recreation is unnecessary. App resume and health verification
+finish **before** compression, encryption or any network transfer. The deploy lock then releases.
+
+Docker upload entries are validated for traversal, links, special files, duplicates and path
+conflicts before normalization into the existing `washflow-local-v1` format. The wrapper's
+automatic quiescence checks substantiate that format's legacy consistency field. It adds
+private capture/resume records. Before attempting any stop, `capture/pre-stop.json` records the
+validated backend ID, immutable image ID, node-only command, mounts and selected Compose labels.
+Its file and parent directory are fsynced; new attempt-directory entries are also fsynced.
+Persistence failure prevents the stop. This pre-stop record survives a normal filesystem crash
+recovery and provides the exact target even if SIGKILL/reboot prevents later phase records.
+Packaging failure after resume cannot be reported as success.
+New directories are used for every attempt; existing bundles are never overwritten or pruned.
+Private raw dumps, upload tars, plaintext packaging, ciphertext and readback remain on disk;
+capacity and retention must be reviewed before activation. No automatic deletion is implemented.
+
+GnuPG 2.2.8+ runs with `--no-options`, an explicit private public-only source keyring, disabled
+key discovery and a pinned full recipient fingerprint. Nonempty private-key directories are
+refused on the source. AES256 encryption uses modern OpenPGP integrity protection (MDC, or
+GnuPG's AEAD when negotiated). No insecure ignore-MDC/legacy override is supported. This is
+**integrity-protected encryption, not proof of sender identity**: anyone holding the public
+key can encrypt a replacement. Keep decryption keys separately, off the source host. Approved
+storage controls and an independently retained trusted receipt are part of recovery trust.
+
+The S3 adapter requires an explicit HTTPS endpoint, bucket, profile and prefix. It uses a
+unique object key plus conditional `If-None-Match: *`, finite network deadlines and at most
+three AWS attempts. Providers must support conditional PutObject and SHA256 checksums; unknown
+capabilities fail, with no overwrite fallback. It downloads the uploaded ciphertext into a
+fresh local path and compares SHA256 before writing a successful receipt. Upload errors,
+partial downloads and mismatched readback fail; an ambiguous failed upload may leave an object
+without a success receipt. Nothing deletes it automatically. Receipts identify the exact
+endpoint/bucket/key, ciphertext checksum, recipient fingerprint and byte size.
+
+`attempt-started.json`, `capture/pre-stop.json`, `capture/capture.json`, `capture/resume.json` (or `resume-failed.json`),
+`offsite/transfer-started.json`, `offsite/transfer-failed.json`, `offsite/receipt.json`, and the
+terminal `attempt-success.json`/`attempt-failed.json` distinguish phases. A running attempt with
+no success record after the configured deadline is failed/stale, including reboot/SIGKILL.
+Logs withhold child/provider diagnostics and backup contents. A resume failure emits the
+prominent `BACKEND RESUME FAILED: OPERATOR RECOVERY REQUIRED`; transfer is not attempted.
+
+Ordinary TERM/INT/HUP enters bounded backend recovery. **SIGKILL, power loss, daemon failure or
+host reboot cannot guarantee `finally` runs.** Before enabling a schedule, an operator must
+supervise stale records and backend health and approve an incident recovery procedure: acquire
+the same deploy lock, verify the recorded exact backend ID/image/node-only command/mounts are
+still current, settle any previously accepted stop before starting only that container and
+verify health. A timed-out/disconnected Docker stop client does not cancel its daemon-side
+operation: healthy/running inspection alone is not evidence of recovery. Automated ordinary
+recovery reissues bounded idempotent stop, requires its acknowledgement plus stopped identity,
+then starts the original ID and verifies health. Failed settlement is an operator-required
+resume failure, never a healthy success. Never blindly restart
+a legacy migration-bearing command or replace an unknown container. Repeated signals are
+ignored during ordinary capture recovery. The inactive service template gives recovery six
+minutes on TERM and avoids killing child recovery processes; it cannot solve a host outage.
+Every recovery inspection, stop settlement, start and health check shares a single 300-second
+deadline; each subprocess receives only its remaining budget. Ten seconds are reserved for
+child cleanup, with a further minute before the supervisor's six-minute grace for records and
+signal restoration. A slow inspection cannot reset or extend recovery's overall deadline.
+Keep an escalation contact and independent health/stale-backup monitoring before activation.
+
+The [service](../../scripts/backup/washflow-backup.service.example) and
+[timer](../../scripts/backup/washflow-backup.timer.example) are **uninstalled examples**, not an
+active six-hour schedule. They require reviewed paths/operator/window, supervisor recovery,
+key custody, retention/capacity, provider capabilities and separate activation authorization.
+No production capture or actual remote transfer has been run for this implementation.
+
+## Verify a downloaded copy in isolation — future operator use
+
+On a separate recovery machine, provide the independently trusted private receipt, explicit
+read-only storage profile and approved recovery keyring (unlock it separately if necessary).
+`scripts/backup/recover.py --receipt /PRIVATE/receipt.json --profile APPROVED_READER
+--gpg-home /PRIVATE/recovery-keyring --work-root /PRIVATE/new-recovery-attempts` downloads the
+exact object, verifies the pinned ciphertext checksum, and requires successful GPG integrity
+validation **before extracting or restoring anything**. There is no fallback to the local
+original bundle. Only the three allowlisted regular bundle files are extracted; normal backup
+integrity/archive checks run afterward. Plaintext stays private in the new recovery workdir.
+
+The recovery check uses an already-present `postgres:16-alpine` image in a local Unix-socket
+Docker context, `--pull=never`, `--network=none`, no published ports, tmpfs PGDATA and no shared
+volumes. It restores a fresh `washflow_restore_*` database transactionally, verifies public
+tables exist and compares every restored upload's bytes with the validated archive. It never
+starts application workers, migrations, mail, payments or webhooks. Its `finally` stops only
+the exact synthetic container it created; a host outage still needs owned-resource inspection.
+Successful mechanical recovery is not full business validation: production-sized RTO, tenant
+counts/critical rows, foreign-key/domain invariants, times/money and external state still need
+the incident checks above. No production RPO/RTO guarantee follows from a small synthetic drill.
+
+The extended `drill.py --run-synthetic` generates disposable synthetic keys in a short private
+`.wfb-*` directory under the Projects tree (macOS GPG socket paths require it), imports only the
+public key into a distinct source keyring, and uses a filesystem transport fake. It checks real
+GPG encryption/decryption plus ciphertext tamper rejection, restores the **downloaded/decrypted**
+copy in PG16 and preserves the existing three-table row/money/time/idempotency/photo roundtrip
+and four refusal checks. Only fixture-owned agents, containers and directories are cleaned.
+This verifies code paths and recovery mechanics without any real cloud account or data.
