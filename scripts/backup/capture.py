@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import fcntl
 import json
 import os
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import re
 import shutil
 import signal
@@ -19,7 +19,6 @@ META = ('{"id":{{json .Id}},"image":{{json .Image}},"running":{{json .State.Runn
         '"project":{{json (index .Config.Labels "com.docker.compose.project")}},'
         '"service":{{json (index .Config.Labels "com.docker.compose.service")}},'
         '"directory":{{json (index .Config.Labels "com.docker.compose.project.working_dir")}}}')
-AUTH = '-U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-postgres}"'
 
 
 def now() -> str:
@@ -37,20 +36,16 @@ def normalize_uploads(raw: Path, target: Path) -> None:
                 name = name[2:]
             if name in ("", ".") and entry.isdir():
                 continue
-            path = PurePosixPath(name)
-            require(bool(path.parts) and not path.is_absolute() and ".." not in path.parts
-                    and "\\" not in name and str(path) == name.rstrip("/")
-                    and (entry.isfile() or entry.isdir()), "unsafe_upload_archive")
-            copy = tarfile.TarInfo(str(path))
-            copy.type, copy.size, copy.mode = entry.type, entry.size, 0o700 if entry.isdir() else 0o600
-            normalized.append((entry, copy))
-        names = [copy.name for _, copy in normalized]
-        require(len(names) == len(set(names)), "duplicate_upload_archive")
-        files = {PurePosixPath(copy.name) for _, copy in normalized if copy.isfile()}
-        require(not any(p in files for _, copy in normalized for p in PurePosixPath(copy.name).parents),
-                "upload_path_conflict")
+            normalized.append((entry, name, entry.isfile(), entry.isdir()))
+        backup.validate_archive_entries([(name, is_file, is_dir)
+                                          for _, name, is_file, is_dir in normalized])
+        copies = []
+        for entry, name, _, is_dir in normalized:
+            copy = tarfile.TarInfo(name)
+            copy.type, copy.size, copy.mode = entry.type, entry.size, 0o700 if is_dir else 0o600
+            copies.append((entry, copy))
         with tarfile.open(target, "x:gz") as archive:
-            for original, copy in normalized:
+            for original, copy in copies:
                 if copy.isdir():
                     archive.addfile(copy)
                 else:
@@ -61,11 +56,19 @@ def normalize_uploads(raw: Path, target: Path) -> None:
 
 
 class Capture:
-    def __init__(self, root: Path, destination: Path, docker: list[str]) -> None:
+    def __init__(self, root: Path, destination: Path, docker: list[str], database: str) -> None:
         self.root, self.destination, self.docker = root.absolute(), destination, docker
+        self.database = database
+        require(backup.IDENTIFIER.fullmatch(self.database), "invalid_database_name")
         self.stopping = False
         self.stop_acknowledged = False
         self.original: dict = {}
+
+    def auth(self) -> str:
+        # The dump runs inside the postgres container; the superuser role comes from
+        # the container's own POSTGRES_USER, but the target database is explicit and
+        # never falls back to a default connection.
+        return '-U "${POSTGRES_USER:-postgres}" -d ' + self.database
 
     def command(self, *args: str, **kwargs) -> bytes:
         return run([*self.docker, *args], **kwargs)
@@ -79,7 +82,7 @@ class Capture:
 
     def sql(self, query: bytes) -> bytes:
         return self.command("exec", "-i", self.pg["id"], "sh", "-c",
-                            "exec psql -XqAt --no-password -v ON_ERROR_STOP=1 " + AUTH,
+                            "exec psql -XqAt --no-password -v ON_ERROR_STOP=1 " + self.auth(),
                             data=b"BEGIN READ ONLY; SET LOCAL statement_timeout='20s';\n" + query + b"\nCOMMIT;")
 
     def identity(self, *, timeout: float = 120) -> dict:
@@ -132,9 +135,8 @@ class Capture:
         self.writers(stopped=False)
         info = json.loads(self.sql(b"SELECT json_build_object('major',current_setting('server_version_num')::int/10000,"
                                   b"'database',current_database(),'bytes',pg_database_size(current_database()));"))
-        require(info["major"] == 16 and backup.IDENTIFIER.fullmatch(info["database"]), "postgres16_required")
-        self.database = info["database"]
-        for tool in ("pg_dump", "pg_restore"):
+        require(info["major"] == 16 and info["database"] == self.database, "postgres16_required")
+        for tool in ("pg_dump", "pg_restore", "psql"):
             require(re.search(rb"\(PostgreSQL\) 16\.", self.command("exec", self.pg["id"], tool, "--version")),
                     "postgres16_clients_required")
         size = int(self.command("exec", self.original["id"], "du", "-sk", "/app/uploads").split()[0]) * 1024
@@ -209,11 +211,13 @@ class Capture:
                 require(not self.identity()["running"], "backend_not_stopped")
                 self.stop_acknowledged = True
                 self.writers(stopped=True)
-                with (self.destination / "database.dump").open("xb") as output:
+                with os.fdopen(os.open(self.destination / "database.dump",
+                                       os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600), "wb") as output:
                     self.command("exec", self.pg["id"], "sh", "-c",
-                                 "exec pg_dump --format=custom --no-owner --no-acl --no-password " + AUTH,
+                                 "exec pg_dump --format=custom --no-owner --no-acl --no-password " + self.auth(),
                                  output=output, timeout=1800)
-                with (self.destination / "uploads.docker.tar").open("xb") as output:
+                with os.fdopen(os.open(self.destination / "uploads.docker.tar",
+                                       os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600), "wb") as output:
                     self.command("cp", self.original["id"] + ":/app/uploads/.", "-",
                                  output=output, timeout=1800)
                 self.writers(stopped=True)

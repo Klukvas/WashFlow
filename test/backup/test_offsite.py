@@ -153,7 +153,7 @@ class OffsiteTests(FixtureBase):
 class CaptureTests(FixtureBase):
     def instance(self) -> capture.Capture:
         (self.root / "releases").mkdir(mode=0o700)
-        instance = capture.Capture(self.root, self.directory("capture"), ["docker"])
+        instance = capture.Capture(self.root, self.directory("capture"), ["docker"], "washflow")
         instance.original = {"id": "c" * 64, "image": "sha256:" + "a" * 64, "command": ["node", "dist/main.js"],
                              "mounts": [{"Source": str(self.root / "uploads-source"), "Type": "volume", "RW": True,
                                          "Destination": "/app/uploads"}], "project": "fixture",
@@ -169,7 +169,7 @@ class CaptureTests(FixtureBase):
                 (nested / "releases").mkdir(mode=0o700)
                 destination = nested / "capture"
                 destination.mkdir(mode=0o700)
-                instance = capture.Capture(nested, destination, ["docker"])
+                instance = capture.Capture(nested, destination, ["docker"], "washflow")
                 instance.original = {"id": "backend", "image": "sha256:" + "a" * 64}
                 def command(*args, **_kwargs):
                     if args[0] == "exec":

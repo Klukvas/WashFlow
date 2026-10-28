@@ -189,7 +189,12 @@ def main() -> None:
     # --pull=never prevents network/image installation; --network=none isolates trust auth.
     # --rm + tmpfs avoid persistent data volumes. Cleanup is only for this exact created ID.
     created_id = run([*docker, "run", "--pull=never", "--detach", "--rm", "--network=none",
-                      "--name", container, "--tmpfs", "/var/lib/postgresql/data:rw",
+                      "--name", container,
+                      "--tmpfs", "/var/lib/postgresql/data:rw,size=8g",
+                      "--memory", "4g", "--memory-swap", "4g", "--pids-limit", "512",
+                      "--security-opt", "no-new-privileges",
+                      "--cap-drop", "ALL", "--cap-add", "CHOWN", "--cap-add", "DAC_OVERRIDE",
+                      "--cap-add", "FOWNER", "--cap-add", "SETUID", "--cap-add", "SETGID",
                       "-e", "POSTGRES_HOST_AUTH_METHOD=trust", "postgres:16-alpine"]).decode().strip()
     try:
         for _ in range(30):

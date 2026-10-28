@@ -3,7 +3,9 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import signal
+import stat
 import subprocess
 
 
@@ -16,12 +18,41 @@ def require(ok: bool, code: str) -> None:
         raise Refused(code)
 
 
+def binary(name: str) -> str:
+    """Resolve a dependency to an absolute path so a PATH-injected binary cannot run."""
+    resolved = shutil.which(name)
+    require(resolved is not None and os.path.isabs(resolved), name + "_not_on_path")
+    return resolved
+
+
 def private(path: Path, *, directory: bool = False) -> Path:
     path = path.absolute()
-    require(not any(p.is_symlink() for p in [path, *path.parents]), "unsafe_path")
-    require(path.is_dir() if directory else path.is_file(), "missing_path")
-    require(path.stat().st_uid == os.getuid() and path.stat().st_mode & 0o077 == 0,
-            "path_must_be_private_and_owned")
+    # Open every component with O_NOFOLLOW and verify from the descriptor, so a
+    # swapped symlink is detected atomically instead of via a racy is_symlink()
+    # then-use check. The leaf must be owned by the caller and fully private
+    # (0o077-clean). Callers combine this with atomic O_EXCL/O_NOFOLLOW creates.
+    current = Path(path.anchor)
+    parts = path.relative_to(path.anchor).parts
+    count = len(parts)
+    for index, component in enumerate(parts):
+        current = current / component
+        leaf = index == count - 1
+        flags = os.O_RDONLY | os.O_NOFOLLOW
+        if not leaf or directory:
+            flags |= os.O_DIRECTORY
+        try:
+            descriptor = os.open(current, flags)
+        except OSError:
+            raise Refused("unsafe_path") from None
+        try:
+            info = os.fstat(descriptor)
+        finally:
+            os.close(descriptor)
+        if leaf:
+            require(info.st_uid == os.getuid(), "path_must_be_owned")
+            require(info.st_mode & 0o077 == 0, "path_must_be_private_and_owned")
+            require(stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode),
+                    "missing_path")
     return path
 
 
@@ -78,8 +109,9 @@ def run(command: list[str], *, data: bytes | None = None, input_file=None, outpu
 
 
 def local_docker() -> list[str]:
-    context = run(["docker", "context", "show"]).decode().strip()
-    endpoint = json.loads(run(["docker", "context", "inspect", context, "--format",
+    docker = binary("docker")
+    context = run([docker, "context", "show"]).decode().strip()
+    endpoint = json.loads(run([docker, "context", "inspect", context, "--format",
                                "{{json .Endpoints.docker.Host}} "]))
     require(isinstance(endpoint, str) and endpoint.startswith("unix://"), "local_docker_required")
-    return ["docker", "--context", context]
+    return [docker, "--context", context]

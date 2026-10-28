@@ -214,6 +214,7 @@ private JSON configuration must contain exactly these fields (placeholder shape 
 ```json
 {
   "root": "/opt/washflow",
+  "database": "washflow",
   "backup_root": "/PRIVATE/approved-backups",
   "gpg_home": "/PRIVATE/public-only-keyring",
   "recipient": "FULL_APPROVED_UPPERCASE_PUBLIC_KEY_FINGERPRINT",
@@ -225,7 +226,8 @@ private JSON configuration must contain exactly these fields (placeholder shape 
 ```
 
 All parent directories and configuration/keyring must be owned by the operator, with private
-permissions (directories 0700, files 0600). No `.env` or default PostgreSQL connection is read.
+permissions (directories 0700, files 0600). The target database is explicit and validated; no
+`.env`, default PostgreSQL connection or `POSTGRES_DB` fallback is read.
 Configuration contains no passwords or private key material. Runtime reads a deliberately
 selected AWS named profile; environment AWS credentials/endpoints are removed and instance
 metadata lookup is disabled. Provisioning that profile, recipient keyring and remote policy
@@ -273,10 +275,13 @@ The S3 adapter requires an explicit HTTPS endpoint, bucket, profile and prefix. 
 unique object key plus conditional `If-None-Match: *`, finite network deadlines and at most
 three AWS attempts. Providers must support conditional PutObject and SHA256 checksums; unknown
 capabilities fail, with no overwrite fallback. It downloads the uploaded ciphertext into a
-fresh local path and compares SHA256 before writing a successful receipt. Upload errors,
-partial downloads and mismatched readback fail; an ambiguous failed upload may leave an object
-without a success receipt. Nothing deletes it automatically. Receipts identify the exact
-endpoint/bucket/key, ciphertext checksum, recipient fingerprint and byte size.
+fresh local path and compares SHA256 before writing a successful receipt. That readback check
+proves upload fidelity — the stored object equals the locally encrypted ciphertext — not
+recoverability: because the source keyring is public-only, decryption is deliberately deferred
+to the separate recovery drill, which holds the recovery key. Upload errors, partial downloads
+and mismatched readback fail; an ambiguous failed upload may leave an object without a success
+receipt. Nothing deletes it automatically. Receipts identify the exact endpoint/bucket/key,
+ciphertext checksum, recipient fingerprint and byte size.
 
 `attempt-started.json`, `capture/pre-stop.json`, `capture/capture.json`, `capture/resume.json` (or `resume-failed.json`),
 `offsite/transfer-started.json`, `offsite/transfer-failed.json`, `offsite/receipt.json`, and the
@@ -322,11 +327,14 @@ original bundle. Only the three allowlisted regular bundle files are extracted; 
 integrity/archive checks run afterward. Plaintext stays private in the new recovery workdir.
 
 The recovery check uses an already-present `postgres:16-alpine` image in a local Unix-socket
-Docker context, `--pull=never`, `--network=none`, no published ports, tmpfs PGDATA and no shared
-volumes. It restores a fresh `washflow_restore_*` database transactionally, verifies public
-tables exist and compares every restored upload's bytes with the validated archive. It never
-starts application workers, migrations, mail, payments or webhooks. Its `finally` stops only
-the exact synthetic container it created; a host outage still needs owned-resource inspection.
+Docker context, `--pull=never`, `--network=none`, no published ports, a size-capped tmpfs PGDATA
+and no shared volumes. The container runs with bounded memory/pids, `no-new-privileges` and
+dropped capabilities (only the filesystem/setuid caps PostgreSQL needs to bootstrap are kept),
+so a malicious or oversized dump cannot exhaust the host. It restores a fresh `washflow_restore_*`
+database transactionally, verifies public tables exist and compares every restored upload's
+bytes with the validated archive. It never starts application workers, migrations, mail,
+payments or webhooks. Its `finally` stops only the exact synthetic container it created; a host
+outage still needs owned-resource inspection.
 Successful mechanical recovery is not full business validation: production-sized RTO, tenant
 counts/critical rows, foreign-key/domain invariants, times/money and external state still need
 the incident checks above. No production RPO/RTO guarantee follows from a small synthetic drill.

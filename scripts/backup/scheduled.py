@@ -7,16 +7,17 @@ import json
 import logging
 import os
 from pathlib import Path
+import re
 import signal
 import subprocess
 import tarfile
 import uuid
 
 from capture import Capture
-from offsite import Storage, publish
-from runtime import Refused, fresh, local_docker, private, record, require
+from offsite import Storage, gpg, publish
+from runtime import Refused, fresh, local_docker, private, record, require, run
 
-FIELDS = {"root", "backup_root", "gpg_home", "recipient", "endpoint", "bucket", "profile", "prefix"}
+FIELDS = {"root", "backup_root", "gpg_home", "recipient", "endpoint", "bucket", "profile", "prefix", "database"}
 
 
 def interrupted(_signal: int, _frame) -> None:
@@ -37,9 +38,6 @@ def attempt(config: dict) -> Path:
 def locked_attempt(config: dict) -> Path:
     # Validate destination and recipient before any outage. No remote command is run here.
     storage = Storage(config["endpoint"], config["bucket"], config["profile"], config["prefix"])
-    from offsite import gpg
-    import re
-    from runtime import run
     require(bool(re.fullmatch(r"(?:[A-F0-9]{40}|[A-F0-9]{64})", config["recipient"])), "invalid_recipient")
     run(gpg(Path(config["gpg_home"]), "--list-keys", config["recipient"]))
     destination = fresh(Path(config["backup_root"]), uuid.uuid4().hex)
@@ -48,7 +46,7 @@ def locked_attempt(config: dict) -> Path:
     phase = "capture"
     record(destination / "attempt-started.json", {"status": "running", "started_at": datetime.now(timezone.utc).isoformat()})
     try:
-        Capture(Path(config["root"]), capture, local_docker()).capture()
+        Capture(Path(config["root"]), capture, local_docker(), config["database"]).capture()
         phase = "offsite"
         publish(capture, work, Path(config["gpg_home"]), config["recipient"], storage)
         record(destination / "attempt-success.json", {"status": "success", "phase": "offsite_readback_verified"})

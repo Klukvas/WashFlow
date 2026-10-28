@@ -12,17 +12,18 @@ from urllib.parse import urlparse
 import uuid
 
 import backup
-from runtime import digest, fresh, private, record, require, run
+from runtime import binary, digest, fresh, private, record, require, run
 
 MEMBERS = ("database.dump", "uploads.tar.gz", "manifest.json")
 
 
 def gpg(home: Path, *options: str) -> list[str]:
     private(home, directory=True)
-    version = run(["gpg", "--no-options", "--version"])
+    gpg_bin = binary("gpg")
+    version = run([gpg_bin, "--no-options", "--version"])
     match = re.search(rb"gpg \(GnuPG\) (\d+)\.(\d+)\.(\d+)", version)
     require(match is not None and tuple(map(int, match.groups())) >= (2, 2, 8), "gpg_2_2_8_required")
-    return ["gpg", "--no-options", "--homedir", str(home), "--batch", "--no-tty",
+    return [gpg_bin, "--no-options", "--homedir", str(home), "--batch", "--no-tty",
             "--no-auto-key-retrieve", "--auto-key-locate", "clear", *options]
 
 
@@ -36,9 +37,12 @@ def encrypt(bundle: Path, target: Path, home: Path, fingerprint: str) -> None:
     fingerprints = [line.split(b":")[9].decode() for line in listing.splitlines() if line.startswith(b"fpr:")]
     require(fingerprint in fingerprints, "recipient_key_not_pinned")
     plain = target.parent / "bundle.tar"
-    with tarfile.open(plain, "x:") as archive:
-        for name in MEMBERS:
-            archive.add(bundle / name, arcname=name, recursive=False)
+    # Plaintext must be 0600 regardless of the caller's umask (defence on direct calls).
+    descriptor = os.open(plain, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(descriptor, "wb") as stream:
+        with tarfile.open(fileobj=stream, mode="w") as archive:
+            for name in MEMBERS:
+                archive.add(bundle / name, arcname=name, recursive=False)
     # Modern GnuPG requires MDC on legacy OpenPGP encryption (or uses AEAD).
     # No ignore-MDC, RFC2440, unsafe config or implicit key retrieval is permitted.
     run(gpg(home, "--trust-model", "always", "--cipher-algo", "AES256", "--compress-algo", "none",
@@ -65,22 +69,25 @@ class Storage:
                if not key.startswith("AWS_") and key not in ("BOTO_CONFIG", "REQUESTS_CA_BUNDLE")}
         env.update(AWS_EC2_METADATA_DISABLED="true", AWS_MAX_ATTEMPTS="3", AWS_RETRY_MODE="standard",
                    AWS_PAGER="", AWS_CLI_AUTO_PROMPT="off")
-        return run(["aws", "--profile", self.profile, "--endpoint-url", self.endpoint,
+        return run([binary("aws"), "--profile", self.profile, "--endpoint-url", self.endpoint,
                     "--cli-connect-timeout", "10", "--cli-read-timeout", "60", "--no-cli-pager",
                     "s3api", *options], timeout=1800, env=env)
 
     def put(self, key: str, path: Path) -> None:
-        self.key(key)
+        self.validate_key(key)
         self.aws("put-object", "--bucket", self.bucket, "--key", key, "--body", str(path),
                  "--if-none-match", "*", "--checksum-algorithm", "SHA256")
 
-    def key(self, key: str) -> None:
+    def validate_key(self, key: str) -> None:
         require(bool(re.fullmatch(re.escape(self.prefix) + r"/[0-9a-f]{32}\.tar\.gpg", key)),
                 "object_key_outside_approved_prefix")
 
     def get(self, key: str, target: Path) -> None:
-        self.key(key)
-        require(not target.exists() and not target.is_symlink(), "download_target_exists")
+        self.validate_key(key)
+        # Atomically create the output so a later aws write cannot be redirected
+        # through a swapped symlink; O_NOFOLLOW+O_EXCL reject both.
+        descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        os.close(descriptor)
         self.aws("get-object", "--bucket", self.bucket, "--key", key, str(target))
 
 

@@ -33,25 +33,34 @@ def new_directory(path: Path) -> Path:
     return path.resolve()
 
 
-def archive_members(archive: tarfile.TarFile) -> list[tarfile.TarInfo]:
-    members = archive.getmembers()
-    names = [member.name for member in members]
+def validate_archive_entries(entries: list[tuple[str, bool, bool]]) -> None:
+    """Reject traversal, absolute paths, backslashes, links/special files, duplicate
+    names and file/directory path conflicts. `entries` are (name, is_file, is_dir)."""
+    names = [name for name, _, _ in entries]
     require(len(names) == len(set(names)), "Duplicate upload archive entries")
-    for member in members:
-        path = PurePosixPath(member.name)
+    paths: list[PurePosixPath] = []
+    files: set[PurePosixPath] = set()
+    for name, is_file, is_dir in entries:
+        path = PurePosixPath(name)
         require(
             bool(path.parts)
             and not path.is_absolute()
             and ".." not in path.parts
-            and "\\" not in member.name
-            and str(path) == member.name.rstrip("/")
-            and (member.isfile() or member.isdir()),
+            and "\\" not in name
+            and str(path) == name.rstrip("/")
+            and (is_file or is_dir),
             "Unsafe upload archive entry (paths, links and special files rejected)",
         )
-    files = {PurePosixPath(member.name) for member in members if member.isfile()}
-    require(not any(parent in files for member in members
-                    for parent in PurePosixPath(member.name).parents),
+        paths.append(path)
+        if is_file:
+            files.add(path)
+    require(not any(parent in files for path in paths for parent in path.parents),
             "Upload archive file/directory conflict")
+
+
+def archive_members(archive: tarfile.TarFile) -> list[tarfile.TarInfo]:
+    members = archive.getmembers()
+    validate_archive_entries([(member.name, member.isfile(), member.isdir()) for member in members])
     return members
 
 
