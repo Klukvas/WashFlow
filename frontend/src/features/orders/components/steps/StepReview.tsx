@@ -13,6 +13,7 @@ import {
   formatCurrency,
   formatDateTime,
   formatDuration,
+  formatFullName,
 } from '@/shared/utils/format';
 
 interface StepReviewProps {
@@ -77,7 +78,7 @@ export function StepReview({
     if (!assignedEmployeeId) return t('creation.anyWorker');
     const w = workers.find((w) => w.id === assignedEmployeeId);
     return w
-      ? `${w.user.firstName} ${w.user.lastName}`
+      ? formatFullName(w.user.firstName, w.user.lastName)
       : t('creation.anyWorker');
   })();
 

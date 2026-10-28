@@ -6,6 +6,7 @@ import type { EmployeeProfile } from '@/shared/types/models';
 import { Button } from '@/shared/ui/button';
 import { CardHeader, CardTitle } from '@/shared/ui/card';
 import { cn } from '@/shared/utils/cn';
+import { formatFullName } from '@/shared/utils/format';
 
 interface StepWorkerProps {
   branchId: string;
@@ -65,7 +66,7 @@ export function StepWorker({
           >
             <div>
               <p className="font-medium">
-                {w.user.firstName} {w.user.lastName}
+                {formatFullName(w.user.firstName, w.user.lastName)}
               </p>
               {w.workStartTime && w.workEndTime && (
                 <p className="text-sm text-muted-foreground">

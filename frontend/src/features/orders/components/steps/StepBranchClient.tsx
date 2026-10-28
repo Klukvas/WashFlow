@@ -14,6 +14,7 @@ import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { Select } from '@/shared/ui/select';
+import { formatFullName } from '@/shared/utils/format';
 import {
   Dialog,
   DialogHeader,
@@ -64,8 +65,7 @@ export function StepBranchClient({
   const handleQuickCreateClient = (values: ClientFormValues) => {
     createClientMut(values, {
       onSuccess: (newClient) => {
-        const name =
-          `${newClient.firstName} ${newClient.lastName ?? ''}`.trim();
+        const name = formatFullName(newClient.firstName, newClient.lastName);
         onClientChange(newClient.id, name);
         setClientSearch(name);
         setDialogOpen(false);
@@ -111,15 +111,13 @@ export function StepBranchClient({
               key={c.id}
               className="flex w-full items-center justify-between px-4 py-2 text-left hover:bg-accent"
               onClick={() => {
-                const name = [c.firstName, c.lastName]
-                  .filter(Boolean)
-                  .join(' ');
+                const name = formatFullName(c.firstName, c.lastName);
                 onClientChange(c.id, name);
                 setClientSearch(name);
               }}
             >
               <span className="font-medium">
-                {[c.firstName, c.lastName].filter(Boolean).join(' ')}
+                {formatFullName(c.firstName, c.lastName)}
               </span>
               <span className="text-sm text-muted-foreground">{c.phone}</span>
             </button>

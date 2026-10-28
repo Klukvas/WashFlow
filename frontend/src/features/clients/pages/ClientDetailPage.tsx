@@ -265,7 +265,7 @@ export function ClientDetailPage() {
                   {t('fields.vehicles')}
                 </span>
                 <span className="font-medium">
-                  {client.vehicles?.length ?? 0}
+                  {client.vehicles?.filter((v) => !v.deletedAt).length ?? 0}
                 </span>
               </div>
               <div className="flex justify-between">

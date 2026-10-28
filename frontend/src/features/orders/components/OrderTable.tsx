@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { DataTable, type Column } from '@/shared/components/DataTable';
 import { SoftDeleteBadge } from '@/shared/components/SoftDeleteBadge';
 import { StatusBadge } from './StatusBadge';
-import { formatDateTime, formatCurrency } from '@/shared/utils/format';
+import { formatDateTime, formatCurrency, formatFullName } from '@/shared/utils/format';
 import type { Order } from '@/shared/types/models';
 
 interface OrderTableProps {
@@ -38,9 +38,7 @@ export function OrderTable({
         header: t('fields.client'),
         render: (order) =>
           order.client
-            ? [order.client.firstName, order.client.lastName]
-                .filter(Boolean)
-                .join(' ')
+            ? formatFullName(order.client.firstName, order.client.lastName)
             : '—',
       },
       {

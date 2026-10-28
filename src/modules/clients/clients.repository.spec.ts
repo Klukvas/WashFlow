@@ -24,6 +24,9 @@ describe('ClientsRepository', () => {
     order: {
       count: jest.fn().mockResolvedValue(5),
     },
+    vehicle: {
+      findMany: jest.fn(),
+    },
   };
 
   const tenantPrisma = {
@@ -38,6 +41,7 @@ describe('ClientsRepository', () => {
     tenantClient.client.create.mockResolvedValue(mockClient);
     tenantClient.client.update.mockResolvedValue(mockClient);
     tenantClient.client.count.mockResolvedValue(1);
+    tenantClient.vehicle.findMany.mockResolvedValue([]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -79,16 +83,31 @@ describe('ClientsRepository', () => {
   });
 
   describe('findById', () => {
-    it('finds client by id and includes vehicles and recent orders', async () => {
+    it('finds client by id and includes recent orders plus all vehicles', async () => {
       const result = await repo.findById(tenantId, clientId);
       expect(tenantClient.client.findFirst).toHaveBeenCalledWith({
         where: { id: clientId },
         include: {
-          vehicles: true,
           orders: { take: 10, orderBy: { createdAt: 'desc' } },
         },
       });
-      expect(result).toEqual({ ...mockClient, totalOrders: 5 });
+      expect(tenantClient.vehicle.findMany).toHaveBeenCalledWith({
+        where: { clientId, _includeDeleted: true },
+      });
+      expect(result).toEqual({ ...mockClient, vehicles: [], totalOrders: 5 });
+    });
+
+    it('returns soft-deleted vehicles with deletedAt populated', async () => {
+      const deletedVehicle = { id: 'vehicle-1', deletedAt: new Date('2026-01-01') };
+      tenantClient.vehicle.findMany.mockResolvedValue([deletedVehicle]);
+
+      const result = await repo.findById(tenantId, clientId);
+
+      expect(result).toEqual({
+        ...mockClient,
+        vehicles: [deletedVehicle],
+        totalOrders: 5,
+      });
     });
   });
 

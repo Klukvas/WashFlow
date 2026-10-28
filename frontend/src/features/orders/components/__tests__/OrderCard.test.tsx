@@ -14,6 +14,8 @@ vi.mock('react-i18next', () => ({
 vi.mock('@/shared/utils/format', () => ({
   formatDateTime: (v: string) => `dt:${v}`,
   formatCurrency: (v: number) => `$${v}`,
+  formatFullName: (first?: string | null, last?: string | null) =>
+    [first, last].filter(Boolean).join(' '),
 }));
 
 vi.mock('../StatusBadge', () => ({

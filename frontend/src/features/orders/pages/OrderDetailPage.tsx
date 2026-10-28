@@ -18,6 +18,7 @@ import {
   formatDateTime,
   formatCurrency,
   formatDuration,
+  formatFullName,
 } from '@/shared/utils/format';
 import { PERMISSIONS } from '@/shared/constants/permissions';
 
@@ -199,7 +200,7 @@ export function OrderDetailPage() {
               {order.client && (
                 <>
                   <p className="font-medium">
-                    {order.client.firstName} {order.client.lastName}
+                    {formatFullName(order.client.firstName, order.client.lastName)}
                   </p>
                   <p className="text-muted-foreground">{order.client.phone}</p>
                   {order.client.email && (

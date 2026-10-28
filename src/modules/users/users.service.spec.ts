@@ -469,19 +469,27 @@ describe('UsersService', () => {
       const deletedUser = makeUser({ deletedAt: new Date() });
       repo.softDelete.mockResolvedValue(deletedUser);
 
-      const result = await service.softDelete(TENANT_ID, USER_ID);
+      const result = await service.softDelete(TENANT_ID, USER_ID, 'actor-id');
 
       expect(repo.findById).toHaveBeenCalledWith(TENANT_ID, USER_ID, null);
       expect(repo.softDelete).toHaveBeenCalledWith(TENANT_ID, USER_ID, null);
       expect(result).toEqual(deletedUser);
     });
 
+    it('throws ForbiddenException when deleting own account', async () => {
+      await expect(
+        service.softDelete(TENANT_ID, USER_ID, USER_ID),
+      ).rejects.toThrow(ForbiddenException);
+      expect(repo.findById).not.toHaveBeenCalled();
+      expect(repo.softDelete).not.toHaveBeenCalled();
+    });
+
     it('throws NotFoundException when user does not exist', async () => {
       repo.findById.mockResolvedValue(null);
 
-      await expect(service.softDelete(TENANT_ID, USER_ID)).rejects.toThrow(
-        new NotFoundException('User not found'),
-      );
+      await expect(
+        service.softDelete(TENANT_ID, USER_ID, 'actor-id'),
+      ).rejects.toThrow(new NotFoundException('User not found'));
       expect(repo.softDelete).not.toHaveBeenCalled();
     });
   });
@@ -597,7 +605,7 @@ describe('UsersService', () => {
         );
         const args =
           method === 'softDelete'
-            ? [TENANT_ID, USER_ID, BRANCH_ID]
+            ? [TENANT_ID, USER_ID, 'actor-id', BRANCH_ID]
             : [
                 TENANT_ID,
                 USER_ID,
@@ -693,7 +701,9 @@ describe('UsersService', () => {
           ? [TENANT_ID, USER_ID, { firstName: 'Scoped' }, BRANCH_ID]
           : method === 'resetPassword'
             ? [TENANT_ID, USER_ID, { newPassword: 'synthetic' }, BRANCH_ID]
-            : [TENANT_ID, USER_ID, BRANCH_ID];
+            : method === 'softDelete'
+              ? [TENANT_ID, USER_ID, 'actor-id', BRANCH_ID]
+              : [TENANT_ID, USER_ID, BRANCH_ID];
       await expect(
         Reflect.apply(service[method], service, args),
       ).resolves.toBeUndefined();

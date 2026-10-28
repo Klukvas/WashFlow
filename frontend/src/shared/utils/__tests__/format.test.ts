@@ -6,6 +6,7 @@ import {
   formatDateTime,
   formatTime,
   formatRelative,
+  formatFullName,
 } from '../format';
 
 describe('formatCurrency', () => {
@@ -166,5 +167,31 @@ describe('formatRelative', () => {
   it('uses provided locale', () => {
     const result = formatRelative(new Date(Date.now() - 60000), 'en');
     expect(result).toBeDefined();
+  });
+});
+
+describe('formatFullName', () => {
+  it('joins first and last name with a space', () => {
+    expect(formatFullName('John', 'Doe')).toBe('John Doe');
+  });
+
+  it('omits a missing last name without a trailing space', () => {
+    expect(formatFullName('Olena', null)).toBe('Olena');
+    expect(formatFullName('Olena', undefined)).toBe('Olena');
+  });
+
+  it('omits an empty last name', () => {
+    expect(formatFullName('Olena', '')).toBe('Olena');
+  });
+
+  it('omits a missing first name', () => {
+    expect(formatFullName(undefined, 'Doe')).toBe('Doe');
+    expect(formatFullName(null, 'Doe')).toBe('Doe');
+  });
+
+  it('returns an empty string when both names are missing', () => {
+    expect(formatFullName()).toBe('');
+    expect(formatFullName(null, null)).toBe('');
+    expect(formatFullName('', '')).toBe('');
   });
 });
