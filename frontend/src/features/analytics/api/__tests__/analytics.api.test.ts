@@ -18,11 +18,10 @@ describe('analytics.api', () => {
   it('fetchDashboard calls GET /analytics/dashboard', async () => {
     const mockData = {
       totalOrders: 100,
-      todayOrders: 5,
-      revenue: 50000,
-      todayRevenue: 2500,
-      activeClients: 42,
-      completionRate: 0.95,
+      completedOrders: 95,
+      cancelledOrders: 5,
+      totalRevenue: 50000,
+      completionRate: 95,
     };
     vi.mocked(apiClient.get).mockResolvedValue({
       data: { data: mockData },

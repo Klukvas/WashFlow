@@ -41,6 +41,23 @@ export function ScheduleView() {
   const orders = (schedule.data?.orders ?? []).filter(
     (o) => !postFilter || o.workPost?.id === postFilter,
   );
+  const range = schedule.data?.range;
+  const isSelectedDay = (order: (typeof orders)[number]) =>
+    !!range &&
+    Date.parse(order.scheduledStart) < Date.parse(range.end) &&
+    Date.parse(order.scheduledEnd) > Date.parse(range.start);
+  const selectedDay = orders.filter(isSelectedDay);
+  const backlog = orders.filter((order) => !isSelectedDay(order));
+  const groups = [
+    {
+      key: 'selected-day',
+      title: t('schedule.selectedDay', { date }),
+      orders: selectedDay,
+    },
+    ...(backlog.length
+      ? [{ key: 'backlog', title: t('schedule.backlog'), orders: backlog }]
+      : []),
+  ];
   const posts = Array.from(
     new Map([
       ...(schedule.data?.orders ?? []).flatMap((o) =>
@@ -162,53 +179,67 @@ export function ScheduleView() {
               <p className="text-xs text-muted-foreground">
                 {t('schedule.reservationHint')}
               </p>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {orders.map((order) => (
-                  <button
-                    key={order.id}
-                    data-testid="schedule-order"
-                    type="button"
-                    onClick={() => navigate(`/orders/${order.id}`)}
-                    className={cn(
-                      'space-y-2 rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary focus-visible:outline-2 focus-visible:outline-primary',
-                      order.isOverdue && 'border-warning bg-warning/5',
-                    )}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <strong className="text-base">
-                        {order.vehicle?.licensePlate ?? '—'}
-                      </strong>
-                      <StatusBadge status={order.status} />
-                    </div>
-                    <p className="text-sm">
-                      {order.services.map((s) => s.name).join(', ') ||
-                        t('noServices')}
+              {groups.map((group) => (
+                <section
+                  key={group.key}
+                  data-testid={`schedule-${group.key}`}
+                  className="space-y-3"
+                >
+                  <h2 className="flex flex-wrap items-center justify-between gap-2 font-semibold">
+                    <span>{group.title}</span>
+                    <span className="text-sm font-normal tabular-nums text-muted-foreground">
+                      {t('schedule.orderCount', { count: group.orders.length })}
+                    </span>
+                  </h2>
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {group.orders.map((order) => (
+                      <button
+                        key={order.id}
+                        data-testid="schedule-order"
+                        type="button"
+                        onClick={() => navigate(`/orders/${order.id}`)}
+                        className={cn(
+                          'space-y-2 rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary focus-visible:outline-2 focus-visible:outline-primary',
+                          order.isOverdue && 'border-warning bg-warning/5',
+                        )}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <strong className="text-base">
+                            {order.vehicle?.licensePlate ?? '—'}
+                          </strong>
+                          <StatusBadge status={order.status} />
+                        </div>
+                        <p className="text-sm">
+                          {order.services.map((s) => s.name).join(', ') ||
+                            t('noServices')}
+                        </p>
+                        <p className="text-sm font-medium">
+                          {branchDate(order.scheduledStart, actualTimezone) !==
+                            date &&
+                            `${branchDate(order.scheduledStart, actualTimezone)} `}
+                          {branchTime(order.scheduledStart, actualTimezone)} –{' '}
+                          {branchTime(order.scheduledEnd, actualTimezone)} ·{' '}
+                          {order.workPost?.name ?? '—'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {t('fields.assignedWorker')}:{' '}
+                          {order.assignedEmployee?.name ?? '—'}
+                        </p>
+                        {order.isOverdue && (
+                          <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                            {t('schedule.overdue')}
+                          </p>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  {!group.orders.length && (
+                    <p className="rounded-md border border-border p-5 text-sm text-muted-foreground">
+                      {t('schedule.noOrders')}
                     </p>
-                    <p className="text-sm font-medium">
-                      {branchDate(order.scheduledStart, actualTimezone) !==
-                        date &&
-                        `${branchDate(order.scheduledStart, actualTimezone)} `}
-                      {branchTime(order.scheduledStart, actualTimezone)} –{' '}
-                      {branchTime(order.scheduledEnd, actualTimezone)} ·{' '}
-                      {order.workPost?.name ?? '—'}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {t('fields.assignedWorker')}:{' '}
-                      {order.assignedEmployee?.name ?? '—'}
-                    </p>
-                    {order.isOverdue && (
-                      <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-                        {t('schedule.overdue')}
-                      </p>
-                    )}
-                  </button>
-                ))}
-              </div>
-              {!orders.length && (
-                <p className="rounded-md border border-border p-5 text-sm text-muted-foreground">
-                  {t('schedule.noOrders')}
-                </p>
-              )}
+                  )}
+                </section>
+              ))}
             </>
           )}
 

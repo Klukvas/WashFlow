@@ -21,11 +21,10 @@ import { apiClient } from '@/shared/api/client';
 
 const mockDashboardStats = {
   totalOrders: 50,
-  todayOrders: 3,
-  revenue: 10000,
-  todayRevenue: 500,
-  activeClients: 20,
-  completionRate: 0.9,
+  completedOrders: 45,
+  cancelledOrders: 3,
+  totalRevenue: '10000.50',
+  completionRate: 90,
 };
 
 const mockKpiData = {
@@ -73,6 +72,18 @@ describe('dashboard.api', () => {
       params: { branchId: 'b1' },
     });
     expect(result.totalOrders).toBe(50);
+  });
+
+  it('normalizes decimal revenue and rejects absent aggregates rather than inventing zero', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { data: mockDashboardStats } });
+    expect((await fetchDashboardStats()).totalRevenue).toBe(10000.50);
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { data: { totalOrders: 50 } } });
+    await expect(fetchDashboardStats()).rejects.toThrow();
+  });
+
+  it.each([null, '', 'not-a-number', -1])('rejects malformed revenue %s', async (totalRevenue) => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { data: { ...mockDashboardStats, totalRevenue } } });
+    await expect(fetchDashboardStats()).rejects.toThrow();
   });
 
   it('fetchRevenueData calls GET /analytics/revenue', async () => {

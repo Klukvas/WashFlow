@@ -100,12 +100,25 @@ export function QuickOrderForm() {
     queryFn: () => fetchVehicles({ search: query, limit: 10 }),
     enabled: query.length >= 2 && !client,
   });
+  const catalogLoaded =
+    !!branch &&
+    !!date &&
+    duration > 0 &&
+    !branchesQuery.isError &&
+    !servicesQuery.isError;
+  const catalogRefreshing =
+    branchesQuery.isFetching || servicesQuery.isFetching;
+  // A catalog refetch may change durations, so the slot UI waits for it, but the
+  // availability query stays keyed to the branch to keep its cache across refetches.
+  const availabilityReady = catalogLoaded && !catalogRefreshing;
   const slots = useAvailability({
-    branchId: duration && branch ? branchId : '',
+    branchId: catalogLoaded ? branchId : '',
     date,
     durationMinutes: duration || undefined,
   });
-  const available = (slots.data ?? [])
+  const available = (
+    availabilityReady && slots.isSuccess ? (slots.data ?? []) : []
+  )
     .filter((s) => s.available && new Date(s.start).getTime() > now)
     .sort(
       (a, b) =>
@@ -116,7 +129,21 @@ export function QuickOrderForm() {
   const slot = chosenSlot
     ? available.find((s) => slotKey(s.start, s.workPostId) === chosenSlot)
     : available[0];
+  function getSlotPrompt(): string {
+    if (branchesQuery.isError || servicesQuery.isError)
+      return tc('errors.loadFailed');
+    if (catalogRefreshing) return tc('status.loading');
+    if (!branch) return t('quick.branchFirst');
+    if (!date) return t('quick.dateFirst');
+    if (!duration) return t('quick.servicesFirst');
+    if (slots.isError) return tc('errors.loadFailed');
+    if (slots.isFetching || !slots.isSuccess) return t('quick.checking');
+    return t('quick.selectSlot');
+  }
+  const slotPrompt = getSlotPrompt();
   const ready =
+    availabilityReady &&
+    slots.isSuccess &&
     hasPermission('orders.create') &&
     !!branch &&
     !!client &&
@@ -294,7 +321,10 @@ export function QuickOrderForm() {
                           >
                             {v.licensePlate} · {v.make}
                             <span className="ml-2 text-sm text-muted-foreground">
-                              {formatFullName(v.client?.firstName, v.client?.lastName)}
+                              {formatFullName(
+                                v.client?.firstName,
+                                v.client?.lastName,
+                              )}
                             </span>
                           </button>
                         ))}
@@ -391,15 +421,15 @@ export function QuickOrderForm() {
               <Select
                 id="quick-slot"
                 disabled={
-                  !duration ||
+                  !availabilityReady ||
+                  !slots.isSuccess ||
+                  !available.length ||
                   slots.isFetching ||
                   slots.isError ||
                   creation.isPending
                 }
                 value={slot ? slotKey(slot.start, slot.workPostId) : ''}
-                placeholder={t(
-                  duration ? 'creation.noSlots' : 'quick.servicesFirst',
-                )}
+                placeholder={slotPrompt}
                 options={available.map((s) => ({
                   value: slotKey(s.start, s.workPostId),
                   label: `${branchTime(s.start, branch?.timezone ?? 'UTC')} · ${s.workPostName}`,
@@ -409,18 +439,23 @@ export function QuickOrderForm() {
               <p className="mt-1 text-xs text-muted-foreground">
                 {branch?.timezone}
               </p>
-              {!!duration && chosenSlot && !slot && !slots.isFetching && (
-                <p role="alert" className="text-warning-foreground">
-                  {t('quick.slotChanged')}
-                </p>
-              )}
+              {availabilityReady &&
+                slots.isSuccess &&
+                chosenSlot &&
+                !slot &&
+                !slots.isFetching && (
+                  <p role="alert" className="text-warning-foreground">
+                    {t('quick.slotChanged')}
+                  </p>
+                )}
               {slots.isFetching && <p role="status">{t('quick.checking')}</p>}
               {slots.isError && (
                 <p role="alert" className="text-destructive">
                   {tc('errors.loadFailed')}
                 </p>
               )}
-              {!!duration &&
+              {availabilityReady &&
+                slots.isSuccess &&
                 !slots.isFetching &&
                 !slots.isError &&
                 !available.length && (

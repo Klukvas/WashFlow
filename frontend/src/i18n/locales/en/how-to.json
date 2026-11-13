@@ -18,7 +18,7 @@
         },
         {
           "heading": "Logging In",
-          "body": "To log in, you need three things: your Tenant ID (provided by the system administrator), your email address, and your password. Enter them on the login page and click Sign In.",
+          "body": "To log in, enter your email address and password on the login page, then click Sign In.",
           "tip": "If you forget your password, ask your administrator to reset it from the Users page."
         },
         {
@@ -175,11 +175,11 @@
         },
         {
           "heading": "Creating a Branch",
-          "body": "Click 'Add Branch' and enter the name and address. After creation, configure its work posts and booking settings from the branch detail page."
+          "body": "Click 'Add Branch' and enter the name and address. After creation, add its work posts from the Work Posts page and configure booking settings from the branch detail page."
         },
         {
           "heading": "Work Posts",
-          "body": "Work posts (bays) are the physical spots where cars are washed. Each post belongs to a branch. You can create, edit, and remove posts from the Work Posts page or the branch detail page. The number of available posts directly affects scheduling capacity.",
+          "body": "Work posts (bays) are the physical spots where cars are washed. Each post belongs to a branch. Add posts from the Work Posts page and view them there or in the branch detail page. Editing and deleting posts are not available in this interface. The number of available posts directly affects scheduling capacity.",
           "tip": "More posts = more simultaneous orders. The scheduler uses post availability to generate time slots."
         },
         {
@@ -392,7 +392,7 @@
         {
           "title": "Process the Visit",
           "where": "Orders → Order Detail",
-          "body": "When the client arrives, change status to 'In Progress'. After the wash, change to 'Completed' and record payment (Cash, Card, or Online).",
+          "body": "When the client arrives, change status to 'In Progress'. After the wash, record payment before changing the status to 'Completed'. Payments cannot be added to completed, cancelled or no-show orders.",
           "tip": "If the client doesn't show, mark the order as 'No Show' to keep statistics accurate."
         }
       ]
@@ -441,7 +441,7 @@
         {
           "title": "Process the Visit",
           "where": "Orders → Order Detail",
-          "body": "When the client arrives, change status to 'In Progress'. After the wash, change to 'Completed' and record payment.",
+          "body": "When the client arrives, change status to 'In Progress'. After the wash, record payment before changing the status to 'Completed'. Payments cannot be added to completed, cancelled or no-show orders.",
           "tip": "Since the client already has a full profile, future orders will be even faster — just search and select."
         }
       ]
@@ -474,7 +474,7 @@
         {
           "title": "Day of the Appointment",
           "where": "Orders → Order Detail",
-          "body": "When the customer arrives, change the status to 'In Progress'. Process the wash as usual — the assigned employee and work post are shown on the order. When done, mark 'Completed' and record payment."
+          "body": "When the customer arrives, change the status to 'In Progress'. Process the wash as usual — the assigned employee and work post are shown on the order. Record payment before marking the order 'Completed'; payments cannot be added after completion."
         }
       ]
     },
@@ -506,7 +506,7 @@
         },
         {
           "title": "Brief the Employee",
-          "body": "Share these key points: how to log in (Tenant ID + email + password), how to view their assigned orders, how to change order status (Booked → In Progress → Completed), and how to change their password."
+          "body": "Share these key points: how to log in (email + password), how to view their assigned orders, how to change order status (Booked → In Progress → Completed), and how to change their password."
         }
       ]
     },
@@ -521,7 +521,7 @@
         },
         {
           "title": "Add Work Posts",
-          "where": "Branch Detail → Work Posts OR Work Posts page",
+          "where": "Work Posts page → Add Work Post",
           "body": "Each work post is a physical bay where a car can be washed. Go to the Work Posts page, select your new branch, and create posts. Name them clearly (e.g. 'Bay 1', 'Bay 2'). The number of posts determines how many cars you can wash simultaneously.",
           "tip": "Start with the actual number of bays. You can always add more later."
         },

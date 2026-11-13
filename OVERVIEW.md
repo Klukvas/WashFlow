@@ -135,6 +135,19 @@ and vehicle creation, services and the earliest valid duration-aware work post. 
 wizard remains available. Full-day schedule cards show branch-local times, plate, service,
 status, worker and planned end, with overdue warnings and order-detail navigation.
 
+Quick intake distinguishes missing prerequisites and loading/errors from confirmed no-capacity
+results. The schedule shows the selected day's overlapping orders before a separately counted
+older overdue backlog, preserving both cross-midnight reservations and warnings. Mobile help
+uses horizontal topics, role creation offers Cancel, and EN/UK help matches email/password login,
+payment before completion and the available work-post actions.
+
+Dashboard secondary cards use actual all-time aggregate fields for the selected branch; Analytics
+uses its date/branch filters and labels the period. Revenue and completed-order counts come from
+the returned contract; absent active-client/day fields are not converted to zero. Percentage
+formatting, work-post counts and public paid-plan limits follow their source data. Both booking
+frontends hide expired starts and invalidate expired selection, and the widget calendar follows
+the chosen EN/UK locale; no unfinished CAPTCHA placeholder is shown.
+
 Booked/pending orders can be rescheduled transactionally without changing service snapshots,
 prices, payments or status; omitted post/worker fields preserve assignments. The minimal
 `order.rescheduled` event drives audit/realtime cache invalidation. Schedule projection covers

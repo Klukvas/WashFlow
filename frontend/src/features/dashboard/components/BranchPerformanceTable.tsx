@@ -59,7 +59,12 @@ export function BranchPerformanceTable({
     <Card>
       <CardContent className="p-4">
         <h3 className="mb-4 text-sm font-semibold">{t('branches.title')}</h3>
-        <DataTable columns={columns} data={data ?? []} loading={loading} />
+        <DataTable
+          columns={columns}
+          data={data ?? []}
+          loading={loading}
+          getRowKey={(row) => row.branchId}
+        />
       </CardContent>
     </Card>
   );

@@ -536,10 +536,6 @@ export function PublicBookingPage() {
                   placeholder={t('notesPlaceholder')}
                 />
               </div>
-              {/* reCAPTCHA placeholder */}
-              <div className="rounded-md border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-                {t('recaptchaPlaceholder')}
-              </div>
               <div className="flex gap-3">
                 <Button
                   variant="outline"

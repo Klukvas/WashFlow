@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { ScheduleView } from '../ScheduleView';
 
@@ -9,9 +9,14 @@ const state = vi.hoisted(() => ({
   error: false,
   loading: false,
   analytics: false,
+  backlog: false,
+  overlap: false,
 }));
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string, values?: { count?: number }) =>
+      key === 'schedule.orderCount' ? `${key}: ${values?.count}` : key,
+  }),
 }));
 vi.mock('react-router', () => ({ useNavigate: () => state.navigate }));
 vi.mock('@/shared/hooks/useNow', () => ({
@@ -60,17 +65,32 @@ vi.mock('../../hooks/useOrders', () => ({
         : {
             timezone: 'Europe/Kyiv',
             now: '2026-10-25T08:00:00Z',
-            orders: Array.from({ length: 25 }, (_, index) => ({
-              id: `o${index}`,
-              status: 'IN_PROGRESS',
-              vehicle: { licensePlate: `AA${index}` },
-              services: [{ name: 'Wash' }],
-              scheduledStart: '2026-10-25T06:00:00Z',
-              scheduledEnd: '2026-10-25T07:00:00Z',
-              workPost: { id: 'p1', name: 'Post 1' },
-              assignedEmployee: { id: 'e1', name: 'Worker One' },
-              isOverdue: index === 0,
-            })),
+            range: {
+              start: '2026-10-24T21:00:00Z',
+              end: '2026-10-25T22:00:00Z',
+            },
+            orders: Array.from(
+              { length: state.backlog ? 26 : 25 },
+              (_, index) => ({
+                id: `o${index}`,
+                status: 'IN_PROGRESS',
+                vehicle: { licensePlate: `AA${index}` },
+                services: [{ name: 'Wash' }],
+                scheduledStart:
+                  index === 25
+                    ? '2025-10-25T06:00:00Z'
+                    : state.overlap && index === 24
+                      ? '2026-10-24T20:30:00Z'
+                      : '2026-10-25T06:00:00Z',
+                scheduledEnd:
+                  index === 25
+                    ? '2025-10-25T07:00:00Z'
+                    : '2026-10-25T07:00:00Z',
+                workPost: { id: 'p1', name: 'Post 1' },
+                assignedEmployee: { id: 'e1', name: 'Worker One' },
+                isOverdue: index === 0 || index === 25,
+              }),
+            ),
           },
   }),
   useAvailability: () => ({
@@ -99,6 +119,40 @@ describe('operator schedule', () => {
     state.loading = false;
     state.error = false;
     state.analytics = false;
+    state.backlog = false;
+    state.overlap = false;
+  });
+  it('keeps selected-day orders first and preserves older overdue orders in a separate counted section', () => {
+    state.scoped = true;
+    state.backlog = true;
+    render(<ScheduleView />);
+    const day = screen.getByTestId('schedule-selected-day');
+    const backlog = screen.getByTestId('schedule-backlog');
+    expect(within(day).getAllByTestId('schedule-order')).toHaveLength(25);
+    expect(
+      within(day).getByText('schedule.orderCount: 25'),
+    ).toBeInTheDocument();
+    expect(
+      within(backlog).getByText('schedule.orderCount: 1'),
+    ).toBeInTheDocument();
+    expect(within(backlog).getAllByTestId('schedule-order')).toHaveLength(1);
+    expect(within(day).queryByText('AA25')).not.toBeInTheDocument();
+    expect(within(backlog).getByText('AA25')).toBeInTheDocument();
+    expect(within(backlog).getByText('schedule.overdue')).toBeInTheDocument();
+    expect(
+      day.compareDocumentPosition(backlog) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    fireEvent.click(within(backlog).getByText('AA25'));
+    expect(state.navigate).toHaveBeenCalledWith('/orders/o25');
+  });
+  it('keeps an overnight reservation overlapping the API day range in the selected day', () => {
+    state.scoped = true;
+    state.overlap = true;
+    render(<ScheduleView />);
+    expect(
+      within(screen.getByTestId('schedule-selected-day')).getByText('AA24'),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('schedule-backlog')).not.toBeInTheDocument();
   });
   it('requires a branch, and renders branch/date/post controls', () => {
     render(<ScheduleView />);

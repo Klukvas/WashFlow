@@ -1,14 +1,19 @@
+import { z } from 'zod';
 import { apiClient } from '@/shared/api/client';
 import type { ApiResponse } from '@/shared/types/api';
 
-export interface DashboardStats {
-  totalOrders: number;
-  todayOrders: number;
-  revenue: number;
-  todayRevenue: number;
-  activeClients: number;
-  completionRate: number;
-}
+const dashboardStatsSchema = z.object({
+  totalOrders: z.number().int().nonnegative(),
+  completedOrders: z.number().int().nonnegative(),
+  cancelledOrders: z.number().int().nonnegative(),
+  totalRevenue: z
+    .union([z.number(), z.string().regex(/^\d+(\.\d+)?$/)])
+    .transform(Number)
+    .pipe(z.number().finite().nonnegative()),
+  completionRate: z.number().min(0).max(100),
+});
+
+export type DashboardStats = z.infer<typeof dashboardStatsSchema>;
 
 export interface RevenueData {
   date: string;
@@ -27,11 +32,11 @@ export async function fetchDashboardStats(params?: {
   dateFrom?: string;
   dateTo?: string;
 }): Promise<DashboardStats> {
-  const { data } = await apiClient.get<ApiResponse<DashboardStats>>(
+  const { data } = await apiClient.get<ApiResponse<unknown>>(
     '/analytics/dashboard',
     { params },
   );
-  return data.data;
+  return dashboardStatsSchema.parse(data.data);
 }
 
 export async function fetchRevenueData(params?: {

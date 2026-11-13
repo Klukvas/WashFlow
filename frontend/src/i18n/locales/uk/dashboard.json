@@ -64,13 +64,10 @@
   },
   "statsCards": {
     "totalOrders": "Всього замовлень",
-    "todayOrders": "{{count}} сьогодні",
     "revenue": "Дохід",
-    "todayRevenue": "{{value}} сьогодні",
-    "activeClients": "Активні клієнти",
     "allTime": "За весь час",
     "completionRate": "Відсоток виконання",
-    "thisPeriod": "За цей період"
+    "completedOrders": "Виконані замовлення"
   },
   "setup": {
     "entry": "Налаштуйте автомийку",

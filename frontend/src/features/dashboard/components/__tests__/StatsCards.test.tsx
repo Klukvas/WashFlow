@@ -1,86 +1,56 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { StatsCards } from '../StatsCards';
-import type { DashboardStats } from '../../api/dashboard.api';
+import { fetchDashboardStats } from '../../api/dashboard.api';
+import { apiClient } from '@/shared/api/client';
+import { formatCurrency } from '@/shared/utils/format';
 
-vi.mock('@/shared/utils/format', () => ({
-  formatCurrency: (v: number) => `$${v.toFixed(2)}`,
-}));
-
+vi.mock('@/shared/api/client', () => ({ apiClient: { get: vi.fn() } }));
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) => {
-      if (opts && 'count' in opts) return `${opts.count} today`;
-      if (opts && 'value' in opts) return `today: ${opts.value}`;
-      return key;
-    },
-    i18n: { language: 'en', changeLanguage: vi.fn() },
-  }),
+  useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-describe('StatsCards', () => {
-  it('renders loading skeletons when loading', () => {
-    const { container } = render(<StatsCards loading={true} />);
-    const skeletons = container.querySelectorAll('.h-32');
-    expect(skeletons.length).toBe(4);
-  });
+const response = {
+  totalOrders: 100,
+  completedOrders: 85,
+  cancelledOrders: 10,
+  totalRevenue: '1234.56',
+  completionRate: 85,
+};
 
-  it('renders 4 stat cards when data is provided', () => {
-    const data: DashboardStats = {
-      totalOrders: 100,
-      todayOrders: 5,
-      revenue: 5000,
-      todayRevenue: 200,
-      activeClients: 30,
-      completionRate: 85,
-    };
-
+describe('StatsCards API contract', () => {
+  it('renders all-time aggregates from the actual dashboard response, without invented daily or client counts', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { data: response } });
+    const data = await fetchDashboardStats();
     render(<StatsCards data={data} loading={false} />);
-
-    expect(screen.getByText('statsCards.totalOrders')).toBeInTheDocument();
     expect(screen.getByText('100')).toBeInTheDocument();
-    expect(screen.getByText('statsCards.revenue')).toBeInTheDocument();
-    expect(screen.getByText('statsCards.activeClients')).toBeInTheDocument();
-    expect(screen.getByText('30')).toBeInTheDocument();
-    expect(screen.getByText('statsCards.completionRate')).toBeInTheDocument();
+    expect(screen.getByText(formatCurrency(1234.56), { normalizer: (text) => text })).toBeInTheDocument();
+    expect(screen.getByText('85')).toBeInTheDocument();
     expect(screen.getByText('85%')).toBeInTheDocument();
+    expect(screen.getAllByText('statsCards.allTime')).toHaveLength(4);
+    expect(screen.queryByText('statsCards.activeClients')).not.toBeInTheDocument();
+    expect(screen.queryByText(/today/)).not.toBeInTheDocument();
   });
 
-  it('formats currency values', () => {
-    const data: DashboardStats = {
-      totalOrders: 0,
-      todayOrders: 0,
-      revenue: 1234.56,
-      todayRevenue: 100,
-      activeClients: 0,
-      completionRate: 0,
-    };
-
-    render(<StatsCards data={data} loading={false} />);
-    expect(screen.getByText('$1234.56')).toBeInTheDocument();
+  it('shows unavailable values instead of zero when no response exists', () => {
+    render(<StatsCards loading={false} />);
+    expect(screen.getAllByText('—')).toHaveLength(4);
+    expect(screen.queryByText('0')).not.toBeInTheDocument();
+    expect(screen.queryByText('0%')).not.toBeInTheDocument();
   });
 
-  it('uses default values when data is undefined', () => {
-    render(<StatsCards data={undefined} loading={false} />);
-
-    // Multiple '0' elements exist (totalOrders, activeClients, subtitles)
-    const zeros = screen.getAllByText('0');
-    expect(zeros.length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText('$0.00')).toBeInTheDocument();
+  it('renders genuine zero aggregates as zeros', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { data: {
+      totalOrders: 0, completedOrders: 0, cancelledOrders: 0, totalRevenue: 0, completionRate: 0,
+    } } });
+    render(<StatsCards data={await fetchDashboardStats()} loading={false} />);
+    expect(screen.getAllByText('0')).toHaveLength(2);
+    expect(screen.getByText(formatCurrency(0), { normalizer: (text) => text })).toBeInTheDocument();
     expect(screen.getByText('0%')).toBeInTheDocument();
   });
 
-  it('shows today count in subtitle', () => {
-    const data: DashboardStats = {
-      totalOrders: 50,
-      todayOrders: 3,
-      revenue: 1000,
-      todayRevenue: 100,
-      activeClients: 10,
-      completionRate: 90,
-    };
-
-    render(<StatsCards data={data} loading={false} />);
-    expect(screen.getByText('3 today')).toBeInTheDocument();
+  it('renders loading skeletons', () => {
+    const { container } = render(<StatsCards loading />);
+    expect(container.querySelectorAll('.h-32')).toHaveLength(4);
   });
 });

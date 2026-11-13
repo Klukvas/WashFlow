@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router';
+import { useEffect, useRef } from 'react';
+import { NavLink, useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { REFERENCE_TOPICS, FLOW_TOPICS } from '../constants/topics';
 import type { TopicMeta } from '../constants/topics';
@@ -31,11 +32,32 @@ function TopicLinks({ items }: { items: readonly TopicMeta[] }) {
   );
 }
 
-export function TopicSidebar({ showLabels = false }: { showLabels?: boolean }) {
+export function TopicSidebar({
+  showLabels = false,
+  horizontal = false,
+}: {
+  showLabels?: boolean;
+  horizontal?: boolean;
+}) {
   const { t } = useTranslation('how-to');
+  const nav = useRef<HTMLElement>(null);
+  const { pathname } = useLocation();
+  useEffect(() => {
+    if (!horizontal) return;
+    nav.current
+      ?.querySelector<HTMLElement>('[aria-current="page"]')
+      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [horizontal, pathname, t]);
 
   return (
-    <nav aria-label={t('meta.topicNav')} className="flex flex-col gap-1">
+    <nav
+      ref={nav}
+      aria-label={t('meta.topicNav')}
+      className={cn(
+        'flex gap-1',
+        horizontal ? 'flex-row items-center [&>a]:shrink-0' : 'flex-col',
+      )}
+    >
       {showLabels && (
         <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {t('meta.topics')}
@@ -43,7 +65,13 @@ export function TopicSidebar({ showLabels = false }: { showLabels?: boolean }) {
       )}
       <TopicLinks items={REFERENCE_TOPICS} />
 
-      <div className="my-2 border-t border-border" />
+      <div
+        className={
+          horizontal
+            ? 'mx-2 h-6 shrink-0 border-l border-border'
+            : 'my-2 border-t border-border'
+        }
+      />
 
       {showLabels && (
         <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

@@ -13,17 +13,21 @@ import { Label } from '@/shared/ui/label';
 import { Select } from '@/shared/ui/select';
 
 const createUserSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
+  email: z.string().email('validation.invalidEmail'),
+  password: z.string().min(8, 'validation.passwordMin'),
+  firstName: z.string().min(1, 'validation.required'),
+  lastName: z.string().min(1, 'validation.required'),
   phone: z.string().optional().or(z.literal('')),
   branchId: z.string().optional().or(z.literal('')),
   roleId: z.string().optional().or(z.literal('')),
 });
 
 const updateUserSchema = createUserSchema.extend({
-  password: z.string().min(8).optional().or(z.literal('')),
+  password: z
+    .string()
+    .min(8, 'validation.passwordMin')
+    .optional()
+    .or(z.literal('')),
 });
 
 type CreateUserFormData = z.infer<typeof createUserSchema>;
@@ -37,9 +41,15 @@ interface UserFormProps {
   isPending?: boolean;
 }
 
-export function UserForm({ user, onSubmit, onCancel, isPending }: UserFormProps) {
+export function UserForm({
+  user,
+  onSubmit,
+  onCancel,
+  isPending,
+}: UserFormProps) {
   const { t } = useTranslation('common');
   const isEditing = !!user;
+  const errorMessage = (message?: string) => (message ? t(message) : undefined);
 
   const schema = isEditing ? updateUserSchema : createUserSchema;
 
@@ -127,7 +137,7 @@ export function UserForm({ user, onSubmit, onCancel, isPending }: UserFormProps)
           <Label htmlFor="firstName">{t('fields.firstName')}</Label>
           <Input
             id="firstName"
-            error={errors.firstName?.message}
+            error={errorMessage(errors.firstName?.message)}
             {...register('firstName')}
           />
         </div>
@@ -136,7 +146,7 @@ export function UserForm({ user, onSubmit, onCancel, isPending }: UserFormProps)
           <Label htmlFor="lastName">{t('fields.lastName')}</Label>
           <Input
             id="lastName"
-            error={errors.lastName?.message}
+            error={errorMessage(errors.lastName?.message)}
             {...register('lastName')}
           />
         </div>
@@ -147,7 +157,7 @@ export function UserForm({ user, onSubmit, onCancel, isPending }: UserFormProps)
         <Input
           id="email"
           type="email"
-          error={errors.email?.message}
+          error={errorMessage(errors.email?.message)}
           {...register('email')}
         />
       </div>
@@ -164,7 +174,7 @@ export function UserForm({ user, onSubmit, onCancel, isPending }: UserFormProps)
         <Input
           id="password"
           type="password"
-          error={errors.password?.message}
+          error={errorMessage(errors.password?.message)}
           {...register('password')}
         />
       </div>
@@ -174,7 +184,7 @@ export function UserForm({ user, onSubmit, onCancel, isPending }: UserFormProps)
         <Input
           id="phone"
           type="tel"
-          error={errors.phone?.message}
+          error={errorMessage(errors.phone?.message)}
           {...register('phone')}
         />
       </div>
@@ -186,7 +196,7 @@ export function UserForm({ user, onSubmit, onCancel, isPending }: UserFormProps)
             id="branchId"
             options={branchOptions}
             placeholder={t('fields.selectBranch')}
-            error={errors.branchId?.message}
+            error={errorMessage(errors.branchId?.message)}
             {...register('branchId')}
           />
         </div>
@@ -197,14 +207,19 @@ export function UserForm({ user, onSubmit, onCancel, isPending }: UserFormProps)
             id="roleId"
             options={roleOptions}
             placeholder={t('fields.selectRole')}
-            error={errors.roleId?.message}
+            error={errorMessage(errors.roleId?.message)}
             {...register('roleId')}
           />
         </div>
       </div>
 
       <div className="flex justify-end gap-3 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={isPending}
+        >
           {t('actions.cancel')}
         </Button>
         <Button type="submit" loading={isPending}>

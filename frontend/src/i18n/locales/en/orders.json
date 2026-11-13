@@ -53,7 +53,10 @@
     "overdue": "In progress beyond scheduled end — check with the worker",
     "reservationHint": "Times show planned reservations. Check overdue work with the worker before booking that post.",
     "noOrders": "No scheduled orders for this date and work post.",
-    "slotHint": "Only available starts are shown. Service duration is checked during order creation."
+    "slotHint": "Only available starts are shown. Service duration is checked during order creation.",
+    "selectedDay": "Orders for {{date}}",
+    "backlog": "Overdue orders from earlier dates",
+    "orderCount": "Orders: {{count}}"
   },
   "creation": {
     "selectClient": "Select Client",
@@ -107,7 +110,10 @@
     "checking": "Checking availability…",
     "invalid": "Check the client, vehicle, services and available slot.",
     "slotChanged": "The selected slot is unavailable for this duration. Choose a new available slot.",
-    "servicesFirst": "Choose services to check availability"
+    "servicesFirst": "Choose services to check availability",
+    "branchFirst": "Choose a branch to check availability",
+    "dateFirst": "Choose a date to check availability",
+    "selectSlot": "Choose an available start"
   },
   "reschedule": {
     "title": "Reschedule",

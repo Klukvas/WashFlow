@@ -98,7 +98,7 @@ export function DashboardAnalytics() {
         {/* KPI cards — always visible */}
         <KpiCards data={kpiData} loading={kpiLoading} />
 
-        {/* Legacy stat cards */}
+        {/* All-time aggregates for the current branch scope */}
         <StatsCards data={stats} loading={statsLoading} />
 
         {/* Live ops + Revenue */}
