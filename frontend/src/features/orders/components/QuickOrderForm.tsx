@@ -5,7 +5,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
-import { useAllBranches } from '@/features/branches/hooks/useBranches';
+import {
+  useAllBranches,
+  useBranchBookingSettings,
+} from '@/features/branches/hooks/useBranches';
 import { fetchClients } from '@/features/clients/api/clients.api';
 import { fetchVehicles } from '@/features/vehicles/api/vehicles.api';
 import { useCreateClient } from '@/features/clients/hooks/useClients';
@@ -30,6 +33,7 @@ import {
 import { decimalMoney, displayMoney, moneyCents } from '@/shared/utils/money';
 import { formatFullName } from '@/shared/utils/format';
 import { useAvailability, useCreateOrder } from '../hooks/useOrders';
+import { isDateDayOff } from '../utils/schedule.utils';
 import { StepVehicle } from './steps/StepVehicle';
 
 const payloadSchema = z.object({
@@ -110,7 +114,9 @@ export function QuickOrderForm() {
     branchesQuery.isFetching || servicesQuery.isFetching;
   // A catalog refetch may change durations, so the slot UI waits for it, but the
   // availability query stays keyed to the branch to keep its cache across refetches.
-  const availabilityReady = catalogLoaded && !catalogRefreshing;
+  const bookingSettings = useBranchBookingSettings(branchId);
+  const isDayOff = isDateDayOff(date, bookingSettings.data?.workingDays);
+  const availabilityReady = catalogLoaded && !catalogRefreshing && !isDayOff;
   const slots = useAvailability({
     branchId: catalogLoaded ? branchId : '',
     date,
@@ -135,6 +141,7 @@ export function QuickOrderForm() {
     if (catalogRefreshing) return tc('status.loading');
     if (!branch) return t('quick.branchFirst');
     if (!date) return t('quick.dateFirst');
+    if (isDayOff) return t('creation.branchClosed');
     if (!duration) return t('quick.servicesFirst');
     if (slots.isError) return tc('errors.loadFailed');
     if (slots.isFetching || !slots.isSuccess) return t('quick.checking');
@@ -439,6 +446,11 @@ export function QuickOrderForm() {
               <p className="mt-1 text-xs text-muted-foreground">
                 {branch?.timezone}
               </p>
+              {isDayOff && (
+                <p role="alert" className="text-warning-foreground">
+                  {t('creation.branchClosed')}
+                </p>
+              )}
               {availabilityReady &&
                 slots.isSuccess &&
                 chosenSlot &&

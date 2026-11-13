@@ -46,21 +46,8 @@ export function WorkPostsPage() {
         header: t('name'),
         render: (wp) => <span className="font-medium">{wp.name}</span>,
       },
-      ...(!isBranchScoped
-        ? [
-            {
-              key: 'branch' as const,
-              header: t('branch'),
-              render: (wp: WorkPost) => (
-                <span className="text-muted-foreground">
-                  {wp.branch?.name ?? '—'}
-                </span>
-              ),
-            },
-          ]
-        : []),
     ],
-    [t, isBranchScoped],
+    [t],
   );
 
   const onSubmit = (formData: WorkPostFormData) => {

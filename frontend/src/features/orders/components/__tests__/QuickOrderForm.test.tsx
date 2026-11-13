@@ -16,6 +16,7 @@ const state = vi.hoisted(() => ({
   servicesFetching: false,
   servicesError: false,
   availabilityBranchId: '',
+  workingDays: undefined as number[] | undefined,
   params: new URLSearchParams(),
   scope: '11111111-1111-4111-8111-111111111111',
   duration: 30,
@@ -54,6 +55,9 @@ vi.mock('@/shared/components/PermissionGate', () => ({
   PermissionGate: ({ children }: { children: ReactNode }) => children,
 }));
 vi.mock('@/features/branches/hooks/useBranches', () => ({
+  useBranchBookingSettings: () => ({
+    data: state.workingDays ? { workingDays: state.workingDays } : undefined,
+  }),
   useAllBranches: () => ({
     isFetching: state.branchesFetching,
     isError: state.branchesError,
@@ -177,6 +181,7 @@ describe('quick intake', () => {
     state.branchesError = false;
     state.servicesFetching = false;
     state.servicesError = false;
+    state.workingDays = undefined;
     state.params = new URLSearchParams();
     state.slot = '2026-10-25T10:00:00Z';
   });
@@ -231,6 +236,16 @@ describe('quick intake', () => {
     fireEvent.click(screen.getByRole('checkbox'));
     expect(state.availabilityBranchId).toBe(ids.branch);
     expect(screen.getByLabelText('quick.earliest')).toBeDisabled();
+  });
+  it('explains that the branch is closed on a non-working day and blocks slots', () => {
+    state.workingDays = [];
+    mount();
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(screen.getByLabelText('quick.earliest')).toBeDisabled();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'creation.branchClosed',
+    );
+    expect(screen.queryByText('creation.noSlots')).not.toBeInTheDocument();
   });
   it('does not claim no slots before an availability response succeeds', () => {
     state.success = false;

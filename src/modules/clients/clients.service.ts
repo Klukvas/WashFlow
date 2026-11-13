@@ -70,7 +70,7 @@ export class ClientsService {
     this.eventDispatcher.dispatch(
       new ClientDeletedEvent(tenantId, {
         clientId: id,
-        clientName: `${client.firstName} ${client.lastName}`,
+        clientName: `${client.firstName} ${client.lastName ?? ''}`.trim(),
         performedById,
       }),
     );

@@ -1,5 +1,5 @@
 import { IsBoolean, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { BooleanQuery } from '../../../common/utils/boolean-query.transform';
 import { PaginationDto } from '../../../common/utils/pagination.dto';
 
 export class EmployeeProfileQueryDto extends PaginationDto {
@@ -8,7 +8,7 @@ export class EmployeeProfileQueryDto extends PaginationDto {
   branchId?: string;
 
   @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
+  @BooleanQuery()
   @IsBoolean()
   active?: boolean;
 
