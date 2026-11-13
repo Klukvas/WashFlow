@@ -7,7 +7,8 @@ import {
   IsIn,
   IsBoolean,
 } from 'class-validator';
-import { Type, Transform } from 'class-transformer';
+import { Type } from 'class-transformer';
+import { BooleanQuery } from './boolean-query.transform';
 
 export class PaginationDto {
   @IsOptional()
@@ -32,7 +33,7 @@ export class PaginationDto {
   sortOrder: 'asc' | 'desc' = 'asc';
 
   @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
+  @BooleanQuery()
   @IsBoolean()
   includeDeleted?: boolean;
 }

@@ -270,3 +270,33 @@ it('keeps a previous callback invalid after returning and selecting the same tim
   expect(hook.result.current.hasCurrentSelection()).toBe(true);
   expect(captured()).toBe(false);
 });
+
+describe('displayed availability ages with the clock', () => {
+  it('excludes past, boundary and unavailable starts using absolute ISO instants', () => {
+    const { client, key, hook } = setupSelection();
+    vi.setSystemTime(new Date('2030-04-11T12:00:00Z'));
+    const future = { start: '2030-04-11T15:00:01+03:00', available: true };
+    act(() =>
+      client.setQueryData(key, [
+        { start: '2030-04-11T14:59:59+03:00', available: true },
+        { start: '2030-04-11T15:00:00+03:00', available: true },
+        { start: '2030-04-11T16:00:00+03:00', available: false },
+        future,
+      ]),
+    );
+    hook.rerender({ tenant: 'tenant', day: date });
+    expect(hook.result.current.rawSlots).toEqual([future]);
+  });
+
+  it('removes a visible time exactly when it starts and cannot revive its selection', () => {
+    const { hook } = setupSelection();
+    expect(hook.result.current.hasSelectedSlot).toBe(true);
+    act(() => vi.advanceTimersByTime(new Date(start).getTime() - Date.now()));
+    expect(hook.result.current.rawSlots).toEqual([]);
+    expect(hook.result.current.hasSelectedSlot).toBe(false);
+    expect(hook.result.current.hasCurrentSelection()).toBe(false);
+    vi.setSystemTime(new Date('2030-04-10T09:00:00Z'));
+    hook.rerender({ tenant: 'tenant', day: date });
+    expect(hook.result.current.hasCurrentSelection()).toBe(false);
+  });
+});

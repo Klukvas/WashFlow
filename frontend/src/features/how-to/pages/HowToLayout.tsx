@@ -19,7 +19,7 @@ export function HowToLayout() {
       {/* Mobile: horizontal scrollable topic list */}
       <div className="mb-4 overflow-x-auto lg:hidden">
         <div className="min-w-max">
-          <TopicSidebar />
+          <TopicSidebar horizontal />
         </div>
       </div>
 

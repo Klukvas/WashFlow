@@ -45,7 +45,7 @@ export function EmployeePerformanceTable({
       {
         key: 'cancelRate',
         header: t('employees.cancelRate'),
-        render: (row) => `${(row.cancelRate * 100).toFixed(1)}%`,
+        render: (row) => `${row.cancelRate.toFixed(1)}%`,
       },
     ],
     [t],
@@ -56,7 +56,12 @@ export function EmployeePerformanceTable({
       <Card>
         <CardContent className="p-4">
           <h3 className="mb-4 text-sm font-semibold">{t('employees.title')}</h3>
-          <DataTable columns={columns} data={data ?? []} loading={loading} />
+          <DataTable
+            columns={columns}
+            data={data ?? []}
+            loading={loading}
+            getRowKey={(row) => row.employeeId}
+          />
         </CardContent>
       </Card>
     </PermissionGate>

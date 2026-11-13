@@ -95,13 +95,17 @@ export function AnalyticsPage() {
         </div>
       )}
 
+      <p className="mb-3 text-sm text-muted-foreground">
+        {dateFrom || dateTo ? t('selectedPeriod') : t('allTime')}
+      </p>
+
       {/* Stats row */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {dashLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-24" />
           ))
-        ) : (
+        ) : dashboard ? (
           <>
             <Card>
               <CardContent className="p-4">
@@ -109,7 +113,7 @@ export function AnalyticsPage() {
                   {t('totalRevenue')}
                 </p>
                 <p className="text-2xl font-bold">
-                  {formatCurrency(dashboard?.revenue ?? 0)}
+                  {formatCurrency(dashboard.totalRevenue)}
                 </p>
               </CardContent>
             </Card>
@@ -119,17 +123,17 @@ export function AnalyticsPage() {
                   {t('totalOrders')}
                 </p>
                 <p className="text-2xl font-bold">
-                  {dashboard?.totalOrders ?? 0}
+                  {dashboard.totalOrders}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
                 <p className="text-sm text-muted-foreground">
-                  {t('activeClients')}
+                  {t('completedOrders')}
                 </p>
                 <p className="text-2xl font-bold">
-                  {dashboard?.activeClients ?? 0}
+                  {dashboard.completedOrders}
                 </p>
               </CardContent>
             </Card>
@@ -139,12 +143,12 @@ export function AnalyticsPage() {
                   {t('completionRate')}
                 </p>
                 <p className="text-2xl font-bold">
-                  {dashboard?.completionRate ?? 0}%
+                  {dashboard.completionRate}%
                 </p>
               </CardContent>
             </Card>
           </>
-        )}
+        ) : null}
       </div>
 
       {/* Charts */}

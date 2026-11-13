@@ -1,4 +1,4 @@
-import { useState, useId, useEffect, useMemo } from 'react';
+import { useState, useId, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -117,27 +117,17 @@ export function BookingPage() {
     else { clearSelectedSlot(); setStep(0); }
   }
 
-  // Recompute `now` each time rawSlots or selectedDate changes
-  // to avoid showing already-past slots as available
-  const slots = useMemo(() => {
-    if (!rawSlots) return undefined;
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-
-    return Array.from(
-      rawSlots
-        .filter(
-          (s) =>
-            s.available &&
-            (selectedDate !== todayStr || new Date(s.start) > now),
-        )
-        .reduce(
-          (map, s) => (map.has(s.start) ? map : map.set(s.start, s)),
-          new Map<string, (typeof rawSlots)[number]>(),
-        )
-        .values(),
-    );
-  }, [rawSlots, selectedDate]);
+  // Public booking assigns a work post after the customer chooses a start time.
+  const slots = rawSlots
+    ? Array.from(
+        rawSlots
+          .reduce(
+            (map, slot) => map.has(slot.start) ? map : map.set(slot.start, slot),
+            new Map<string, (typeof rawSlots)[number]>(),
+          )
+          .values(),
+      )
+    : undefined;
 
   function toggleService(id: string) {
     clearSelectedSlot();

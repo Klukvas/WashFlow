@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
+import { ValidationPipe } from '@nestjs/common';
 import { PaginationDto } from './pagination.dto';
 
 function toDto(plain: Record<string, unknown>): PaginationDto {
@@ -107,6 +108,40 @@ describe('PaginationDto', () => {
     it('transforms string "false" to false', () => {
       const dto = toDto({ includeDeleted: 'false' });
       expect(dto.includeDeleted).toBe(false);
+    });
+  });
+
+  describe('includeDeleted through the global ValidationPipe', () => {
+    // Mirrors main.ts: implicit conversion used to turn "false" into true.
+    const pipe = new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+    });
+    const parse = (query: Record<string, unknown>) =>
+      pipe.transform(query, {
+        type: 'query',
+        metatype: PaginationDto,
+      }) as Promise<PaginationDto>;
+
+    it.each([
+      ['false', false],
+      ['true', true],
+    ])('parses "%s" as %s', async (raw, expected) => {
+      expect((await parse({ includeDeleted: raw })).includeDeleted).toBe(
+        expected,
+      );
+    });
+
+    it('leaves an absent flag undefined', async () => {
+      expect((await parse({})).includeDeleted).toBeUndefined();
+    });
+
+    it('treats any other value as false', async () => {
+      await expect(parse({ includeDeleted: 'yes' })).resolves.toMatchObject({
+        includeDeleted: false,
+      });
     });
   });
 });

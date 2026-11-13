@@ -64,13 +64,10 @@
   },
   "statsCards": {
     "totalOrders": "Total Orders",
-    "todayOrders": "{{count}} today",
     "revenue": "Revenue",
-    "todayRevenue": "{{value}} today",
-    "activeClients": "Active Clients",
     "allTime": "All time",
     "completionRate": "Completion Rate",
-    "thisPeriod": "This period"
+    "completedOrders": "Completed Orders"
   },
   "setup": {
     "entry": "Set up your wash",

@@ -335,6 +335,20 @@ describe('ClientsService', () => {
       });
     });
 
+    it('omits a missing last name from clientName instead of printing "null"', async () => {
+      clientsRepo.findById.mockResolvedValue(
+        buildClient({ lastName: null }) as any,
+      );
+      clientsRepo.softDelete.mockResolvedValue(
+        buildClient({ deletedAt: new Date() }) as any,
+      );
+
+      await service.softDelete(TENANT_ID, CLIENT_ID, PERFORMER_ID);
+
+      const event = eventDispatcher.dispatch.mock.calls[0][0];
+      expect(event.payload.clientName).toBe('John');
+    });
+
     it('dispatches event with performedById as undefined when omitted', async () => {
       clientsRepo.findById.mockResolvedValue(buildClient() as any);
       clientsRepo.softDelete.mockResolvedValue(

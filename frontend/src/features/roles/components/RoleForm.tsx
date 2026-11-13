@@ -14,7 +14,11 @@ const roleSchema = z.object({
     .string()
     .min(1, 'validation.required')
     .max(100, 'validation.maxLength'),
-  description: z.string().max(500, 'validation.maxLength').optional().or(z.literal('')),
+  description: z
+    .string()
+    .max(500, 'validation.maxLength')
+    .optional()
+    .or(z.literal('')),
 });
 
 type RoleFormData = z.infer<typeof roleSchema>;
@@ -23,9 +27,15 @@ interface RoleFormProps {
   role?: Role;
   onSubmit: (data: RoleFormData) => void;
   isPending?: boolean;
+  onCancel?: () => void;
 }
 
-export function RoleForm({ role, onSubmit, isPending }: RoleFormProps) {
+export function RoleForm({
+  role,
+  onSubmit,
+  isPending,
+  onCancel,
+}: RoleFormProps) {
   const { t } = useTranslation('roles');
   const { t: tc } = useTranslation('common');
 
@@ -84,10 +94,22 @@ export function RoleForm({ role, onSubmit, isPending }: RoleFormProps) {
         />
       </div>
 
-      <Button type="submit" loading={isPending} disabled={!isDirty}>
-        <Save className="h-4 w-4" />
-        {role ? tc('actions.save') : tc('actions.create')}
-      </Button>
+      <div className="flex justify-end gap-3 pt-4">
+        {onCancel && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isPending}
+          >
+            {tc('actions.cancel')}
+          </Button>
+        )}
+        <Button type="submit" loading={isPending} disabled={!isDirty}>
+          <Save className="h-4 w-4" />
+          {role ? tc('actions.save') : tc('actions.create')}
+        </Button>
+      </div>
     </form>
   );
 }

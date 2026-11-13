@@ -7,6 +7,11 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // Backend modules shared with contract tests import Prisma enums; CI has no generated client.
+      '@prisma/client': path.resolve(
+        __dirname,
+        './src/test/prisma-client.stub.ts',
+      ),
     },
   },
   test: {

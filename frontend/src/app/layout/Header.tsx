@@ -39,6 +39,17 @@ export function Header({ onMenuClick }: HeaderProps) {
           >
             <Menu className="h-5 w-5" />
           </Button>
+          {/* The user block with the tenant ID is hidden below sm; keep the ID reachable. */}
+          {user?.tenantId && (
+            <button
+              type="button"
+              className="font-mono text-xs text-muted-foreground transition-colors hover:text-foreground sm:hidden"
+              title="Click to copy Tenant ID"
+              onClick={() => copyToClipboard(user.tenantId, 'Tenant ID')}
+            >
+              {user.tenantId.slice(0, 8)}…
+            </button>
+          )}
           <div className="hidden md:block">
             <GlobalSearch />
           </div>

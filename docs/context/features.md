@@ -6,6 +6,24 @@ What WashFlow does, and every screen that exposes it. Product-level view — for
 
 **Entry point:** [README.md](./README.md)
 
+## Interface consistency
+
+The dashboard's secondary cards show all-time totals for the selected branch; Analytics applies
+its selected date/branch filters to total revenue, order counts and completion rate. Missing
+daily or active-client fields are not rendered as fabricated zero statistics. Employee cancellation
+rates are formatted as the percentage returned by the API. Work-post summaries derive their count
+from the returned branch-filtered array.
+
+Quick intake names missing prerequisites and loading/error states before showing a confirmed
+empty availability response. Schedule cards separate orders overlapping the selected day from
+older overdue work, with independent counts and preserved warnings. Mobile help topics form a
+horizontal list; role creation provides a visible Cancel action; user validation is localized.
+EN/UK help follows the current login, payment-before-completion and work-post capabilities.
+
+Public paid-plan limits agree with the product catalogue. Both booking frontends hide elapsed
+starts and clear expired selection; the widget calendar follows the selected EN/UK locale.
+No placeholder CAPTCHA is presented as an unfinished customer step.
+
 ---
 
 ## Backend capabilities

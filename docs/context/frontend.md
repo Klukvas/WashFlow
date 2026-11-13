@@ -149,11 +149,20 @@ lock prevent duplicate requests. Availability refreshes every 30 seconds and vis
 guards every 15 seconds. Both EN and UK labels are provided; the existing shell, fonts and
 light/dark tokens remain in use.
 
+Quick intake distinguishes missing branch/date/services, resource loading/errors and availability
+loading/errors from a successful empty slot response. It shows the no-slots message once, only
+after a successful response for a ready context; cached choices cannot enable confirmation while
+the branch or service catalogue is being refreshed.
+
 `ScheduleView` reads the dedicated full-day `/orders/schedule` projection instead of deriving
 occupied orders from availability or the paginated order list. All returned overlapping orders
 are cards with plate, services, status, worker, post and planned end; clicking opens order detail.
 Dates/times and the server's now marker use the branch timezone. Overdue in-progress work is
 flagged as a warning, without claiming physical post occupancy beyond reservation policy.
+Cards overlapping the API-provided day range appear first with a date and count. Older overdue
+cards remain in a separate counted section with their dates and warnings. Classification uses
+interval overlap, so an overnight reservation is not misplaced merely because it started on the
+previous calendar date; the work-post filter applies to both sections.
 Unavailable workforce capacity is not presented as an order. Available raw starts appear above the order cards, enter
 quick intake and are revalidated for the selected service duration.
 
@@ -300,6 +309,24 @@ block, `uk` block).
 5. `apiClient` 401 refresh-and-retry, then redirect to `/login`.
 
 ### Content and SEO
+
+The help topic navigation uses a horizontal mobile list and a vertical desktop sidebar. The
+selected mobile topic is scrolled into reach on navigation without scrolling the article away.
+EN/UK help describes email/password login, collecting payment before completing an order, and
+adding work posts on the Work Posts page; branch detail displays the posts, without edit/delete
+controls. User validation renders translated field/email/password messages. Role creation has a
+visible Cancel action that closes without submitting and is disabled while creation is pending.
+
+The secondary dashboard cards use the all-time aggregate contract for the selected branch:
+total orders, completed orders, total revenue and completion rate. They do not invent daily or
+active-client fields. Analytics uses the same validated aggregate with its own date/branch
+filters and labels the selected period. Decimal-string revenue is normalized at the API boundary;
+employee cancellation rates are already percentages and are formatted without multiplying again.
+
+Public landing plan limits match the paid-plan catalogue. Slug booking and the standalone widget
+show only starts after the current absolute time and invalidate expired selections; the static
+reCAPTCHA placeholder is removed. Widget calendar labels follow EN/UK without changing the
+selected calendar date. These corrections do not add a CAPTCHA or enable provider payments.
 
 - **Blog**: `features/blog/blog-loader.ts` uses `import.meta.glob('/content/blog/*.md', { query:
 '?raw', eager: true })` with a hand-rolled frontmatter parser (`title`, `date`,

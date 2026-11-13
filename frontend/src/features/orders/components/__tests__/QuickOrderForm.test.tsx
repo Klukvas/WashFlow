@@ -8,6 +8,15 @@ const state = vi.hoisted(() => ({
   navigate: vi.fn(),
   create: vi.fn(),
   fetching: false,
+  branchCount: 1,
+  empty: false,
+  success: true,
+  branchesFetching: false,
+  branchesError: false,
+  servicesFetching: false,
+  servicesError: false,
+  availabilityBranchId: '',
+  workingDays: undefined as number[] | undefined,
   params: new URLSearchParams(),
   scope: '11111111-1111-4111-8111-111111111111',
   duration: 30,
@@ -46,19 +55,27 @@ vi.mock('@/shared/components/PermissionGate', () => ({
   PermissionGate: ({ children }: { children: ReactNode }) => children,
 }));
 vi.mock('@/features/branches/hooks/useBranches', () => ({
+  useBranchBookingSettings: () => ({
+    data: state.workingDays ? { workingDays: state.workingDays } : undefined,
+  }),
   useAllBranches: () => ({
-    data: [
-      {
-        id: '11111111-1111-4111-8111-111111111111',
-        name: 'Branch',
-        timezone: 'Europe/Kyiv',
-        isActive: true,
-      },
-    ],
+    isFetching: state.branchesFetching,
+    isError: state.branchesError,
+    data: Array.from({ length: state.branchCount }, (_, index) => ({
+      id:
+        index === 0
+          ? '11111111-1111-4111-8111-111111111111'
+          : '22222222-2222-4222-8222-222222222222',
+      name: 'Branch',
+      timezone: 'Europe/Kyiv',
+      isActive: true,
+    })),
   }),
 }));
 vi.mock('@/features/services/hooks/useServices', () => ({
   useServices: () => ({
+    isFetching: state.servicesFetching,
+    isError: state.servicesError,
     data: {
       items: [
         {
@@ -107,19 +124,28 @@ vi.mock('../steps/StepVehicle', () => ({
 }));
 vi.mock('../../hooks/useOrders', () => ({
   useCreateOrder: () => ({ mutate: state.create, isPending: false }),
-  useAvailability: (params: { durationMinutes?: number }) => ({
-    isFetching: state.fetching,
-    data: params.durationMinutes
-      ? [
-          {
-            start: state.slot,
-            workPostId: '77777777-7777-4777-8777-777777777777',
-            workPostName: 'Post',
-            available: true,
-          },
-        ]
-      : [],
-  }),
+  useAvailability: (params: {
+    durationMinutes?: number;
+    branchId: string;
+    date: string;
+  }) => {
+    state.availabilityBranchId = params.branchId;
+    return {
+      isSuccess: state.success && !!params.branchId && !!params.date,
+      isFetching: state.fetching,
+      data:
+        params.durationMinutes && params.branchId && !state.empty
+          ? [
+              {
+                start: state.slot,
+                workPostId: '77777777-7777-4777-8777-777777777777',
+                workPostName: 'Post',
+                available: true,
+              },
+            ]
+          : [],
+    };
+  },
 }));
 function mount() {
   return render(
@@ -147,8 +173,88 @@ describe('quick intake', () => {
     state.create.mockClear();
     state.navigate.mockClear();
     state.fetching = false;
+    state.scope = ids.branch;
+    state.branchCount = 1;
+    state.empty = false;
+    state.success = true;
+    state.branchesFetching = false;
+    state.branchesError = false;
+    state.servicesFetching = false;
+    state.servicesError = false;
+    state.workingDays = undefined;
     state.params = new URLSearchParams();
     state.slot = '2026-10-25T10:00:00Z';
+  });
+  it('asks for a branch before claiming there are no slots, even when a service was selected first', () => {
+    state.scope = '';
+    state.branchCount = 2;
+    mount();
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(screen.getByLabelText('quick.earliest')).toBeDisabled();
+    expect(screen.getByText('quick.branchFirst')).toBeInTheDocument();
+    expect(screen.queryByText('creation.noSlots')).not.toBeInTheDocument();
+  });
+  it('shows no-slots only once after a successful empty availability response', () => {
+    state.empty = true;
+    mount();
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(screen.getAllByText('creation.noSlots')).toHaveLength(1);
+  });
+  it.each(['branches', 'services'])(
+    'keeps %s refetch/error distinct from an empty slot response and preserves selection',
+    (resource) => {
+      if (resource === 'branches') state.branchesFetching = true;
+      else state.servicesFetching = true;
+      const view = mount();
+      fireEvent.click(screen.getByRole('checkbox'));
+      expect(screen.getByLabelText('quick.earliest')).toHaveDisplayValue(
+        'status.loading',
+      );
+      expect(screen.queryByText('creation.noSlots')).not.toBeInTheDocument();
+      state.branchesFetching = false;
+      state.servicesFetching = false;
+      if (resource === 'branches') state.branchesError = true;
+      else state.servicesError = true;
+      view.rerender(
+        <QueryClientProvider client={new QueryClient()}>
+          <QuickOrderForm />
+        </QueryClientProvider>,
+      );
+      expect(screen.getByLabelText('quick.earliest')).toHaveDisplayValue(
+        'errors.loadFailed',
+      );
+      expect(screen.getByRole('checkbox')).toBeChecked();
+      expect(screen.queryByText('creation.noSlots')).not.toBeInTheDocument();
+    },
+  );
+  it('keeps the availability query keyed to the branch while the catalog refetches', () => {
+    mount();
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(state.availabilityBranchId).toBe(ids.branch);
+    state.servicesFetching = true;
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(state.availabilityBranchId).toBe(ids.branch);
+    expect(screen.getByLabelText('quick.earliest')).toBeDisabled();
+  });
+  it('explains that the branch is closed on a non-working day and blocks slots', () => {
+    state.workingDays = [];
+    mount();
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(screen.getByLabelText('quick.earliest')).toBeDisabled();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'creation.branchClosed',
+    );
+    expect(screen.queryByText('creation.noSlots')).not.toBeInTheDocument();
+  });
+  it('does not claim no slots before an availability response succeeds', () => {
+    state.success = false;
+    mount();
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(screen.getByLabelText('quick.earliest')).toHaveDisplayValue(
+      'quick.checking',
+    );
+    expect(screen.queryByText('creation.noSlots')).not.toBeInTheDocument();
   });
   it('auto-selects a safe branch, guards missing inputs/fetching and prevents duplicate create', async () => {
     const view = mount();

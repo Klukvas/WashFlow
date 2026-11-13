@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { enUS, uk } from 'date-fns/locale';
 import {
   format,
   startOfMonth,
@@ -29,6 +31,10 @@ export function CalendarGrid({
   min,
   className,
 }: CalendarGridProps) {
+  const { t, i18n } = useTranslation('public-booking');
+  const locale = (i18n.resolvedLanguage ?? i18n.language).startsWith('uk')
+    ? uk
+    : enUS;
   const [viewDate, setViewDate] = useState(() =>
     value ? new Date(value + 'T00:00:00') : new Date(),
   );
@@ -42,13 +48,15 @@ export function CalendarGrid({
   const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
-  const weekDays = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+  const weekDays = ([1, 2, 3, 4, 5, 6, 0] as const).map((day) =>
+    locale.localize.day(day, { width: 'short' }),
+  );
 
   function isDisabled(day: Date) {
     return minDate ? isBefore(day, minDate) : false;
   }
 
-  const monthLabel = format(viewDate, 'MMMM yyyy');
+  const monthLabel = format(viewDate, 'LLLL yyyy', { locale });
 
   return (
     <div
@@ -64,7 +72,7 @@ export function CalendarGrid({
           type="button"
           className="rounded-md p-1.5 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={() => setViewDate((d) => subMonths(d, 1))}
-          aria-label="Previous month"
+          aria-label={t('calendar.previousMonth')}
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -73,7 +81,7 @@ export function CalendarGrid({
           type="button"
           className="rounded-md p-1.5 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={() => setViewDate((d) => addMonths(d, 1))}
-          aria-label="Next month"
+          aria-label={t('calendar.nextMonth')}
         >
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -100,7 +108,11 @@ export function CalendarGrid({
               key={day.toISOString()}
               type="button"
               disabled={disabled}
-              aria-label={format(day, 'EEEE, MMMM d, yyyy')}
+              aria-label={format(
+                day,
+                locale === uk ? 'EEEE, d MMMM yyyy' : 'EEEE, MMMM d, yyyy',
+                { locale },
+              )}
               aria-selected={isSelected || undefined}
               aria-current={isToday ? 'date' : undefined}
               className={cn(

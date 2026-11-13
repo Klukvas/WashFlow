@@ -57,7 +57,8 @@
     "required": "This field is required",
     "invalidPhone": "Invalid phone number",
     "invalidEmail": "Invalid email address",
-    "maxLength": "Value is too long"
+    "maxLength": "Value is too long",
+    "passwordMin": "Password must contain at least 8 characters"
   },
   "status": {
     "active": "Active",

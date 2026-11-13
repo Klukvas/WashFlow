@@ -10,11 +10,7 @@ import { PermissionGate } from '@/shared/components/PermissionGate';
 import { SoftDeleteBadge } from '@/shared/components/SoftDeleteBadge';
 import { IncludeDeletedToggle } from '@/shared/components/IncludeDeletedToggle';
 import { Button } from '@/shared/ui/button';
-import {
-  Dialog,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/ui/dialog';
+import { Dialog, DialogHeader, DialogTitle } from '@/shared/ui/dialog';
 import { PERMISSIONS } from '@/shared/constants/permissions';
 import type { Role } from '@/shared/types/models';
 import type { RoleQueryParams } from '../api/roles.api';
@@ -121,11 +117,19 @@ export function RolesPage() {
         emptyMessage={t('emptyState')}
       />
 
-      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)}>
+      <Dialog
+        open={createDialogOpen}
+        dismissable={!creating}
+        onClose={() => setCreateDialogOpen(false)}
+      >
         <DialogHeader>
           <DialogTitle>{t('createRole')}</DialogTitle>
         </DialogHeader>
-        <RoleForm onSubmit={handleCreateSubmit} isPending={creating} />
+        <RoleForm
+          onSubmit={handleCreateSubmit}
+          isPending={creating}
+          onCancel={() => setCreateDialogOpen(false)}
+        />
       </Dialog>
     </div>
   );

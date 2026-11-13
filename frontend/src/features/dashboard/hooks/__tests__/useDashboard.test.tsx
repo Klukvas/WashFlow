@@ -55,7 +55,7 @@ beforeEach(() => {
 
 describe('useDashboardStats', () => {
   it('calls fetchDashboardStats and returns data', async () => {
-    const data = { totalOrders: 100, todayOrders: 5, revenue: 5000, todayRevenue: 200, activeClients: 30, completionRate: 0.85 };
+    const data = { totalOrders: 100, completedOrders: 85, cancelledOrders: 5, totalRevenue: 5000, completionRate: 85 };
     vi.mocked(fetchDashboardStats).mockResolvedValueOnce(data);
 
     const { result } = renderHook(() => useDashboardStats(), { wrapper: createWrapper() });

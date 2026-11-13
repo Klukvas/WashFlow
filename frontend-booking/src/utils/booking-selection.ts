@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePublicAvailability } from '@/hooks/usePublicBooking';
 
@@ -26,6 +26,10 @@ export function bookingContext(
   ]);
 }
 
+export function isFutureBookingSlot(slot: Slot, now = Date.now()): boolean {
+  return slot.available && new Date(slot.start).getTime() > now;
+}
+
 export function isBookingSelectionCurrent(
   selection: BookingSelection | null,
   context: string,
@@ -38,11 +42,10 @@ export function isBookingSelectionCurrent(
     !!selection &&
     selection.context === context &&
     selection.start === scheduledStart &&
-    new Date(scheduledStart).getTime() > Date.now() &&
     availability?.status === 'success' &&
     availability.fetchStatus === 'idle' &&
     !!availability.data?.some(
-      (slot) => slot.available && slot.start === scheduledStart,
+      (slot) => isFutureBookingSlot(slot) && slot.start === scheduledStart,
     )
   );
 }
@@ -63,6 +66,7 @@ type SelectionOptions = {
 };
 
 export function useBookingSelection(options: SelectionOptions) {
+  const [clock, setClock] = useState(0);
   const [selection, setSelection] = useState<BookingSelection | null>(null);
   const selectionRef = useRef<BookingSelection | null>(null);
   const queryClient = useQueryClient();
@@ -77,6 +81,37 @@ export function useBookingSelection(options: SelectionOptions) {
   const values = getValues();
   const params = { branchId: values.branchId, date, durationMinutes };
   const availability = usePublicAvailability(params);
+  // Callers pass an inline setter; keep the expiry timer from restarting on every render.
+  const setScheduledStartRef = useRef(setScheduledStart);
+  useLayoutEffect(() => {
+    setScheduledStartRef.current = setScheduledStart;
+  }, [setScheduledStart]);
+  // Re-render at the next expiry even when the availability response stays cached.
+  useEffect(() => {
+    const now = Date.now();
+    const nextStart = availability.data
+      ?.filter((slot) => isFutureBookingSlot(slot, now))
+      .reduce(
+        (earliest, slot) => Math.min(earliest, new Date(slot.start).getTime()),
+        Infinity,
+      );
+    if (!nextStart || !Number.isFinite(nextStart)) return;
+    const timeout = setTimeout(
+      () => {
+        if (
+          selectionRef.current &&
+          new Date(selectionRef.current.start).getTime() <= Date.now()
+        ) {
+          selectionRef.current = null;
+          setSelection(null);
+          setScheduledStartRef.current('');
+        }
+        setClock(Date.now());
+      },
+      Math.min(nextStart - now, 2_147_483_647),
+    );
+    return () => clearTimeout(timeout);
+  }, [availability.data, clock]);
   const availabilityKey = ['widget', 'availability', params];
   const servicesKey = ['widget', 'services'];
   const context = bookingContext(
@@ -165,7 +200,7 @@ export function useBookingSelection(options: SelectionOptions) {
     clearSelectedSlot,
     selectSlot,
     hasCurrentSelection,
-    rawSlots: availability.data,
+    rawSlots: availability.data?.filter((slot) => isFutureBookingSlot(slot)),
     slotsFetching: availability.isFetching,
   };
 }

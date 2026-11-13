@@ -1,16 +1,25 @@
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/shared/stores/auth.store';
 import { useAuthModalStore } from '@/shared/stores/auth-modal.store';
-import { Link } from 'react-router';
+import { useEffect } from 'react';
+import { Link, useLocation } from 'react-router';
 
 export function LandingHeader() {
   const { t } = useTranslation('landing');
+  const { pathname, hash, key } = useLocation();
+
+  // `key` changes on every navigation, so re-clicking the same section scrolls again.
+  useEffect(() => {
+    if (pathname === '/' && hash) {
+      document.getElementById(hash.slice(1))?.scrollIntoView();
+    }
+  }, [pathname, hash, key]);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const openModal = useAuthModalStore((s) => s.open);
 
   return (
     <nav className="landing-nav" aria-label="WashFlow">
-      <a href="#" className="landing-nav-logo">
+      <Link to="/" className="landing-nav-logo">
         <div className="landing-nav-logo-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
             <path
@@ -23,13 +32,21 @@ export function LandingHeader() {
           </svg>
         </div>
         WashFlow
-      </a>
+      </Link>
 
       <ul className="landing-nav-links">
-        <li><a href="#features">{t('nav.features')}</a></li>
-        <li><a href="#how">{t('nav.howItWorks')}</a></li>
-        <li><a href="#pricing">{t('nav.pricing')}</a></li>
-        <li><a href="#realtime">{t('nav.realtime')}</a></li>
+        <li>
+          <Link to="/#features">{t('nav.features')}</Link>
+        </li>
+        <li>
+          <Link to="/#how">{t('nav.howItWorks')}</Link>
+        </li>
+        <li>
+          <Link to="/#pricing">{t('nav.pricing')}</Link>
+        </li>
+        <li>
+          <Link to="/#realtime">{t('nav.realtime')}</Link>
+        </li>
       </ul>
 
       <div className="landing-nav-actions">

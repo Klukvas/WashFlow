@@ -9,9 +9,7 @@ import type {
   PaginatedApiResponse,
   PaginatedResponse,
 } from '@/shared/types/api';
-import type { BookingSettings, Branch, WorkPost } from '@/shared/types/models';
-import type { WorkPostQueryParams } from '@/features/work-posts/api/work-posts.api';
-export type { WorkPostQueryParams } from '@/features/work-posts/api/work-posts.api';
+import type { BookingSettings, Branch } from '@/shared/types/models';
 
 export interface BranchQueryParams {
   page?: number;
@@ -81,16 +79,6 @@ export async function restoreBranch(id: string): Promise<Branch> {
     `/branches/${id}/restore`,
   );
   return data.data;
-}
-
-export async function fetchWorkPosts(
-  params: WorkPostQueryParams,
-): Promise<PaginatedResponse<WorkPost>> {
-  const { data } = await apiClient.get<PaginatedApiResponse<WorkPost>>(
-    '/work-posts',
-    { params },
-  );
-  return toPaginated(data);
 }
 
 export interface UpdateBookingSettingsPayload {

@@ -7,15 +7,7 @@ vi.mock('@/shared/api/client', () => ({
     post: vi.fn(),
     patch: vi.fn(),
   },
-  toPaginated: vi.fn((resp) => ({
-    items: resp.data,
-    meta: {
-      total: resp.meta.total,
-      page: resp.meta.page,
-      limit: resp.meta.limit,
-      totalPages: resp.meta.totalPages,
-    },
-  })),
+
 }));
 
 import { apiClient } from '@/shared/api/client';
@@ -24,23 +16,30 @@ const mockWorkPost = { id: 'wp1', name: 'Post 1', branchId: 'b1' };
 
 describe('work-posts.api', () => {
   beforeEach(() => {
+    vi.mocked(apiClient.get).mockReset();
     vi.clearAllMocks();
   });
 
-  it('fetchWorkPosts calls GET /work-posts', async () => {
-    vi.mocked(apiClient.get).mockResolvedValue({
-      data: {
-        data: [mockWorkPost],
-        meta: { timestamp: '', total: 1, page: 1, limit: 20, totalPages: 1 },
-      },
-    });
+  it('counts the complete branch-filtered array rather than timestamp-only metadata', async () => {
+    const posts = Array.from({ length: 4 }, (_, index) => ({ ...mockWorkPost, id: `wp${index}` }));
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { data: posts, meta: { timestamp: '' } } });
+    const result = await fetchWorkPosts({ branchId: 'b1', page: 1, limit: 2 });
+    expect(apiClient.get).toHaveBeenCalledWith('/work-posts', { params: { branchId: 'b1' } });
+    expect(result.items).toEqual(posts);
+    expect(result.meta).toEqual({ total: 4, page: 1, limit: 4, totalPages: 1 });
+  });
 
-    const result = await fetchWorkPosts({ branchId: 'b1', page: 1, limit: 20 });
+  it('recalculates counts for an empty branch and after the list changes', async () => {
+    vi.mocked(apiClient.get)
+      .mockResolvedValueOnce({ data: { data: [], meta: { timestamp: '' } } })
+      .mockResolvedValueOnce({ data: { data: [mockWorkPost], meta: { timestamp: '' } } });
+    expect((await fetchWorkPosts({ branchId: 'b1' })).meta.total).toBe(0);
+    expect((await fetchWorkPosts({ branchId: 'b1' })).meta.total).toBe(1);
+  });
 
-    expect(apiClient.get).toHaveBeenCalledWith('/work-posts', {
-      params: { branchId: 'b1', page: 1, limit: 20 },
-    });
-    expect(result.items).toHaveLength(1);
+  it('rejects a malformed list instead of reporting an empty branch', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { data: null, meta: { timestamp: '' } } });
+    await expect(fetchWorkPosts({ branchId: 'b1' })).rejects.toThrow();
   });
 
   it('createWorkPost calls POST /work-posts', async () => {
